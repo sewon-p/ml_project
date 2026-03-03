@@ -1,0 +1,11 @@
+# Force LF line endings for all text files (consistent across OS)
+* text=auto eol=lf
+
+# Explicitly mark binary files
+*.png binary
+*.jpg binary
+*.pkl binary
+*.pt binary
+*.pth binary
+*.parquet binary
+*.npz binary
