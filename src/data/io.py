@@ -11,15 +11,11 @@ def read_parquet(path: str | Path) -> pd.DataFrame:
     """Read a Parquet file into a DataFrame."""
     path = Path(path)
     if not path.exists():
-        raise FileNotFoundError(
-            f"Parquet file not found: {path}"
-        )
+        raise FileNotFoundError(f"Parquet file not found: {path}")
     return pd.read_parquet(path)
 
 
-def write_parquet(
-    df: pd.DataFrame, path: str | Path
-) -> Path:
+def write_parquet(df: pd.DataFrame, path: str | Path) -> Path:
     """Write a DataFrame to Parquet.
 
     Creates parent directories if needed.

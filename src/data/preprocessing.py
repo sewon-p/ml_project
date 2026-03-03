@@ -39,9 +39,7 @@ def build_trajectory(veh_df: pd.DataFrame) -> pd.DataFrame:
     else:
         brake = (ax < -0.5).astype(float)
 
-    return pd.DataFrame(
-        {"VX": vx, "VY": vy, "AX": ax, "AY": ay, "speed": speed, "brake": brake}
-    )
+    return pd.DataFrame({"VX": vx, "VY": vy, "AX": ax, "AY": ay, "speed": speed, "brake": brake})
 
 
 def grouped_train_test_split(
@@ -86,9 +84,7 @@ def apply_scaler(
     Returns a copy.
     """
     df = df.copy()
-    df[feature_columns] = scaler.transform(
-        df[feature_columns]
-    )
+    df[feature_columns] = scaler.transform(df[feature_columns])
     return df
 
 

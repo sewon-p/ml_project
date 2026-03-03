@@ -37,10 +37,7 @@ class TrafficDataset:
 
     @property
     def groups(self) -> np.ndarray | None:
-        if (
-            self.group_column
-            and self.group_column in self.df.columns
-        ):
+        if self.group_column and self.group_column in self.df.columns:
             return self.df[self.group_column].values
         return None
 
@@ -58,7 +55,7 @@ class TimeSeriesDataset(Dataset):
     def __init__(
         self,
         sequences: np.ndarray,  # shape: (N, channels, seq_len) or (N, seq_len)
-        targets: np.ndarray,    # shape: (N,)
+        targets: np.ndarray,  # shape: (N,)
         conditions: np.ndarray | None = None,  # shape: (N, n_cond)
     ):
         self.sequences = torch.FloatTensor(sequences)
@@ -66,9 +63,7 @@ class TimeSeriesDataset(Dataset):
             # Single-channel fallback: (N, seq_len) -> (N, 1, seq_len)
             self.sequences = self.sequences.unsqueeze(1)
         self.targets = torch.FloatTensor(targets)
-        self.conditions = (
-            torch.FloatTensor(conditions) if conditions is not None else None
-        )
+        self.conditions = torch.FloatTensor(conditions) if conditions is not None else None
 
     def __len__(self) -> int:
         return len(self.targets)
