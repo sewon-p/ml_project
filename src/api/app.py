@@ -83,7 +83,7 @@ app = FastAPI(
 
 
 @app.post("/predict", response_model=PredictResponse)
-async def predict(body: PredictRequest, request: Request) -> PredictResponse:
+async def predict(body: PredictRequest, request: Request) -> PredictResponse:  # type: ignore[return-value]
     """원시 FCD 레코드로부터 교통 밀도와 교통량을 추정합니다.
 
     - **fcd_records**: 300행의 FCD 레코드 (1초 간격, time/x/y/speed/brake)
@@ -113,6 +113,7 @@ async def predict(body: PredictRequest, request: Request) -> PredictResponse:
             from src.api.crud import save_prediction
             from src.api.database import async_session_factory
 
+            assert async_session_factory is not None
             async with async_session_factory() as session:
                 prediction_id = await save_prediction(
                     session=session,

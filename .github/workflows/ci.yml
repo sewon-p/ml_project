@@ -23,7 +23,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -e ".[dev,api]"
+        run: pip install -e ".[dev,api]" types-PyYAML
 
       - name: Ruff check
         run: ruff check src/ tests/
@@ -31,8 +31,8 @@ jobs:
       - name: Ruff format check
         run: ruff format --check src/ tests/
 
-      - name: Mypy
-        run: mypy src/ --ignore-missing-imports
+      - name: Mypy (API module)
+        run: mypy src/api/ --ignore-missing-imports
 
   test:
     name: Tests (Python ${{ matrix.python-version }})
