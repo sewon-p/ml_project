@@ -54,8 +54,8 @@ def predict_density(
     speed_mean = float(np.mean(trajectory["speed"].values))
     v_free = speed_limit * registry.v_free_factor
     fd = compute_fd_estimates(
-        speed_mean,
-        v_free,
+        np.array(speed_mean),
+        np.array(v_free),
         num_lanes,
         vehicle_length=registry.vehicle_length,
         min_gap=registry.min_gap,

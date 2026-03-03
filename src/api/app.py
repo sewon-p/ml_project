@@ -83,7 +83,7 @@ app = FastAPI(
 
 
 @app.post("/predict", response_model=PredictResponse)
-async def predict(body: PredictRequest, request: Request) -> PredictResponse:  # type: ignore[return-value]
+async def predict(body: PredictRequest, request: Request) -> PredictResponse:
     """원시 FCD 레코드로부터 교통 밀도와 교통량을 추정합니다.
 
     - **fcd_records**: 300행의 FCD 레코드 (1초 간격, time/x/y/speed/brake)
@@ -101,7 +101,7 @@ async def predict(body: PredictRequest, request: Request) -> PredictResponse:  #
         )
     except Exception as e:
         logger.exception("Prediction failed")
-        return JSONResponse(
+        return JSONResponse(  # type: ignore[return-value]
             status_code=500,
             content={"detail": f"Prediction failed: {e}"},
         )
