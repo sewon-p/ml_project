@@ -24,7 +24,7 @@ dependencies = [
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
-    "ruff>=0.4",
+    "ruff==0.15.2",
     "mypy>=1.5",
 ]
 simulation = [
