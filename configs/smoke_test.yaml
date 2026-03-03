@@ -1,0 +1,21 @@
+# Smoke test: 5 scenarios for quick pipeline validation before full run.
+_base_: default.yaml
+
+# For generate_scenarios.py
+scenarios:
+  num_simulations: 5
+
+# For generate_scenarios.py / run_simulation.py
+output:
+  scenarios_csv: data/scenarios.csv
+  fcd_dir: data/fcd/
+  features_dir: data/features/
+
+simulation:
+  max_workers: 2
+
+training:
+  device: cpu
+  max_epochs: 3
+  batch_size: 32
+  num_workers: 0

@@ -1,0 +1,10 @@
+_base_: ../default.yaml
+
+model:
+  type: lstm
+  config: configs/models/lstm.yaml
+
+training:
+  target: flow
+
+output_dir: outputs_lstm_flow/

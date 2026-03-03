@@ -1,0 +1,10 @@
+_base_: ../default.yaml
+
+experiment_name: exp5_fd_baseline
+data_path: data/features/dataset.parquet
+
+model:
+  type: fd_baseline
+
+training:
+  target: density

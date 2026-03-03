@@ -1,0 +1,16 @@
+_base_: ../default.yaml
+
+experiment_name: exp4_feature_value
+data_path: data/features/dataset.parquet
+
+features:
+  selected:
+    - speed_mean
+
+model:
+  type: xgboost
+  config: configs/models/xgboost.yaml
+
+training:
+  target: density
+  n_splits: 5

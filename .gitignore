@@ -1,0 +1,47 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Data & outputs
+data/
+checkpoints/
+runs/
+logs/
+outputs/
+outputs_xgboost/
+outputs_lstm/
+outputs_xgboost_flow/
+results/
+*.pt
+*.pth
+*.parquet
+*.pkl
+
+# SUMO artifacts
+*.net.xml
+*.rou.xml
+*.sumocfg
+*.tripinfo.xml
+*.fcd.xml
+sumo_output/
+
+# Environment
+.venv/
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/

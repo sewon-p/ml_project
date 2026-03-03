@@ -1,0 +1,32 @@
+# 테스트용 소규모 시나리오 설정 (10개 시나리오 × 5 프로브 = 50 샘플)
+_base_: scenarios.yaml
+
+scenarios:
+  num_simulations: 10
+
+data:
+  timeseries_path: data/features_test/timeseries.npz
+  metadata_path: data/features_test/metadata.parquet
+  tabular_path: data/features_test/dataset.parquet
+  seq_len: 300
+
+training:
+  target: density
+  device: cpu
+  n_splits: 2
+  test_ratio: 0.2
+  val_ratio: 0.1
+  batch_size: 16
+  num_workers: 0
+  max_epochs: 5
+  early_stopping_patience: 3
+  learning_rate: 0.001
+  optimizer: adam
+
+model:
+  type: cnn1d
+
+output:
+  scenarios_csv: data/scenarios_test.csv
+  fcd_dir: data/fcd_test/
+  features_dir: data/features_test/

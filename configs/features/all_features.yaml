@@ -1,0 +1,38 @@
+features:
+  # speed channel
+  - speed_mean
+  - speed_std
+  - speed_cv
+  - speed_iqr
+  - speed_min
+  - speed_max
+  - speed_median
+  - speed_p10
+  - speed_p90
+  # VY channel
+  - vy_mean
+  - vy_std
+  - vy_min
+  - vy_max
+  # acceleration (AX, AY)
+  - ax_mean
+  - ax_std
+  - ay_mean
+  - ay_std
+  - jerk_mean
+  - jerk_std
+  # stop patterns
+  - stop_count
+  - stop_time_ratio
+  - mean_stop_duration
+  # time-series
+  - speed_autocorr_lag1
+  - speed_fft_dominant_freq
+  - sample_entropy
+  # brake patterns
+  - brake_count
+  - brake_time_ratio
+  - mean_brake_duration
+  # lateral dynamics
+  - vy_variance
+  - vy_energy

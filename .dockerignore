@@ -1,0 +1,44 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Large data (model/parquet는 Dockerfile에서 명시적 COPY)
+data/fcd/
+data/features/timeseries.npz
+data/features/metadata.parquet
+sumo_output/
+runs/
+logs/
+checkpoints/
+results/
+
+# SUMO artifacts
+*.net.xml
+*.rou.xml
+*.sumocfg
+*.tripinfo.xml
+*.fcd.xml
+
+# Outputs (model은 명시적 COPY)
+outputs_lstm/
+outputs_xgboost/plots/
+outputs_xgboost_flow/
+
+# Dev / IDE
+.venv/
+.env
+.vscode/
+.idea/
+.claude/
+.git/
+notebooks/
+tests/
+보고서/
+
+# OS
+.DS_Store
+Thumbs.db
+.ipynb_checkpoints/

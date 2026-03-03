@@ -1,0 +1,105 @@
+# Default configuration for single-probe traffic density/flow estimation.
+# DL-primary: raw 6-channel time series → CNN1D/LSTM → density prediction.
+
+seed: 42
+output_dir: outputs/
+
+simulation:
+  sumo_binary: sumo  # or sumo-gui
+  max_workers: 13
+  network:
+    # link_length: dynamic per scenario (speed_limit * 600 * 1.2)
+    num_lanes:
+      min: 1
+      max: 3
+    speed_limit_kmh: [50, 60, 80, 100]
+  demand:
+    per_lane_min_vehph: 800
+    per_lane_max_vehph: 2200
+  vehicle_types:
+    truck_ratio:
+      mean: 0.16
+      std: 0.05
+      min: 0.0
+      max: 0.40
+    passenger:
+      tau: {mean: 1.45, std: 1.07, min: 0.2, max: 4.0}
+      decel: {mean: 4.5, std: 1.0, min: 1.0, max: 7.0}
+      minGap: {mean: 2.5, std: 0.8, min: 0.5, max: 6.0}
+      speedFactor: {mean: 1.0, std: 0.1, min: 0.2, max: 2.0}
+      sigma: {mean: 0.5, std: 0.15, min: 0.0, max: 1.0}
+      accel: {mean: 2.6, std: 0.6, min: 1.0, max: 4.0}
+      length: 4.5
+    truck:
+      tau: {mean: 1.45, std: 1.07, min: 0.2, max: 4.0}
+      decel: {mean: 3.0, std: 0.8, min: 1.0, max: 5.0}
+      minGap: {mean: 3.5, std: 1.0, min: 1.0, max: 8.0}
+      speedFactor: {mean: 0.85, std: 0.08, min: 0.2, max: 1.5}
+      sigma: {mean: 0.4, std: 0.1, min: 0.0, max: 1.0}
+      accel: {mean: 1.3, std: 0.4, min: 0.5, max: 2.5}
+      length: 12.0
+  warmup_time: 200  # FCD recording starts (200-300: probe selection, 300-600: trajectory)
+  collect_time: 400  # FCD recording duration (total sim = 600s)
+  num_probes: 5  # probes per scenario
+  step_length: 1.0  # SUMO simulation step (seconds)
+  scenarios_csv: data/scenarios.csv
+
+features:
+  config: configs/features/all_features.yaml
+
+model:
+  type: cnn1d  # cnn1d | lstm | xgboost | lightgbm | fd_baseline
+  config: configs/models/cnn1d.yaml
+
+training:
+  target: density  # density | flow
+  device: cuda  # cuda | cpu
+  n_splits: 5  # GroupKFold splits
+  group_column: scenario_id
+  test_ratio: 0.2
+  val_ratio: 0.1
+  batch_size: 128
+  num_workers: 0  # DataLoader workers (0 is faster on Windows — avoids spawn overhead)
+  max_epochs: 200
+  early_stopping_patience: 20
+  learning_rate: 0.001
+  optimizer: adam
+  scheduler:
+    type: cosine
+    T_max: 200
+
+data:
+  timeseries_path: data/features/timeseries.npz
+  metadata_path: data/features/metadata.parquet
+  tabular_path: data/features/dataset.parquet
+  seq_len: 300  # pad/truncate sequences to this length
+
+residual_correction:
+  enabled: true           # true → ML predicts Δk/Δq residuals; false → direct prediction
+  vehicle_length: 4.5     # passenger vehicle length (m)
+  min_gap: 2.5            # passenger minGap (m)
+  v_free_factor: 1.1      # v_free = speed_limit × factor (제한속도에서도 k>0 보장)
+
+evaluation:
+  metrics: [rmse, mae, mape, r2]
+  state_classification:
+    speed_thresholds:
+      congested: 10.0    # m/s
+      saturated: 20.0    # m/s
+      # free: > 20.0 m/s
+  shap:
+    enabled: true
+    max_samples: 500
+
+api:
+  host: 0.0.0.0
+  port: 8000
+  model_path: outputs_xgboost/xgboost_best.pkl
+
+database:
+  url: postgresql+asyncpg://traffic:traffic@localhost:5432/traffic
+
+logging:
+  level: INFO
+  log_dir: logs/
+  tensorboard_dir: runs/

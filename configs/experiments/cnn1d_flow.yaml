@@ -1,0 +1,6 @@
+_base_: ../default.yaml
+
+training:
+  target: flow
+
+output_dir: outputs_flow/
