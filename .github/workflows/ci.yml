@@ -71,6 +71,7 @@ jobs:
 
       - name: Create dummy model files for CI build check
         run: |
+          pip install pandas pyarrow
           mkdir -p outputs_xgboost data/features
           python3 -c "
           import pickle
