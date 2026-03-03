@@ -5,8 +5,8 @@ dist/
 build/
 .eggs/
 
-# Data & outputs
-data/
+# Data & outputs (top-level data directory only, not src/data/)
+/data/
 checkpoints/
 runs/
 logs/
