@@ -11,6 +11,7 @@ env:
   GCP_REGION: asia-northeast3
   GCP_AR_REPO: traffic-estimator
   CLOUD_RUN_SERVICE: traffic-estimator
+  CLOUD_RUN_CONSUMER: traffic-consumer
   CLOUD_SQL_INSTANCE: ml-traffic-project-489205:asia-northeast3:traffic-db
 
 jobs:
@@ -122,11 +123,30 @@ jobs:
             --max-instances=2 \
             --project=${{ env.GCP_PROJECT }}
 
+      - name: Deploy Consumer to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.CLOUD_RUN_CONSUMER }} \
+            --image=${{ env.gcp_image }} \
+            --region=${{ env.GCP_REGION }} \
+            --platform=managed \
+            --add-cloudsql-instances=${{ env.CLOUD_SQL_INSTANCE }} \
+            --set-secrets=DATABASE_URL=database-url:latest \
+            --set-env-vars=PUBSUB_PROJECT=${{ env.GCP_PROJECT }},CONFIG_PATH=configs/default.yaml \
+            --command="python","-m","src.streaming.consumer" \
+            --no-allow-unauthenticated \
+            --memory=1Gi \
+            --cpu=1 \
+            --min-instances=1 \
+            --max-instances=1 \
+            --no-cpu-throttling \
+            --project=${{ env.GCP_PROJECT }}
+
       - name: Verify deployment
         run: |
           URL=$(gcloud run services describe ${{ env.CLOUD_RUN_SERVICE }} \
             --region=${{ env.GCP_REGION }} \
             --project=${{ env.GCP_PROJECT }} \
             --format="value(status.url)")
-          echo "Service URL: ${URL}"
+          echo "API URL: ${URL}"
+          echo "Mobile: ${URL}/static/mobile.html"
           curl -sf "${URL}/health" | python3 -m json.tool
