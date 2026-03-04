@@ -114,9 +114,7 @@ class StreamConsumer:
             logger.warning("Prediction failed for session %s", session.session_id, exc_info=True)
             return None
 
-    def _publish_prediction(
-        self, session_id: str, result: dict, timestamp: float
-    ) -> None:
+    def _publish_prediction(self, session_id: str, result: dict, timestamp: float) -> None:
         """Publish prediction result to the predictions topic."""
         from src.streaming.producer import TOPIC_PREDICTIONS, publish
 

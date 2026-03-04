@@ -130,14 +130,17 @@ class KalmanFilter2D:
 
         # Process noise (accelerometer uncertainty drives state uncertainty)
         q = accel_noise**2
-        self.Q = np.array(
-            [
-                [dt**4 / 4, dt**3 / 2, 0, 0],
-                [dt**3 / 2, dt**2, 0, 0],
-                [0, 0, dt**4 / 4, dt**3 / 2],
-                [0, 0, dt**3 / 2, dt**2],
-            ]
-        ) * q
+        self.Q = (
+            np.array(
+                [
+                    [dt**4 / 4, dt**3 / 2, 0, 0],
+                    [dt**3 / 2, dt**2, 0, 0],
+                    [0, 0, dt**4 / 4, dt**3 / 2],
+                    [0, 0, dt**3 / 2, dt**2],
+                ]
+            )
+            * q
+        )
 
         # Measurement matrix: observe [x, vx, y, vy] from GPS
         self.H = np.eye(4)

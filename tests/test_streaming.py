@@ -234,12 +234,36 @@ class TestBatchFuse:
 
     def test_multiple_records_raw(self):
         records = [
-            {"lat": 37.5665, "lon": 126.978, "speed": 10.0, "heading": 0.0,
-             "accel_x": 0.0, "accel_y": 0.0, "accel_z": 0.0, "timestamp": 0.0},
-            {"lat": 37.5666, "lon": 126.978, "speed": 11.0, "heading": 0.0,
-             "accel_x": -2.0, "accel_y": 0.0, "accel_z": 0.0, "timestamp": 1.0},
-            {"lat": 37.5667, "lon": 126.978, "speed": 12.0, "heading": 0.0,
-             "accel_x": 0.5, "accel_y": 0.0, "accel_z": 0.0, "timestamp": 2.0},
+            {
+                "lat": 37.5665,
+                "lon": 126.978,
+                "speed": 10.0,
+                "heading": 0.0,
+                "accel_x": 0.0,
+                "accel_y": 0.0,
+                "accel_z": 0.0,
+                "timestamp": 0.0,
+            },
+            {
+                "lat": 37.5666,
+                "lon": 126.978,
+                "speed": 11.0,
+                "heading": 0.0,
+                "accel_x": -2.0,
+                "accel_y": 0.0,
+                "accel_z": 0.0,
+                "timestamp": 1.0,
+            },
+            {
+                "lat": 37.5667,
+                "lon": 126.978,
+                "speed": 12.0,
+                "heading": 0.0,
+                "accel_x": 0.5,
+                "accel_y": 0.0,
+                "accel_z": 0.0,
+                "timestamp": 2.0,
+            },
         ]
         results = batch_fuse(records, use_kalman=False)
         assert len(results) == 3
@@ -252,12 +276,36 @@ class TestBatchFuse:
 
     def test_multiple_records_with_kalman(self):
         records = [
-            {"lat": 37.5665, "lon": 126.978, "speed": 10.0, "heading": 0.0,
-             "accel_x": 0.0, "accel_y": 0.0, "accel_z": 0.0, "timestamp": 0.0},
-            {"lat": 37.5666, "lon": 126.978, "speed": 11.0, "heading": 0.0,
-             "accel_x": -2.0, "accel_y": 0.0, "accel_z": 0.0, "timestamp": 1.0},
-            {"lat": 37.5667, "lon": 126.978, "speed": 12.0, "heading": 0.0,
-             "accel_x": 0.5, "accel_y": 0.0, "accel_z": 0.0, "timestamp": 2.0},
+            {
+                "lat": 37.5665,
+                "lon": 126.978,
+                "speed": 10.0,
+                "heading": 0.0,
+                "accel_x": 0.0,
+                "accel_y": 0.0,
+                "accel_z": 0.0,
+                "timestamp": 0.0,
+            },
+            {
+                "lat": 37.5666,
+                "lon": 126.978,
+                "speed": 11.0,
+                "heading": 0.0,
+                "accel_x": -2.0,
+                "accel_y": 0.0,
+                "accel_z": 0.0,
+                "timestamp": 1.0,
+            },
+            {
+                "lat": 37.5667,
+                "lon": 126.978,
+                "speed": 12.0,
+                "heading": 0.0,
+                "accel_x": 0.5,
+                "accel_y": 0.0,
+                "accel_z": 0.0,
+                "timestamp": 2.0,
+            },
         ]
         results = batch_fuse(records, use_kalman=True)
         assert len(results) == 3

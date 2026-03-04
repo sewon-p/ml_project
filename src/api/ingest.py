@@ -151,9 +151,7 @@ async def _consume_predictions(session_id: str) -> None:
         return
 
     try:
-        while manager.active_sessions and session_id in [
-            s for s in manager.active_sessions
-        ]:
+        while manager.active_sessions and session_id in [s for s in manager.active_sessions]:
             for message in consumer:
                 data = message.value
                 if data.get("session_id") == session_id:
