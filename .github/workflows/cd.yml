@@ -113,6 +113,7 @@ jobs:
             --platform=managed \
             --add-cloudsql-instances=${{ env.CLOUD_SQL_INSTANCE }} \
             --set-secrets=DATABASE_URL=database-url:latest \
+            --set-env-vars=PUBSUB_PROJECT=${{ env.GCP_PROJECT }} \
             --allow-unauthenticated \
             --port=8000 \
             --memory=1Gi \

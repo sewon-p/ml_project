@@ -41,6 +41,9 @@ api = [
 streaming = [
     "kafka-python>=2.0",
 ]
+gcp = [
+    "google-cloud-pubsub>=2.18",
+]
 
 [tool.ruff]
 line-length = 100

@@ -1,4 +1,8 @@
-"""Kafka consumer worker: accumulates 300s FCD windows and runs prediction."""
+"""Consumer worker: accumulates 300s FCD windows and runs prediction.
+
+Supports both Kafka (local/Docker) and GCP Pub/Sub (Cloud Run) backends.
+Auto-detects via PUBSUB_PROJECT / KAFKA_BROKER environment variables.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +16,6 @@ from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
-_KAFKA_BROKER = os.environ.get("KAFKA_BROKER", "localhost:9092")
 _WINDOW_SIZE = 300  # 300 seconds of FCD data
 _SESSION_TIMEOUT = 600  # 10 minutes inactivity → delete session
 _CONSUMER_GROUP = "fcd-consumer-group"
@@ -48,7 +51,9 @@ class SessionState:
 
 
 class StreamConsumer:
-    """Kafka consumer that processes FCD streams and produces predictions.
+    """Consumer that processes FCD streams and produces predictions.
+
+    Auto-detects Kafka or Pub/Sub based on environment variables.
 
     Usage:
         consumer = StreamConsumer()
@@ -134,7 +139,7 @@ class StreamConsumer:
             self._fusion_cache[session_id] = SensorFusion()
         fusion: SensorFusion = self._fusion_cache[session_id]  # type: ignore[assignment]
 
-        # Fuse raw sensor data → FCD record
+        # Fuse raw sensor data → FCD record (with Kalman filter)
         fcd = fusion.process(
             lat=message.get("lat", 0.0),
             lon=message.get("lon", 0.0),
@@ -162,16 +167,110 @@ class StreamConsumer:
                     result["flow"],
                 )
 
-    def run(self) -> None:
-        """Main consumer loop. Blocks until SIGTERM/SIGINT."""
+    # ------------------------------------------------------------------
+    # Kafka consumer loop
+    # ------------------------------------------------------------------
+
+    def _run_kafka(self) -> None:
+        """Consume from Kafka."""
         from kafka import KafkaConsumer
 
         from src.streaming.producer import TOPIC_FCD_RAW
 
-        # Load ML model
-        self._load_model()
+        kafka_broker = os.environ.get("KAFKA_BROKER", "localhost:9092")
+        consumer = KafkaConsumer(
+            TOPIC_FCD_RAW,
+            bootstrap_servers=kafka_broker,
+            group_id=_CONSUMER_GROUP,
+            value_deserializer=lambda m: json.loads(m.decode("utf-8")),
+            auto_offset_reset="latest",
+            enable_auto_commit=True,
+            consumer_timeout_ms=1000,
+        )
+        logger.info("Kafka consumer started, topic: %s", TOPIC_FCD_RAW)
 
-        # Setup signal handlers for graceful shutdown
+        cleanup_interval = 60
+        last_cleanup = time.time()
+
+        try:
+            while self._running:
+                for message in consumer:
+                    if not self._running:
+                        break
+                    try:
+                        self._process_message(message.value)
+                    except Exception:
+                        logger.warning("Error processing message", exc_info=True)
+
+                now = time.time()
+                if now - last_cleanup > cleanup_interval:
+                    self._cleanup_expired_sessions()
+                    last_cleanup = now
+        finally:
+            consumer.close()
+
+    # ------------------------------------------------------------------
+    # GCP Pub/Sub consumer loop
+    # ------------------------------------------------------------------
+
+    def _run_pubsub(self) -> None:
+        """Consume from GCP Pub/Sub using streaming pull."""
+        from google.cloud import pubsub_v1
+
+        from src.streaming.producer import TOPIC_FCD_RAW
+
+        project_id = os.environ["PUBSUB_PROJECT"]
+        subscriber = pubsub_v1.SubscriberClient()
+        subscription_id = f"{TOPIC_FCD_RAW}-sub"
+        subscription_path = subscriber.subscription_path(project_id, subscription_id)
+
+        # Ensure subscription exists
+        topic_path = subscriber.topic_path(project_id, TOPIC_FCD_RAW)  # type: ignore[attr-defined]
+        try:
+            subscriber.get_subscription(subscription=subscription_path)
+        except Exception:
+            subscriber.create_subscription(
+                name=subscription_path,
+                topic=topic_path,
+                ack_deadline_seconds=30,
+            )
+            logger.info("Created Pub/Sub subscription: %s", subscription_id)
+
+        logger.info("Pub/Sub consumer started, subscription: %s", subscription_id)
+
+        cleanup_interval = 60
+        last_cleanup = time.time()
+
+        def callback(message: object) -> None:
+            try:
+                data = json.loads(message.data.decode("utf-8"))  # type: ignore[union-attr]
+                self._process_message(data)
+                message.ack()  # type: ignore[union-attr]
+            except Exception:
+                logger.warning("Error processing Pub/Sub message", exc_info=True)
+                message.nack()  # type: ignore[union-attr]
+
+        streaming_pull = subscriber.subscribe(subscription_path, callback=callback)
+
+        try:
+            while self._running:
+                time.sleep(1)
+                now = time.time()
+                if now - last_cleanup > cleanup_interval:
+                    self._cleanup_expired_sessions()
+                    last_cleanup = now
+        finally:
+            streaming_pull.cancel()
+            streaming_pull.result(timeout=5)
+            subscriber.close()
+
+    # ------------------------------------------------------------------
+    # Main entry
+    # ------------------------------------------------------------------
+
+    def run(self) -> None:
+        """Main consumer loop. Auto-detects Kafka or Pub/Sub. Blocks until SIGTERM/SIGINT."""
+        self._load_model()
         self._running = True
 
         def _shutdown(signum: int, frame: object) -> None:
@@ -181,39 +280,19 @@ class StreamConsumer:
         signal.signal(signal.SIGTERM, _shutdown)
         signal.signal(signal.SIGINT, _shutdown)
 
-        # Create Kafka consumer
-        consumer = KafkaConsumer(
-            TOPIC_FCD_RAW,
-            bootstrap_servers=_KAFKA_BROKER,
-            group_id=_CONSUMER_GROUP,
-            value_deserializer=lambda m: json.loads(m.decode("utf-8")),
-            auto_offset_reset="latest",
-            enable_auto_commit=True,
-            consumer_timeout_ms=1000,
-        )
-        logger.info("Consumer started, listening on topic: %s", TOPIC_FCD_RAW)
-
-        cleanup_interval = 60  # seconds
-        last_cleanup = time.time()
+        pubsub_project = os.environ.get("PUBSUB_PROJECT")
+        kafka_broker = os.environ.get("KAFKA_BROKER")
 
         try:
-            while self._running:
-                # Poll messages (returns within consumer_timeout_ms)
-                for message in consumer:
-                    if not self._running:
-                        break
-                    try:
-                        self._process_message(message.value)
-                    except Exception:
-                        logger.warning("Error processing message", exc_info=True)
-
-                # Periodic session cleanup
-                now = time.time()
-                if now - last_cleanup > cleanup_interval:
-                    self._cleanup_expired_sessions()
-                    last_cleanup = now
+            if pubsub_project:
+                logger.info("Using GCP Pub/Sub backend (project: %s)", pubsub_project)
+                self._run_pubsub()
+            elif kafka_broker:
+                logger.info("Using Kafka backend (broker: %s)", kafka_broker)
+                self._run_kafka()
+            else:
+                logger.error("No broker configured. Set PUBSUB_PROJECT or KAFKA_BROKER.")
         finally:
-            consumer.close()
             logger.info("Consumer stopped")
 
 

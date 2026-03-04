@@ -9,7 +9,7 @@ RUN apt-get update && \
 
 # 의존성 먼저 설치 (캐시 활용)
 COPY pyproject.toml .
-RUN pip install --no-cache-dir ".[api,streaming]"
+RUN pip install --no-cache-dir ".[api,streaming,gcp]"
 
 # 소스 코드 복사
 COPY src/ src/
