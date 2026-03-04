@@ -92,8 +92,9 @@ jobs:
           # Determine image tag from release
           TAG=${{ github.event.release.tag_name }}
 
-          # Pull GHCR image
-          GHCR_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG#v}"
+          # Pull GHCR image (lowercase required by Docker)
+          IMAGE_LOWER=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          GHCR_IMAGE="${IMAGE_LOWER}:${TAG#v}"
           docker pull "$GHCR_IMAGE"
 
           # Tag and push to GCP Artifact Registry
