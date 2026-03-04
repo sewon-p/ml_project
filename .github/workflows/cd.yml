@@ -97,6 +97,9 @@ jobs:
           GHCR_IMAGE="${IMAGE_LOWER}:${TAG#v}"
           docker pull "$GHCR_IMAGE"
 
+          # Re-authenticate to Artifact Registry (GHCR login may override docker config)
+          gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
           # Tag and push to GCP Artifact Registry
           GCP_IMAGE="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.GCP_AR_REPO }}/api:${TAG}"
           GCP_IMAGE_LATEST="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.GCP_AR_REPO }}/api:latest"
