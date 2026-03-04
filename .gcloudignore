@@ -1,0 +1,46 @@
+# .gcloudignore - Cloud Build에 업로드할 때 제외할 파일
+# (.gitignore와 별도로 관리)
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Large data (model/parquet는 포함)
+data/fcd/
+data/features/timeseries.npz
+data/features/metadata.parquet
+sumo_output/
+runs/
+logs/
+checkpoints/
+results/
+
+# SUMO artifacts
+*.net.xml
+*.rou.xml
+*.sumocfg
+*.tripinfo.xml
+*.fcd.xml
+
+# Outputs (model pkl은 포함)
+outputs_lstm/
+outputs_xgboost/plots/
+outputs_xgboost_flow/
+
+# Dev / IDE
+.venv/
+.env
+.vscode/
+.idea/
+.claude/
+.git/
+notebooks/
+tests/
+
+# OS
+.DS_Store
+Thumbs.db
+.ipynb_checkpoints/

@@ -7,6 +7,11 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  GCP_PROJECT: ml-traffic-project-489205
+  GCP_REGION: asia-northeast3
+  GCP_AR_REPO: traffic-estimator
+  CLOUD_RUN_SERVICE: traffic-estimator
+  CLOUD_SQL_INSTANCE: ml-traffic-project-489205:asia-northeast3:traffic-db
 
 jobs:
   build-and-push:
@@ -55,3 +60,72 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  deploy-gcp:
+    name: Deploy to GCP Cloud Run
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Pull from GHCR and push to Artifact Registry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Login to GHCR
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+          # Determine image tag from release
+          TAG=${{ github.event.release.tag_name }}
+
+          # Pull GHCR image
+          GHCR_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG#v}"
+          docker pull "$GHCR_IMAGE"
+
+          # Tag and push to GCP Artifact Registry
+          GCP_IMAGE="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.GCP_AR_REPO }}/api:${TAG}"
+          GCP_IMAGE_LATEST="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.GCP_AR_REPO }}/api:latest"
+          docker tag "$GHCR_IMAGE" "$GCP_IMAGE"
+          docker tag "$GHCR_IMAGE" "$GCP_IMAGE_LATEST"
+          docker push "$GCP_IMAGE"
+          docker push "$GCP_IMAGE_LATEST"
+
+          echo "gcp_image=${GCP_IMAGE}" >> "$GITHUB_ENV"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
+            --image=${{ env.gcp_image }} \
+            --region=${{ env.GCP_REGION }} \
+            --platform=managed \
+            --add-cloudsql-instances=${{ env.CLOUD_SQL_INSTANCE }} \
+            --set-secrets=DATABASE_URL=database-url:latest \
+            --allow-unauthenticated \
+            --port=8000 \
+            --memory=1Gi \
+            --cpu=1 \
+            --min-instances=0 \
+            --max-instances=2 \
+            --project=${{ env.GCP_PROJECT }}
+
+      - name: Verify deployment
+        run: |
+          URL=$(gcloud run services describe ${{ env.CLOUD_RUN_SERVICE }} \
+            --region=${{ env.GCP_REGION }} \
+            --project=${{ env.GCP_PROJECT }} \
+            --format="value(status.url)")
+          echo "Service URL: ${URL}"
+          curl -sf "${URL}/health" | python3 -m json.tool
