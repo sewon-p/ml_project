@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Traffic Density — Mobile Probe</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a; color: #e2e8f0;
+            min-height: 100vh; padding: 16px;
+        }
+        h1 { font-size: 1.2rem; text-align: center; margin-bottom: 12px; color: #38bdf8; }
+        .card {
+            background: #1e293b; border-radius: 12px; padding: 16px;
+            margin-bottom: 12px; border: 1px solid #334155;
+        }
+        .card h2 { font-size: 0.85rem; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .metric { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+        .metric .label { color: #94a3b8; font-size: 0.85rem; }
+        .metric .value { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .metric .unit { color: #64748b; font-size: 0.75rem; margin-left: 4px; }
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .status-dot.active { background: #22c55e; animation: pulse 1.5s infinite; }
+        .status-dot.inactive { background: #ef4444; }
+        .status-dot.waiting { background: #eab308; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .btn {
+            display: block; width: 100%; padding: 14px; border: none; border-radius: 10px;
+            font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s;
+        }
+        .btn-start { background: #22c55e; color: #0f172a; }
+        .btn-start:hover { background: #16a34a; }
+        .btn-stop { background: #ef4444; color: white; }
+        .btn-stop:hover { background: #dc2626; }
+        .btn:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+        select, input[type="number"] {
+            background: #0f172a; color: #e2e8f0; border: 1px solid #475569;
+            border-radius: 8px; padding: 8px 12px; font-size: 0.9rem; width: 100%;
+        }
+        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .settings-grid label { font-size: 0.8rem; color: #94a3b8; display: block; margin-bottom: 4px; }
+        .log { font-family: monospace; font-size: 0.75rem; color: #64748b; max-height: 120px; overflow-y: auto; margin-top: 8px; }
+        .log div { padding: 2px 0; border-bottom: 1px solid #1e293b; }
+    </style>
+</head>
+<body>
+    <h1>Traffic Density Probe</h1>
+
+    <!-- Prediction results -->
+    <div class="card">
+        <h2><span class="status-dot" id="statusDot"></span>Prediction</h2>
+        <div class="metric">
+            <span class="label">Density</span>
+            <span><span class="value" id="density">—</span><span class="unit">veh/km</span></span>
+        </div>
+        <div class="metric">
+            <span class="label">Flow</span>
+            <span><span class="value" id="flow">—</span><span class="unit">veh/hr</span></span>
+        </div>
+        <div class="metric">
+            <span class="label">FD Baseline</span>
+            <span><span class="value" id="fdDensity">—</span><span class="unit">veh/km</span></span>
+        </div>
+        <div class="metric">
+            <span class="label">ML Correction</span>
+            <span><span class="value" id="residual">—</span><span class="unit">Δk</span></span>
+        </div>
+    </div>
+
+    <!-- Sensor data -->
+    <div class="card">
+        <h2>Sensor Data</h2>
+        <div class="metric">
+            <span class="label">Speed</span>
+            <span><span class="value" id="speed">—</span><span class="unit">km/h</span></span>
+        </div>
+        <div class="metric">
+            <span class="label">GPS</span>
+            <span class="value" id="gps" style="font-size:0.85rem;">—</span>
+        </div>
+        <div class="metric">
+            <span class="label">Buffer</span>
+            <span><span class="value" id="buffer">0</span><span class="unit">/ 300</span></span>
+        </div>
+        <div class="metric">
+            <span class="label">Predictions</span>
+            <span class="value" id="predCount">0</span>
+        </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="card">
+        <h2>Settings</h2>
+        <div class="settings-grid">
+            <div>
+                <label for="speedLimit">Speed Limit</label>
+                <select id="speedLimit">
+                    <option value="13.89">50 km/h</option>
+                    <option value="16.67">60 km/h</option>
+                    <option value="22.22" selected>80 km/h</option>
+                    <option value="27.78">100 km/h</option>
+                </select>
+            </div>
+            <div>
+                <label for="numLanes">Lanes</label>
+                <select id="numLanes">
+                    <option value="1">1</option>
+                    <option value="2" selected>2</option>
+                    <option value="3">3</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <button class="btn btn-start" id="startBtn" onclick="startCollection()">Start Collection</button>
+    <button class="btn btn-stop" id="stopBtn" onclick="stopCollection()" style="display:none; margin-top:8px;">Stop</button>
+
+    <!-- Log -->
+    <div class="card" style="margin-top:12px;">
+        <h2>Log</h2>
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+    // ---------------------------------------------------------------------------
+    // State
+    // ---------------------------------------------------------------------------
+    let sessionId = null;
+    let gpsWatchId = null;
+    let sendInterval = null;
+    let ws = null;
+    let bufferCount = 0;
+    let predCount = 0;
+    let latestSensor = { lat: 0, lon: 0, speed: 0, heading: 0, accel_x: 0, accel_y: 0, accel_z: 0 };
+
+    const API_BASE = location.origin;
+    const WS_BASE = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+
+    // ---------------------------------------------------------------------------
+    // Logging
+    // ---------------------------------------------------------------------------
+    function log(msg) {
+        const el = document.getElementById('log');
+        const d = document.createElement('div');
+        const ts = new Date().toLocaleTimeString();
+        d.textContent = `[${ts}] ${msg}`;
+        el.prepend(d);
+        // Keep last 50 lines
+        while (el.children.length > 50) el.removeChild(el.lastChild);
+    }
+
+    function setStatus(state) {
+        const dot = document.getElementById('statusDot');
+        dot.className = 'status-dot ' + state;
+    }
+
+    // ---------------------------------------------------------------------------
+    // GPS
+    // ---------------------------------------------------------------------------
+    function startGPS() {
+        if (!navigator.geolocation) {
+            log('Geolocation not supported');
+            return;
+        }
+        gpsWatchId = navigator.geolocation.watchPosition(
+            (pos) => {
+                latestSensor.lat = pos.coords.latitude;
+                latestSensor.lon = pos.coords.longitude;
+                latestSensor.speed = pos.coords.speed || 0;
+                latestSensor.heading = pos.coords.heading || 0;
+                document.getElementById('gps').textContent =
+                    `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+                document.getElementById('speed').textContent =
+                    (latestSensor.speed * 3.6).toFixed(1);
+            },
+            (err) => log(`GPS error: ${err.message}`),
+            { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
+        );
+        log('GPS started');
+    }
+
+    // ---------------------------------------------------------------------------
+    // Accelerometer (DeviceMotion)
+    // ---------------------------------------------------------------------------
+    async function startAccelerometer() {
+        // iOS 13+ requires permission
+        if (typeof DeviceMotionEvent !== 'undefined' &&
+            typeof DeviceMotionEvent.requestPermission === 'function') {
+            try {
+                const perm = await DeviceMotionEvent.requestPermission();
+                if (perm !== 'granted') {
+                    log('Accelerometer permission denied');
+                    return;
+                }
+            } catch (e) {
+                log(`Accelerometer permission error: ${e.message}`);
+                return;
+            }
+        }
+        window.addEventListener('devicemotion', (e) => {
+            const a = e.accelerationIncludingGravity;
+            if (a) {
+                latestSensor.accel_x = a.x || 0;
+                latestSensor.accel_y = a.y || 0;
+                latestSensor.accel_z = a.z || 0;
+            }
+        });
+        log('Accelerometer started');
+    }
+
+    // ---------------------------------------------------------------------------
+    // WebSocket
+    // ---------------------------------------------------------------------------
+    function connectWebSocket() {
+        if (!sessionId) return;
+        const url = `${WS_BASE}/ws/dashboard/${sessionId}`;
+        ws = new WebSocket(url);
+        ws.onopen = () => {
+            log('WebSocket connected');
+            setStatus('waiting');
+        };
+        ws.onmessage = (evt) => {
+            try {
+                const data = JSON.parse(evt.data);
+                if (data.type === 'pong') return;
+                predCount++;
+                document.getElementById('density').textContent = data.density?.toFixed(2) ?? '—';
+                document.getElementById('flow').textContent = data.flow?.toFixed(1) ?? '—';
+                document.getElementById('fdDensity').textContent = data.fd_density?.toFixed(2) ?? '—';
+                document.getElementById('residual').textContent = data.residual_density?.toFixed(2) ?? '—';
+                document.getElementById('predCount').textContent = predCount;
+                setStatus('active');
+                log(`Prediction: density=${data.density?.toFixed(2)} flow=${data.flow?.toFixed(1)}`);
+            } catch (e) { /* ignore parse errors */ }
+        };
+        ws.onclose = () => { log('WebSocket closed'); setStatus('inactive'); };
+        ws.onerror = () => { log('WebSocket error'); };
+
+        // Ping every 30s to keep alive
+        setInterval(() => { if (ws && ws.readyState === 1) ws.send('ping'); }, 30000);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Data sending (1 Hz)
+    // ---------------------------------------------------------------------------
+    async function sendData() {
+        const payload = {
+            session_id: sessionId,
+            lat: latestSensor.lat,
+            lon: latestSensor.lon,
+            speed: latestSensor.speed,
+            heading: latestSensor.heading,
+            accel_x: latestSensor.accel_x,
+            accel_y: latestSensor.accel_y,
+            accel_z: latestSensor.accel_z,
+            timestamp: Date.now() / 1000,
+            speed_limit: parseFloat(document.getElementById('speedLimit').value),
+            num_lanes: parseInt(document.getElementById('numLanes').value),
+        };
+        try {
+            const resp = await fetch(`${API_BASE}/ingest`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (resp.ok) {
+                bufferCount++;
+                document.getElementById('buffer').textContent = Math.min(bufferCount, 300);
+            }
+        } catch (e) {
+            log(`Send error: ${e.message}`);
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Start / Stop
+    // ---------------------------------------------------------------------------
+    async function startCollection() {
+        sessionId = crypto.randomUUID();
+        bufferCount = 0;
+        predCount = 0;
+        log(`Session: ${sessionId.slice(0, 8)}...`);
+
+        startGPS();
+        await startAccelerometer();
+        connectWebSocket();
+
+        sendInterval = setInterval(sendData, 1000);
+        setStatus('waiting');
+
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('stopBtn').style.display = 'block';
+        log('Collection started (1 Hz)');
+    }
+
+    function stopCollection() {
+        if (gpsWatchId !== null) {
+            navigator.geolocation.clearWatch(gpsWatchId);
+            gpsWatchId = null;
+        }
+        if (sendInterval) { clearInterval(sendInterval); sendInterval = null; }
+        if (ws) { ws.close(); ws = null; }
+
+        setStatus('inactive');
+        document.getElementById('startBtn').style.display = 'block';
+        document.getElementById('stopBtn').style.display = 'none';
+        log('Collection stopped');
+    }
+
+    // Initial status
+    setStatus('inactive');
+    </script>
+</body>
+</html>

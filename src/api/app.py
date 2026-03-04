@@ -14,6 +14,13 @@ from src.api.dependencies import ModelRegistry
 from src.api.inference import predict_density
 from src.api.schemas import HealthResponse, PredictRequest, PredictResponse
 
+try:
+    from fastapi.staticfiles import StaticFiles
+
+    _HAS_STATICFILES = True
+except ImportError:
+    _HAS_STATICFILES = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -58,6 +65,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             logger.warning("Database initialization failed — running without DB", exc_info=True)
 
     yield
+
+    # Shutdown: close Kafka producer
+    try:
+        from src.streaming.producer import close as close_kafka
+
+        close_kafka()
+    except Exception:
+        pass
 
     # Shutdown: close database connection pool
     if app.state.db_available:
@@ -126,6 +141,29 @@ async def predict(body: PredictRequest, request: Request) -> PredictResponse:
             logger.warning("Failed to save prediction to DB", exc_info=True)
 
     return PredictResponse(prediction_id=prediction_id, **result)
+
+
+# ---------------------------------------------------------------------------
+# Streaming / ingest router (graceful — works without kafka-python)
+# ---------------------------------------------------------------------------
+try:
+    from src.api.ingest import router as ingest_router
+
+    app.include_router(ingest_router)
+    logger.info("Streaming ingest router mounted (/ingest, /ws/dashboard)")
+except Exception:
+    logger.info("Streaming ingest router not available — skipping")
+
+# ---------------------------------------------------------------------------
+# Static files (mobile.html)
+# ---------------------------------------------------------------------------
+if _HAS_STATICFILES:
+    import pathlib
+
+    _static_dir = pathlib.Path(__file__).resolve().parent.parent.parent / "static"
+    if _static_dir.is_dir():
+        app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
+        logger.info("Static files mounted from %s", _static_dir)
 
 
 @app.get("/health", response_model=HealthResponse)

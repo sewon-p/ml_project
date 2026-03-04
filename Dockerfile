@@ -9,11 +9,14 @@ RUN apt-get update && \
 
 # 의존성 먼저 설치 (캐시 활용)
 COPY pyproject.toml .
-RUN pip install --no-cache-dir ".[api]"
+RUN pip install --no-cache-dir ".[api,streaming]"
 
 # 소스 코드 복사
 COPY src/ src/
 COPY configs/ configs/
+
+# 모바일 웹페이지 정적 파일
+COPY static/ static/
 
 # 모델 + 피처 스키마 복사 (런타임에 필요)
 # docker build 시 이 파일들이 존재해야 함

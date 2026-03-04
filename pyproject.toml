@@ -38,6 +38,9 @@ api = [
     "sqlalchemy[asyncio]>=2.0",
     "asyncpg>=0.29",
 ]
+streaming = [
+    "kafka-python>=2.0",
+]
 
 [tool.ruff]
 line-length = 100
