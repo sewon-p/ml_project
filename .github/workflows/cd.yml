@@ -15,12 +15,13 @@ env:
   CLOUD_SQL_INSTANCE: ml-traffic-project-489205:asia-northeast3:traffic-db
 
 jobs:
-  build-and-push:
-    name: Build & Push Docker Image
+  build-and-deploy:
+    name: Build, Push & Deploy
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -44,33 +45,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-  deploy-gcp:
-    name: Deploy to GCP Cloud Run
-    runs-on: ubuntu-latest
-    needs: build-and-push
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -82,35 +56,31 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
 
-      - name: Pull from GHCR and push to Artifact Registry
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Docker image
         run: |
-          # Login to GHCR
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-          # Determine image tag from release
           TAG=${{ github.event.release.tag_name }}
 
-          # Pull GHCR image (lowercase required by Docker)
+          # Build image
+          docker build -t app .
+
+          # GHCR tags (lowercase)
           IMAGE_LOWER=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
-          GHCR_IMAGE="${IMAGE_LOWER}:${TAG#v}"
-          docker pull "$GHCR_IMAGE"
+          docker tag app "${IMAGE_LOWER}:${TAG#v}"
+          docker tag app "${IMAGE_LOWER}:latest"
+          docker push "${IMAGE_LOWER}:${TAG#v}"
+          docker push "${IMAGE_LOWER}:latest"
 
-          # Re-authenticate to Artifact Registry (GHCR login may override docker config)
-          gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
-
-          # Tag and push to GCP Artifact Registry
+          # GCP Artifact Registry tags
           GCP_IMAGE="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.GCP_AR_REPO }}/api:${TAG}"
           GCP_IMAGE_LATEST="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.GCP_AR_REPO }}/api:latest"
-          docker tag "$GHCR_IMAGE" "$GCP_IMAGE"
-          docker tag "$GHCR_IMAGE" "$GCP_IMAGE_LATEST"
+          docker tag app "$GCP_IMAGE"
+          docker tag app "$GCP_IMAGE_LATEST"
           docker push "$GCP_IMAGE"
           docker push "$GCP_IMAGE_LATEST"
 
           echo "gcp_image=${GCP_IMAGE}" >> "$GITHUB_ENV"
 
-      - name: Deploy to Cloud Run
+      - name: Deploy API to Cloud Run
         run: |
           gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
             --image=${{ env.gcp_image }} \
