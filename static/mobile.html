@@ -267,8 +267,20 @@
                 body: JSON.stringify(payload),
             });
             if (resp.ok) {
-                bufferCount++;
-                document.getElementById('buffer').textContent = Math.min(bufferCount, 300);
+                const result = await resp.json();
+                document.getElementById('buffer').textContent = result.buffer_count ?? Math.min(++bufferCount, 300);
+                // Handle inline prediction from response
+                if (result.prediction) {
+                    const data = result.prediction;
+                    predCount++;
+                    document.getElementById('density').textContent = data.density?.toFixed(2) ?? '—';
+                    document.getElementById('flow').textContent = data.flow?.toFixed(1) ?? '—';
+                    document.getElementById('fdDensity').textContent = data.fd_density?.toFixed(2) ?? '—';
+                    document.getElementById('residual').textContent = data.residual_density?.toFixed(2) ?? '—';
+                    document.getElementById('predCount').textContent = predCount;
+                    setStatus('active');
+                    log(`Prediction: density=${data.density?.toFixed(2)} flow=${data.flow?.toFixed(1)}`);
+                }
             }
         } catch (e) {
             log(`Send error: ${e.message}`);

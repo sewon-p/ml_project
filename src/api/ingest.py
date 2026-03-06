@@ -1,17 +1,30 @@
-"""Real-time ingestion endpoints: POST /ingest + WebSocket /ws/dashboard."""
+"""Real-time ingestion endpoints: POST /ingest + WebSocket /ws/dashboard.
+
+Handles the full pipeline in-process:
+  1. POST /ingest receives GPS+accelerometer data
+  2. SensorFusion (Kalman Filter) converts to FCD format
+  3. SessionBuffer accumulates 300s sliding window
+  4. predict_density() runs XGBoost inference
+  5. Result pushed to WebSocket clients in real-time
+
+Also publishes to Kafka/Pub/Sub if available (for external consumers).
+"""
 
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
+import time
+from collections import deque
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+_WINDOW_SIZE = 300
+_SESSION_TIMEOUT = 600  # 10 min
 
 
 # ---------------------------------------------------------------------------
@@ -40,7 +53,109 @@ class IngestResponse(BaseModel):
 
     status: str = "ok"
     session_id: str = ""
-    kafka_published: bool = False
+    buffer_count: int = 0
+    prediction: dict | None = None
+
+
+# ---------------------------------------------------------------------------
+# In-process session buffer + fusion
+# ---------------------------------------------------------------------------
+
+
+class SessionBuffer:
+    """Per-session FCD buffer with sensor fusion."""
+
+    def __init__(self, session_id: str) -> None:
+        self.session_id = session_id
+        self.buffer: deque[dict] = deque(maxlen=_WINDOW_SIZE)
+        self.last_active = time.time()
+        self.prediction_count = 0
+        self.speed_limit = 22.22
+        self.num_lanes = 2
+
+        from src.streaming.fusion import SensorFusion
+
+        self.fusion = SensorFusion(use_kalman=True)
+
+    def add_raw(self, record: IngestRecord) -> dict:
+        """Fuse a raw sensor reading and add to buffer. Returns FCD dict."""
+        self.speed_limit = record.speed_limit
+        self.num_lanes = record.num_lanes
+        self.last_active = time.time()
+
+        fcd = self.fusion.process(
+            lat=record.lat,
+            lon=record.lon,
+            speed=record.speed,
+            heading=record.heading,
+            accel_x=record.accel_x,
+            accel_y=record.accel_y,
+            accel_z=record.accel_z,
+            timestamp=record.timestamp,
+        )
+        self.buffer.append(fcd)
+        return fcd
+
+    @property
+    def ready(self) -> bool:
+        return len(self.buffer) >= _WINDOW_SIZE
+
+    @property
+    def is_expired(self) -> bool:
+        return (time.time() - self.last_active) > _SESSION_TIMEOUT
+
+    def get_window(self) -> list[dict]:
+        return list(self.buffer)
+
+
+class SessionManager:
+    """Manages per-session buffers and runs predictions."""
+
+    def __init__(self) -> None:
+        self._sessions: dict[str, SessionBuffer] = {}
+
+    def get_or_create(self, session_id: str) -> SessionBuffer:
+        if session_id not in self._sessions:
+            self._sessions[session_id] = SessionBuffer(session_id)
+            logger.info("New session: %s", session_id)
+        return self._sessions[session_id]
+
+    def cleanup_expired(self) -> None:
+        expired = [sid for sid, s in self._sessions.items() if s.is_expired]
+        for sid in expired:
+            del self._sessions[sid]
+            logger.info("Expired session: %s", sid)
+
+    def predict(self, session: SessionBuffer, registry: object) -> dict | None:
+        """Run XGBoost prediction on a session's 300s window."""
+        if not session.ready:
+            return None
+
+        from src.api.inference import predict_density
+
+        try:
+            result = predict_density(
+                fcd_records=session.get_window(),
+                speed_limit=session.speed_limit,
+                num_lanes=session.num_lanes,
+                registry=registry,  # type: ignore[arg-type]
+            )
+            session.prediction_count += 1
+            return {
+                "session_id": session.session_id,
+                "timestamp": time.time(),
+                **result,
+            }
+        except Exception:
+            logger.warning(
+                "Prediction failed for session %s",
+                session.session_id,
+                exc_info=True,
+            )
+            return None
+
+
+sessions = SessionManager()
 
 
 # ---------------------------------------------------------------------------
@@ -83,41 +198,57 @@ class ConnectionManager:
         for ws in stale:
             self.disconnect(session_id, ws)
 
-    @property
-    def active_sessions(self) -> list[str]:
-        return list(self._connections.keys())
-
 
 manager = ConnectionManager()
 
 
 # ---------------------------------------------------------------------------
-# POST /ingest
+# POST /ingest — data collection + in-process prediction
 # ---------------------------------------------------------------------------
 
 
 @router.post("/ingest", response_model=IngestResponse)
-async def ingest(record: IngestRecord) -> IngestResponse:
-    """Receive a single GPS+accelerometer reading and publish to Kafka.
+async def ingest(record: IngestRecord, request: Request) -> IngestResponse:
+    """Receive GPS+accelerometer reading, fuse, accumulate, and predict.
 
-    The consumer worker will accumulate 300s of data per session,
-    run sensor fusion, and invoke the ML prediction pipeline.
+    Flow:
+      1. Kalman Filter sensor fusion → FCD record
+      2. Add to session's 300s sliding window
+      3. If 300s reached → run XGBoost predict_density()
+      4. Push result to WebSocket clients
+      5. Also publish to Kafka/Pub/Sub if available
     """
-    kafka_ok = False
+    # 1-2. Fuse and buffer
+    session = sessions.get_or_create(record.session_id)
+    session.add_raw(record)
+
+    # 3. Predict if buffer is full
+    prediction = None
+    if session.ready:
+        registry = getattr(request.app.state, "registry", None)
+        if registry is not None:
+            prediction = sessions.predict(session, registry)
+
+            # 4. Push to WebSocket
+            if prediction:
+                await manager.send_to_session(record.session_id, prediction)
+
+    # 5. Also publish to Kafka/Pub/Sub (best-effort, non-blocking)
     try:
         from src.streaming.producer import TOPIC_FCD_RAW, publish
 
-        payload = record.model_dump()
-        kafka_ok = publish(TOPIC_FCD_RAW, key=record.session_id, value=payload)
-    except ImportError:
-        logger.debug("Kafka not available — ingest record dropped")
+        publish(TOPIC_FCD_RAW, key=record.session_id, value=record.model_dump())
     except Exception:
-        logger.warning("Failed to publish ingest record", exc_info=True)
+        pass  # Kafka/Pub/Sub not available — that's fine
+
+    # Periodic cleanup
+    sessions.cleanup_expired()
 
     return IngestResponse(
         status="ok",
         session_id=record.session_id,
-        kafka_published=kafka_ok,
+        buffer_count=len(session.buffer),
+        prediction=prediction,
     )
 
 
@@ -126,64 +257,20 @@ async def ingest(record: IngestRecord) -> IngestResponse:
 # ---------------------------------------------------------------------------
 
 
-async def _consume_predictions(session_id: str) -> None:
-    """Background task: consume predictions topic and push to WebSocket clients.
-
-    Runs as an asyncio task per WebSocket connection.
-    """
-    try:
-        from kafka import KafkaConsumer
-
-        from src.streaming.producer import TOPIC_PREDICTIONS
-
-        kafka_broker = __import__("os").environ.get("KAFKA_BROKER", "localhost:9092")
-        consumer = KafkaConsumer(
-            TOPIC_PREDICTIONS,
-            bootstrap_servers=kafka_broker,
-            group_id=f"ws-{session_id}",
-            value_deserializer=lambda m: json.loads(m.decode("utf-8")),
-            auto_offset_reset="latest",
-            enable_auto_commit=True,
-            consumer_timeout_ms=500,
-        )
-    except Exception:
-        logger.warning("Cannot create Kafka consumer for WebSocket", exc_info=True)
-        return
-
-    try:
-        while manager.active_sessions and session_id in [s for s in manager.active_sessions]:
-            for message in consumer:
-                data = message.value
-                if data.get("session_id") == session_id:
-                    await manager.send_to_session(session_id, data)
-            await asyncio.sleep(0.5)
-    except Exception:
-        logger.debug("Prediction consumer stopped for session %s", session_id)
-    finally:
-        consumer.close()
-
-
 @router.websocket("/ws/dashboard/{session_id}")
 async def dashboard_websocket(websocket: WebSocket, session_id: str) -> None:
     """WebSocket endpoint for real-time prediction results.
 
-    Clients connect here to receive density/flow predictions as they
-    are produced by the consumer worker.
+    Predictions are pushed here automatically when POST /ingest
+    accumulates 300s of data for this session.
     """
     await manager.connect(session_id, websocket)
-
-    # Start background consumer for predictions topic
-    consumer_task = asyncio.create_task(_consume_predictions(session_id))
-
     try:
         while True:
-            # Keep connection alive; client can send pings
             data = await websocket.receive_text()
             if data == "ping":
                 await websocket.send_json({"type": "pong"})
     except WebSocketDisconnect:
         manager.disconnect(session_id, websocket)
-        consumer_task.cancel()
     except Exception:
         manager.disconnect(session_id, websocket)
-        consumer_task.cancel()
