@@ -114,7 +114,10 @@ def _tm_to_wgs84(x: float, y: float) -> tuple[float, float]:
     j2 = 21 * e1**2 / 16 - 55 * e1**4 / 32
     j3 = 151 * e1**3 / 96
     j4 = 1097 * e1**4 / 512
-    fp = mu1 + j1 * math.sin(2 * mu1) + j2 * math.sin(4 * mu1) + j3 * math.sin(6 * mu1) + j4 * math.sin(8 * mu1)
+    fp = (
+        mu1 + j1 * math.sin(2 * mu1) + j2 * math.sin(4 * mu1)
+        + j3 * math.sin(6 * mu1) + j4 * math.sin(8 * mu1)
+    )
 
     sin_fp = math.sin(fp)
     cos_fp = math.cos(fp)

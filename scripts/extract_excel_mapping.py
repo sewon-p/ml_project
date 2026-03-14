@@ -11,7 +11,6 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
-
 NS = {"a": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 
 

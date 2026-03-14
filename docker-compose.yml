@@ -70,19 +70,5 @@ services:
       retries: 3
       start_period: 10s
 
-  consumer:
-    build: .
-    command: ["python", "-m", "src.streaming.consumer"]
-    environment:
-      - CONFIG_PATH=configs/default.yaml
-      - DATABASE_URL=postgresql+asyncpg://traffic:traffic@db:5432/traffic
-      - KAFKA_BROKER=kafka:29092
-    depends_on:
-      kafka:
-        condition: service_healthy
-      db:
-        condition: service_healthy
-    restart: unless-stopped
-
 volumes:
   pgdata:

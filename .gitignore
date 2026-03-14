@@ -7,6 +7,8 @@ build/
 
 # Data & outputs (top-level data directory only, not src/data/)
 /data/
+/raw/
+/report/
 checkpoints/
 runs/
 logs/
