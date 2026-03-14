@@ -538,7 +538,9 @@ class RunManager:
                     m = json.loads(manifest_path.read_text(encoding="utf-8"))
                     src_id = m.get("source_run_id")
                     if src_id:
-                        current = self._resolve_run_dir(src_id)
+                        resolved = self._resolve_run_dir(src_id)
+                        if resolved is not None:
+                            current = resolved
                         continue
             except Exception:
                 pass
@@ -749,7 +751,7 @@ async def _run_step(step_key: str, cmd: list[str],
                     label: str | None = None) -> bool:
     """Run a single pipeline step as subprocess. Returns True on success."""
     full_cmd = cmd + (extra_args or [])
-    step_label = label or PIPELINE_STEPS[step_key]["label"]
+    step_label: str = label or str(PIPELINE_STEPS[step_key]["label"])
     state.current_step = step_label
     state.log_lines.append(f"\n>>> [{step_label}] Started")
     logger.info("Running: %s", " ".join(full_cmd))
@@ -852,7 +854,7 @@ async def _run_pipeline(req: RunRequest) -> None:
 
             state.step_index = i + 1
             step = PIPELINE_STEPS[step_key]
-            cmd = step["cmd"] + ["--config", config_path]
+            cmd: list[str] = list(step["cmd"]) + ["--config", config_path]
             extra_args: list[str] = []
 
             if step_key == "generate":
@@ -865,7 +867,7 @@ async def _run_pipeline(req: RunRequest) -> None:
                 model_cfg_path = run_dir / f"run_config_{model_type}.yaml"
                 if not model_cfg_path.exists():
                     _write_model_config(config_path, str(model_cfg_path), model_type)
-                cmd = step["cmd"] + ["--config", str(model_cfg_path)]
+                cmd = list(step["cmd"]) + ["--config", str(model_cfg_path)]
                 base_label = "Model Training" if step_key == "train" else "Evaluation"
                 step_label = f"{base_label} ({model_type})"
 

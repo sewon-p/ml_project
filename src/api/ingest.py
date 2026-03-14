@@ -150,7 +150,7 @@ class SessionBuffer:
 
         self.fusion = SensorFusion(use_kalman=True)
 
-    def add_raw(self, record: IngestRecord) -> tuple[dict, dict | None]:
+    def add_raw(self, record: IngestRecord) -> tuple[dict, LinkMeta | None]:
         """Fuse a raw sensor reading and add to buffer. Returns FCD dict."""
         self.speed_limit = record.speed_limit
         self.num_lanes = record.num_lanes
@@ -168,7 +168,7 @@ class SessionBuffer:
         )
         self.buffer.append(fcd)
 
-        matched_link = None
+        matched_link: LinkMeta | None = None
         if record.link_id is not None:
             matched_link = {
                 "link_id": record.link_id,
@@ -204,7 +204,7 @@ class SessionBuffer:
 
     def _should_rematch(self, lat: float, lon: float) -> bool:
         """Only re-run GIS matching if moved more than _MATCH_SKIP_DISTANCE_M."""
-        if self._last_match_lat is None:
+        if self._last_match_lat is None or self._last_match_lon is None:
             return True
         import math
 
