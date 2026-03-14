@@ -122,5 +122,5 @@ jobs:
           echo "Mobile: ${URL}/mobile"
           echo "Map: ${URL}/map"
           curl -sf "${URL}/health" | python3 -m json.tool
-          curl -sfI "${URL}/dashboard"
-          curl -sfI "${URL}/ml-pipeline/"
+          curl -sfL "${URL}/dashboard" > /dev/null
+          curl -sfL "${URL}/ml-pipeline/" > /dev/null
