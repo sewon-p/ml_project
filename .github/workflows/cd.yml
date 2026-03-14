@@ -107,7 +107,7 @@ jobs:
             --set-env-vars=PUBSUB_PROJECT=${{ env.GCP_PROJECT }} \
             --allow-unauthenticated \
             --port=8000 \
-            --memory=1Gi \
+            --memory=2Gi \
             --cpu=1 \
             --min-instances=0 \
             --max-instances=2 \
