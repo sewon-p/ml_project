@@ -80,10 +80,12 @@ def _create_test_app(registry: MagicMock) -> FastAPI:
         yield
 
     from src.api.app import health, predict
+    from src.api.ingest import router as ingest_router
 
     test_app = FastAPI(lifespan=_test_lifespan)
     test_app.add_api_route("/predict", predict, methods=["POST"])
     test_app.add_api_route("/health", health, methods=["GET"])
+    test_app.include_router(ingest_router)
     return test_app
 
 
@@ -150,6 +152,37 @@ class TestPredictEndpoint:
         assert resp.status_code == 422  # validation error
 
 
+class TestFeatureIngestEndpoint:
+    def test_ingest_features_returns_prediction(self, client: TestClient) -> None:
+        payload = {
+            "session_id": "mobile-session-1",
+            "timestamp": 1710000000.0,
+            "speed_limit": 22.22,
+            "num_lanes": 2,
+            "buffer_count": 300,
+            "features": {
+                "speed_mean": 18.0,
+                "speed_std": 1.2,
+                "speed_cv": 0.066,
+                "speed_iqr": 1.5,
+                "speed_min": 15.0,
+                "speed_max": 21.0,
+                "speed_median": 18.1,
+                "speed_p10": 16.0,
+                "speed_p90": 20.0,
+            },
+        }
+        resp = client.post("/ingest-features", json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "ok"
+        assert data["buffer_count"] == 300
+        assert data["prediction"] is not None
+        assert data["prediction"]["density"] == pytest.approx(
+            data["prediction"]["fd_density"] + 2.5
+        )
+
+
 class TestSchemas:
     def test_fcd_record_defaults(self) -> None:
         from src.api.schemas import FCDRecord
@@ -203,6 +236,28 @@ class TestInference:
             registry=registry,
         )
         assert result["density"] == pytest.approx(result["fd_density"] + 5.0)
+
+    def test_predict_density_from_features(self) -> None:
+        from src.api.inference import predict_density_from_features
+
+        registry = _make_mock_registry()
+        result = predict_density_from_features(
+            features={
+                "speed_mean": 18.0,
+                "speed_std": 1.2,
+                "speed_cv": 0.066,
+                "speed_iqr": 1.5,
+                "speed_min": 15.0,
+                "speed_max": 21.0,
+                "speed_median": 18.1,
+                "speed_p10": 16.0,
+                "speed_p90": 20.0,
+            },
+            speed_limit=22.22,
+            num_lanes=2,
+            registry=registry,
+        )
+        assert result["density"] == pytest.approx(result["fd_density"] + 2.5)
 
 
 class TestBuildTrajectory:

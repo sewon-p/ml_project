@@ -1,4 +1,4 @@
-"""Real-time ingestion endpoints: POST /ingest + WebSocket /ws/dashboard.
+"""Real-time ingestion endpoints: raw POST /ingest + feature POST /ingest-features.
 
 Handles the full pipeline in-process:
   1. POST /ingest receives GPS+accelerometer data
@@ -7,7 +7,9 @@ Handles the full pipeline in-process:
   4. predict_density() runs XGBoost inference
   5. Result pushed to WebSocket clients in real-time
 
-Also publishes to Kafka/Pub/Sub if available (for external consumers).
+Also supports POST /ingest-features for client-side fused windows, where the
+browser performs the 300-second buffering and feature extraction locally and
+the server only performs lightweight model inference + persistence.
 """
 
 from __future__ import annotations
@@ -82,6 +84,23 @@ class IngestResponse(BaseModel):
     prediction: dict | None = None
 
 
+class FeatureIngestRecord(BaseModel):
+    """Client-side fused feature window for lightweight inference."""
+
+    session_id: str = Field(description="Unique session identifier")
+    timestamp: float = Field(default=0.0, description="Unix timestamp (seconds)")
+    speed_limit: float = Field(default=22.22, description="Road speed limit (m/s)")
+    num_lanes: int = Field(default=2, description="Number of lanes")
+    buffer_count: int = Field(default=_WINDOW_SIZE, description="Window size used on device")
+    features: dict[str, float] = Field(description="Client-computed scalar feature vector")
+    lat: float | None = Field(default=None, description="Final GPS latitude (degrees)")
+    lon: float | None = Field(default=None, description="Final GPS longitude (degrees)")
+    heading: float | None = Field(
+        default=None,
+        description="Final GPS heading (degrees clockwise from north)",
+    )
+
+
 class LinkMeta(TypedDict, total=False):
     link_id: str
     road_name: str | None
@@ -118,7 +137,7 @@ class SessionBuffer:
     def __init__(self, session_id: str) -> None:
         self.session_id = session_id
         self.buffer: deque[dict] = deque(maxlen=_WINDOW_SIZE)
-        self.link_buffer: deque[dict | None] = deque(maxlen=_WINDOW_SIZE)
+        self.last_link: LinkMeta | None = None
         self.last_active = time.time()
         self.prediction_count = 0
         self.speed_limit = 22.22
@@ -159,7 +178,7 @@ class SessionBuffer:
         else:
             matcher = _get_link_matcher()
             if matcher is not None:
-                match = matcher.match(lat=record.lat, lon=record.lon, heading=record.heading)
+                match = matcher.match(lat=record.lat, lon=record.lon)
                 if match is not None:
                     matched_link = {
                         "link_id": match.link_id,
@@ -169,7 +188,7 @@ class SessionBuffer:
                         "center_lon": match.center_lon,
                         "source": match.source,
                     }
-        self.link_buffer.append(matched_link)
+        self.last_link = cast(LinkMeta | None, matched_link)
         return fcd, matched_link
 
     @property
@@ -184,18 +203,7 @@ class SessionBuffer:
         return list(self.buffer)
 
     def get_representative_link(self) -> LinkMeta | None:
-        counts: dict[str, dict[str, int | LinkMeta]] = {}
-        for matched in self.link_buffer:
-            if matched is None or matched.get("link_id") is None:
-                continue
-            key = str(matched["link_id"])
-            if key not in counts:
-                counts[key] = {"count": 0, "meta": cast(LinkMeta, matched)}
-            counts[key]["count"] = cast(int, counts[key]["count"]) + 1
-        if not counts:
-            return None
-        best = max(counts.values(), key=lambda item: cast(int, item["count"]))
-        return cast(LinkMeta, best["meta"]).copy()
+        return self.last_link.copy() if self.last_link is not None else None
 
 
 class SessionManager:
@@ -290,6 +298,30 @@ def _store_live_prediction(link_meta: LinkMeta, prediction: dict, session_id: st
     history.insert(0, entry)
     del history[_LIVE_HISTORY_LIMIT:]
     _live_prediction_index[entry["prediction_id"]] = (link_id, entry)
+
+
+def _match_last_link(
+    *,
+    lat: float | None,
+    lon: float | None,
+    heading: float | None = None,
+) -> LinkMeta | None:
+    if lat is None or lon is None:
+        return None
+    matcher = _get_link_matcher()
+    if matcher is None:
+        return None
+    match = matcher.match(lat=lat, lon=lon)
+    if match is None:
+        return None
+    return {
+        "link_id": match.link_id,
+        "road_name": match.road_name,
+        "geometry_geojson": match.geometry_geojson,
+        "center_lat": match.center_lat,
+        "center_lon": match.center_lon,
+        "source": match.source,
+    }
 
 
 def get_live_map_snapshot() -> dict[str, LiveLinkState]:
@@ -443,6 +475,76 @@ async def ingest(record: IngestRecord, request: Request) -> IngestResponse:
         status="ok",
         session_id=record.session_id,
         buffer_count=len(session.buffer),
+        prediction=prediction,
+    )
+
+
+@router.post("/ingest-features", response_model=IngestResponse)
+async def ingest_features(record: FeatureIngestRecord, request: Request) -> IngestResponse:
+    """Receive a client-computed feature window and run lightweight inference."""
+    registry = getattr(request.app.state, "registry", None)
+    if registry is None:
+        return IngestResponse(
+            status="error",
+            session_id=record.session_id,
+            buffer_count=record.buffer_count,
+            prediction=None,
+        )
+
+    from src.api.inference import predict_density_from_features
+
+    base_prediction = predict_density_from_features(
+        features=record.features,
+        speed_limit=record.speed_limit,
+        num_lanes=record.num_lanes,
+        registry=registry,  # type: ignore[arg-type]
+    )
+    prediction: dict[str, object] = {
+        "session_id": record.session_id,
+        "timestamp": record.timestamp or time.time(),
+        **base_prediction,
+    }
+
+    matched_link = _match_last_link(lat=record.lat, lon=record.lon, heading=record.heading)
+    if getattr(request.app.state, "db_available", False):
+        try:
+            from datetime import UTC, datetime
+
+            from src.api.crud import save_prediction
+            from src.api.database import async_session_factory
+
+            assert async_session_factory is not None
+            async with async_session_factory() as db_session:
+                prediction_id = await save_prediction(
+                    session=db_session,
+                    speed_limit=record.speed_limit,
+                    num_lanes=record.num_lanes,
+                    fcd_records=[],
+                    result=prediction,
+                    session_id=record.session_id,
+                    link_id=(matched_link or {}).get("link_id"),
+                    road_name=(matched_link or {}).get("road_name"),
+                    geometry_geojson=(matched_link or {}).get("geometry_geojson"),
+                    center_lat=(matched_link or {}).get("center_lat"),
+                    center_lon=(matched_link or {}).get("center_lon"),
+                    source=str((matched_link or {}).get("source", "unknown")),
+                    observed_at=datetime.fromtimestamp(record.timestamp, tz=UTC),
+                )
+            prediction["prediction_id"] = prediction_id
+        except Exception:
+            logger.warning("Failed to save feature ingest prediction to DB", exc_info=True)
+
+    if matched_link is not None:
+        prediction["link_id"] = matched_link["link_id"]
+        prediction["road_name"] = matched_link.get("road_name")
+        _store_live_prediction(cast(LinkMeta, matched_link), prediction, record.session_id)
+
+    await manager.send_to_session(record.session_id, prediction)
+
+    return IngestResponse(
+        status="ok",
+        session_id=record.session_id,
+        buffer_count=record.buffer_count,
         prediction=prediction,
     )
 

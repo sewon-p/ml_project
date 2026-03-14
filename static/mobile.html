@@ -71,9 +71,9 @@
         <span class="eyebrow">Mobile Ingest</span>
         <h1>Capture a probe drive from your phone.</h1>
         <p>
-          This page streams live GPS and motion data to <code>/ingest</code> once per second.
-          When a 300-second window is complete, the app returns a density estimate and
-          pushes the same result through the session WebSocket.
+          This page performs local sensor fusion and 300-second feature extraction in the
+          browser. Once a full window is ready, it sends a lightweight feature payload to
+          <code>/ingest-features</code> instead of streaming raw 1 Hz telemetry to the server.
         </p>
       </section>
 
@@ -185,14 +185,40 @@
   </div>
 
   <script>
+    const WINDOW_SIZE = 300;
+    const PREDICTION_STRIDE = 30;
+    const EARTH_RADIUS_M = 6371000.0;
+    const BRAKE_DECEL_THRESHOLD = -1.5;
     let sessionId = null;
     let gpsWatchId = null;
-    let sendInterval = null;
+    let sampleInterval = null;
     let ws = null;
     let predCount = 0;
+    let sampleCount = 0;
+    let lastSubmittedSample = 0;
+    let currentFix = null;
+    let motionHandler = null;
+    let orientationHandler = null;
+    let clientFusion = null;
+    let fusedWindow = [];
     let latestSensor = { lat: 0, lon: 0, speed: 0, heading: 0, accel_x: 0, accel_y: 0, accel_z: 0 };
     const API_BASE = location.origin;
     const WS_BASE = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+
+    function generateSessionId() {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+      }
+      return `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function ensureSecureContext() {
+      const isLocalhost = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+      if (window.isSecureContext || isLocalhost) return true;
+      log('Mobile sensors on iPhone require HTTPS. Open this page over https://');
+      alert('This page must be opened over HTTPS on iPhone to access GPS and motion sensors.');
+      return false;
+    }
 
     function log(message) {
       const el = document.getElementById('log');
@@ -208,6 +234,376 @@
       document.getElementById('statusText').textContent = text;
     }
 
+    function mean(values) {
+      if (!values.length) return 0;
+      return values.reduce((sum, value) => sum + value, 0) / values.length;
+    }
+
+    function variance(values, ddof = 0) {
+      if (!values.length || values.length <= ddof) return 0;
+      const m = mean(values);
+      const denom = values.length - ddof;
+      return values.reduce((sum, value) => sum + ((value - m) ** 2), 0) / denom;
+    }
+
+    function stddev(values, ddof = 0) {
+      return Math.sqrt(variance(values, ddof));
+    }
+
+    function quantile(values, q) {
+      if (!values.length) return 0;
+      const sorted = [...values].sort((a, b) => a - b);
+      const pos = (sorted.length - 1) * q;
+      const lower = Math.floor(pos);
+      const upper = Math.ceil(pos);
+      if (lower === upper) return sorted[lower];
+      const weight = pos - lower;
+      return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+    }
+
+    function diff(values, dt = 1.0) {
+      if (values.length < 2) return [];
+      const out = [];
+      for (let i = 1; i < values.length; i += 1) {
+        out.push((values[i] - values[i - 1]) / dt);
+      }
+      return out;
+    }
+
+    function gradient(values, times) {
+      const n = values.length;
+      if (n < 2) return [];
+      const out = new Array(n).fill(0);
+      for (let i = 0; i < n; i += 1) {
+        if (i === 0) {
+          const dt = times[1] - times[0] || 1;
+          out[i] = (values[1] - values[0]) / dt;
+        } else if (i === n - 1) {
+          const dt = times[n - 1] - times[n - 2] || 1;
+          out[i] = (values[n - 1] - values[n - 2]) / dt;
+        } else {
+          const dt = times[i + 1] - times[i - 1] || 1;
+          out[i] = (values[i + 1] - values[i - 1]) / dt;
+        }
+      }
+      return out;
+    }
+
+    function autocorrLag1(values) {
+      if (values.length < 2) return 0;
+      const x = values.slice(0, -1);
+      const y = values.slice(1);
+      const mx = mean(x);
+      const my = mean(y);
+      const sx = stddev(x);
+      const sy = stddev(y);
+      if (sx === 0 || sy === 0) return 0;
+      let cov = 0;
+      for (let i = 0; i < x.length; i += 1) cov += (x[i] - mx) * (y[i] - my);
+      cov /= x.length;
+      return cov / (sx * sy);
+    }
+
+    function fftDominantFreq(values) {
+      const n = values.length;
+      if (n < 2) return 0;
+      let bestIndex = 0;
+      let bestMagnitude = -1;
+      for (let k = 1; k <= Math.floor(n / 2); k += 1) {
+        let real = 0;
+        let imag = 0;
+        for (let t = 0; t < n; t += 1) {
+          const angle = (-2 * Math.PI * k * t) / n;
+          real += values[t] * Math.cos(angle);
+          imag += values[t] * Math.sin(angle);
+        }
+        const mag = Math.hypot(real, imag);
+        if (mag > bestMagnitude) {
+          bestMagnitude = mag;
+          bestIndex = k;
+        }
+      }
+      return bestIndex / n;
+    }
+
+    function sampleEntropy(values) {
+      const n = values.length;
+      const m = 2;
+      if (n < m + 2) return 0;
+      const sigma = stddev(values);
+      if (sigma === 0) return 0;
+      const r = 0.2 * sigma;
+
+      function countTemplates(templateLen) {
+        let count = 0;
+        for (let i = 0; i <= n - templateLen; i += 1) {
+          for (let j = i + 1; j <= n - templateLen; j += 1) {
+            let maxDelta = 0;
+            for (let k = 0; k < templateLen; k += 1) {
+              maxDelta = Math.max(maxDelta, Math.abs(values[i + k] - values[j + k]));
+            }
+            if (maxDelta < r) count += 1;
+          }
+        }
+        return count;
+      }
+
+      const b = countTemplates(m);
+      const a = countTemplates(m + 1);
+      if (a === 0 || b === 0) return 0;
+      return -Math.log(a / b);
+    }
+
+    function contiguousSegmentLengths(values, predicate) {
+      const segments = [];
+      let current = 0;
+      for (const value of values) {
+        if (predicate(value)) {
+          current += 1;
+        } else if (current > 0) {
+          segments.push(current);
+          current = 0;
+        }
+      }
+      if (current > 0) segments.push(current);
+      return segments;
+    }
+
+    function createMatrix(rows, cols, fill = 0) {
+      return Array.from({ length: rows }, () => Array(cols).fill(fill));
+    }
+
+    function identityMatrix(n) {
+      const out = createMatrix(n, n, 0);
+      for (let i = 0; i < n; i += 1) out[i][i] = 1;
+      return out;
+    }
+
+    function transpose(matrix) {
+      return matrix[0].map((_, col) => matrix.map((row) => row[col]));
+    }
+
+    function matMul(a, b) {
+      const out = createMatrix(a.length, b[0].length, 0);
+      for (let i = 0; i < a.length; i += 1) {
+        for (let k = 0; k < b.length; k += 1) {
+          for (let j = 0; j < b[0].length; j += 1) {
+            out[i][j] += a[i][k] * b[k][j];
+          }
+        }
+      }
+      return out;
+    }
+
+    function matVecMul(matrix, vector) {
+      return matrix.map((row) => row.reduce((sum, value, idx) => sum + value * vector[idx], 0));
+    }
+
+    function matAdd(a, b) {
+      return a.map((row, i) => row.map((value, j) => value + b[i][j]));
+    }
+
+    function matSub(a, b) {
+      return a.map((row, i) => row.map((value, j) => value - b[i][j]));
+    }
+
+    function vecAdd(a, b) {
+      return a.map((value, i) => value + b[i]);
+    }
+
+    function inverse(matrix) {
+      const n = matrix.length;
+      const augmented = matrix.map((row, i) => [...row, ...identityMatrix(n)[i]]);
+      for (let i = 0; i < n; i += 1) {
+        let pivot = i;
+        for (let r = i + 1; r < n; r += 1) {
+          if (Math.abs(augmented[r][i]) > Math.abs(augmented[pivot][i])) pivot = r;
+        }
+        if (Math.abs(augmented[pivot][i]) < 1e-9) return identityMatrix(n);
+        if (pivot !== i) [augmented[i], augmented[pivot]] = [augmented[pivot], augmented[i]];
+        const scale = augmented[i][i];
+        for (let c = 0; c < 2 * n; c += 1) augmented[i][c] /= scale;
+        for (let r = 0; r < n; r += 1) {
+          if (r === i) continue;
+          const factor = augmented[r][i];
+          for (let c = 0; c < 2 * n; c += 1) augmented[r][c] -= factor * augmented[i][c];
+        }
+      }
+      return augmented.map((row) => row.slice(n));
+    }
+
+    function gpsToXY(lat, lon, ref) {
+      const dLat = ((lat - ref.lat) * Math.PI) / 180.0;
+      const dLon = ((lon - ref.lon) * Math.PI) / 180.0;
+      return {
+        xEast: dLon * EARTH_RADIUS_M * ref.cosLat,
+        yNorth: dLat * EARTH_RADIUS_M,
+      };
+    }
+
+    function rotateToHeading(xEast, yNorth, headingDeg) {
+      const theta = (headingDeg * Math.PI) / 180.0;
+      const cosH = Math.cos(theta);
+      const sinH = Math.sin(theta);
+      return {
+        x: xEast * sinH + yNorth * cosH,
+        y: xEast * cosH - yNorth * sinH,
+      };
+    }
+
+    function createClientFusion() {
+      const dt = 1.0;
+      const gpsPosNoise = 5.0;
+      const gpsSpeedNoise = 1.0;
+      const accelNoise = 2.0;
+      const q = accelNoise ** 2;
+      return {
+        ref: null,
+        kf: {
+          initialized: false,
+          x: [0, 0, 0, 0],
+          P: identityMatrix(4).map((row) => row.map((value) => value * 100.0)),
+          F: [
+            [1, dt, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, dt],
+            [0, 0, 0, 1],
+          ],
+          B: [
+            [0.5 * dt ** 2, 0],
+            [dt, 0],
+            [0, 0.5 * dt ** 2],
+            [0, dt],
+          ],
+          Q: [
+            [(dt ** 4 / 4) * q, (dt ** 3 / 2) * q, 0, 0],
+            [(dt ** 3 / 2) * q, (dt ** 2) * q, 0, 0],
+            [0, 0, (dt ** 4 / 4) * q, (dt ** 3 / 2) * q],
+            [0, 0, (dt ** 3 / 2) * q, (dt ** 2) * q],
+          ],
+          R: [
+            [gpsPosNoise ** 2, 0, 0, 0],
+            [0, gpsSpeedNoise ** 2, 0, 0],
+            [0, 0, gpsPosNoise ** 2, 0],
+            [0, 0, 0, gpsSpeedNoise ** 2],
+          ],
+        },
+      };
+    }
+
+    function processFusionSample(sensor) {
+      if (!clientFusion.ref) {
+        clientFusion.ref = {
+          lat: sensor.lat,
+          lon: sensor.lon,
+          cosLat: Math.cos((sensor.lat * Math.PI) / 180.0),
+        };
+      }
+
+      const { xEast, yNorth } = gpsToXY(sensor.lat, sensor.lon, clientFusion.ref);
+      const headingRad = (sensor.heading * Math.PI) / 180.0;
+      const vxEast = sensor.speed * Math.sin(headingRad);
+      const vyNorth = sensor.speed * Math.cos(headingRad);
+      const accelEast = sensor.accel_x * Math.sin(headingRad) + sensor.accel_y * Math.cos(headingRad);
+      const accelNorth = sensor.accel_x * Math.cos(headingRad) - sensor.accel_y * Math.sin(headingRad);
+      const { kf } = clientFusion;
+
+      if (!kf.initialized) {
+        kf.x = [xEast, vxEast, yNorth, vyNorth];
+        kf.initialized = true;
+      } else {
+        kf.x = vecAdd(matVecMul(kf.F, kf.x), matVecMul(kf.B, [accelEast, accelNorth]));
+        kf.P = matAdd(matMul(matMul(kf.F, kf.P), transpose(kf.F)), kf.Q);
+        const innovation = [xEast, vxEast, yNorth, vyNorth].map((value, idx) => value - kf.x[idx]);
+        const S = matAdd(kf.P, kf.R);
+        const K = matMul(kf.P, inverse(S));
+        kf.x = vecAdd(kf.x, matVecMul(K, innovation));
+        kf.P = matMul(matSub(identityMatrix(4), K), kf.P);
+      }
+
+      const [filteredX, filteredVx, filteredY, filteredVy] = kf.x;
+      const rotatedPos = rotateToHeading(filteredX, filteredY, sensor.heading);
+      const rotatedVel = rotateToHeading(filteredVx, filteredVy, sensor.heading);
+
+      return {
+        time: sensor.timestamp,
+        x: rotatedPos.x,
+        y: rotatedPos.y,
+        speed: sensor.speed,
+        brake: sensor.accel_x < BRAKE_DECEL_THRESHOLD ? 1.0 : 0.0,
+        lat: sensor.lat,
+        lon: sensor.lon,
+        heading: sensor.heading,
+        VX: rotatedVel.x,
+        VY: rotatedVel.y,
+      };
+    }
+
+    function extractClientFeatures(windowSamples) {
+      const times = windowSamples.map((sample) => sample.time);
+      const x = windowSamples.map((sample) => sample.x);
+      const y = windowSamples.map((sample) => sample.y);
+      const speed = windowSamples.map((sample) => sample.speed);
+      const brake = windowSamples.map((sample) => sample.brake);
+      const VX = gradient(x, times);
+      const VY = gradient(y, times);
+      const AX = gradient(VX, times);
+      const AY = gradient(VY, times);
+      const jerk = diff(AX, 1.0);
+      const brakeSegments = contiguousSegmentLengths(brake, (value) => value > 0);
+      const stopSegments = contiguousSegmentLengths(speed, (value) => value < 0.5);
+      let laneChanges = 0;
+      for (let i = 1; i < VY.length; i += 1) {
+        const prev = VY[i - 1];
+        const curr = VY[i];
+        if (Math.abs(prev) > 0.3 && Math.abs(curr) > 0.3 && Math.sign(prev) !== Math.sign(curr) && Math.sign(curr) !== 0) {
+          laneChanges += 1;
+        }
+      }
+
+      return {
+        speed_mean: mean(speed),
+        speed_std: stddev(speed, 1),
+        speed_cv: mean(speed) === 0 ? 0 : stddev(speed, 1) / mean(speed),
+        speed_iqr: quantile(speed, 0.75) - quantile(speed, 0.25),
+        speed_min: Math.min(...speed),
+        speed_max: Math.max(...speed),
+        speed_median: quantile(speed, 0.5),
+        speed_p10: quantile(speed, 0.1),
+        speed_p90: quantile(speed, 0.9),
+        vx_mean: mean(VX),
+        vx_std: stddev(VX, 1),
+        vx_min: Math.min(...VX),
+        vx_max: Math.max(...VX),
+        vy_mean: mean(VY),
+        vy_std: stddev(VY, 1),
+        vy_min: Math.min(...VY),
+        vy_max: Math.max(...VY),
+        ax_mean: mean(AX),
+        ax_std: stddev(AX),
+        harsh_accel_count: AX.filter((value) => value > 3.0).length,
+        harsh_decel_count: AX.filter((value) => value < -3.0).length,
+        ay_mean: mean(AY),
+        ay_std: stddev(AY),
+        jerk_mean: mean(jerk),
+        jerk_std: stddev(jerk),
+        brake_count: brakeSegments.length,
+        brake_time_ratio: brake.filter((value) => value > 0).length / brake.length,
+        mean_brake_duration: brakeSegments.length ? mean(brakeSegments) : 0,
+        stop_count: stopSegments.length,
+        stop_time_ratio: speed.filter((value) => value < 0.5).length / speed.length,
+        mean_stop_duration: stopSegments.length ? mean(stopSegments) : 0,
+        vy_variance: variance(VY),
+        lane_change_count: laneChanges,
+        vy_energy: VY.reduce((sum, value) => sum + (value ** 2), 0),
+        speed_autocorr_lag1: autocorrLag1(speed),
+        speed_fft_dominant_freq: fftDominantFreq(speed),
+        vx_autocorr_lag1: autocorrLag1(VX),
+        vx_fft_dominant_freq: fftDominantFreq(VX),
+        sample_entropy: sampleEntropy(speed),
+      };
+    }
+
     function updateCollectionState(label, sessionText) {
       document.getElementById('collectionLabel').textContent = label;
       document.getElementById('sessionLabel').textContent = sessionText;
@@ -220,6 +616,7 @@
       }
       gpsWatchId = navigator.geolocation.watchPosition(
         (pos) => {
+          currentFix = pos;
           latestSensor.lat = pos.coords.latitude;
           latestSensor.lon = pos.coords.longitude;
           latestSensor.speed = pos.coords.speed || 0;
@@ -235,22 +632,39 @@
     }
 
     async function startAccelerometer() {
+      if (!ensureSecureContext()) return false;
+
       if (typeof DeviceMotionEvent !== 'undefined' &&
           typeof DeviceMotionEvent.requestPermission === 'function') {
         const permission = await DeviceMotionEvent.requestPermission().catch(() => 'denied');
         if (permission !== 'granted') {
           log('Motion permission was not granted.');
-          return;
+          return false;
         }
       }
-      window.addEventListener('devicemotion', (event) => {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const orientationPermission = await DeviceOrientationEvent.requestPermission().catch(() => 'denied');
+        if (orientationPermission !== 'granted') {
+          log('Orientation permission was not granted.');
+        }
+      }
+      motionHandler = (event) => {
         const a = event.accelerationIncludingGravity;
         if (!a) return;
         latestSensor.accel_x = a.x || 0;
         latestSensor.accel_y = a.y || 0;
         latestSensor.accel_z = a.z || 0;
-      });
+      };
+      orientationHandler = (event) => {
+        if (typeof event.alpha === 'number' && latestSensor.heading === 0) {
+          latestSensor.heading = event.alpha;
+        }
+      };
+      window.addEventListener('devicemotion', motionHandler);
+      window.addEventListener('deviceorientation', orientationHandler);
       log('Motion listener started.');
+      return true;
     }
 
     function connectWebSocket() {
@@ -283,23 +697,26 @@
       log(sourceMessage);
     }
 
-    async function sendData() {
+    async function sendFeatureWindow() {
+      if (fusedWindow.length < WINDOW_SIZE) return;
+      if (sampleCount - lastSubmittedSample < PREDICTION_STRIDE) return;
+
+      const features = extractClientFeatures(fusedWindow);
+      const last = fusedWindow[fusedWindow.length - 1];
       const payload = {
         session_id: sessionId,
-        lat: latestSensor.lat,
-        lon: latestSensor.lon,
-        speed: latestSensor.speed,
-        heading: latestSensor.heading,
-        accel_x: latestSensor.accel_x,
-        accel_y: latestSensor.accel_y,
-        accel_z: latestSensor.accel_z,
-        timestamp: Date.now() / 1000,
+        timestamp: last.time,
         speed_limit: parseFloat(document.getElementById('speedLimit').value),
         num_lanes: parseInt(document.getElementById('numLanes').value, 10),
+        buffer_count: fusedWindow.length,
+        features,
+        lat: last.lat,
+        lon: last.lon,
+        heading: last.heading,
       };
 
       try {
-        const response = await fetch(`${API_BASE}/ingest`, {
+        const response = await fetch(`${API_BASE}/ingest-features`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -308,31 +725,60 @@
           throw new Error(`HTTP ${response.status}`);
         }
         const result = await response.json();
-        document.getElementById('buffer').textContent = `${result.buffer_count ?? 0} / 300`;
+        lastSubmittedSample = sampleCount;
         if (result.prediction) {
-          applyPrediction(result.prediction, 'Inline prediction received from /ingest.');
+          applyPrediction(result.prediction, 'Server prediction received from /ingest-features.');
         }
       } catch (error) {
-        log(`Send error: ${error.message}`);
+        log(`Feature send error: ${error.message}`);
       }
     }
 
+    function captureSample() {
+      if (!currentFix || !sessionId) return;
+      const sample = processFusionSample({
+        lat: latestSensor.lat,
+        lon: latestSensor.lon,
+        speed: latestSensor.speed,
+        heading: latestSensor.heading || 0,
+        accel_x: latestSensor.accel_x,
+        accel_y: latestSensor.accel_y,
+        accel_z: latestSensor.accel_z,
+        timestamp: Date.now() / 1000,
+      });
+      fusedWindow.push(sample);
+      if (fusedWindow.length > WINDOW_SIZE) fusedWindow.shift();
+      sampleCount += 1;
+      document.getElementById('buffer').textContent = `${Math.min(fusedWindow.length, WINDOW_SIZE)} / ${WINDOW_SIZE}`;
+      void sendFeatureWindow();
+    }
+
     async function startCollection() {
-      sessionId = crypto.randomUUID();
+      if (!ensureSecureContext()) return;
+
+      sessionId = generateSessionId();
       predCount = 0;
+      sampleCount = 0;
+      lastSubmittedSample = 0;
+      currentFix = null;
+      fusedWindow = [];
+      clientFusion = createClientFusion();
       updateCollectionState('Collecting', `Session ${sessionId.slice(0, 8)}...`);
       document.getElementById('predCount').textContent = '0';
-      document.getElementById('buffer').textContent = '0 / 300';
+      document.getElementById('buffer').textContent = `0 / ${WINDOW_SIZE}`;
 
+      const motionReady = await startAccelerometer();
+      if (!motionReady) {
+        log('Continuing without motion data.');
+      }
       startGPS();
-      await startAccelerometer();
       connectWebSocket();
-      sendInterval = window.setInterval(sendData, 1000);
+      sampleInterval = window.setInterval(captureSample, 1000);
 
       document.getElementById('startBtn').hidden = true;
       document.getElementById('stopBtn').hidden = false;
       setStatus('warn', 'Waiting');
-      log('Collection started at 1 Hz.');
+      log('Collection started at 1 Hz with local fusion.');
     }
 
     function stopCollection() {
@@ -340,13 +786,21 @@
         navigator.geolocation.clearWatch(gpsWatchId);
         gpsWatchId = null;
       }
-      if (sendInterval) {
-        clearInterval(sendInterval);
-        sendInterval = null;
+      if (sampleInterval) {
+        clearInterval(sampleInterval);
+        sampleInterval = null;
       }
       if (ws) {
         ws.close();
         ws = null;
+      }
+      if (motionHandler) {
+        window.removeEventListener('devicemotion', motionHandler);
+        motionHandler = null;
+      }
+      if (orientationHandler) {
+        window.removeEventListener('deviceorientation', orientationHandler);
+        orientationHandler = null;
       }
       document.getElementById('startBtn').hidden = false;
       document.getElementById('stopBtn').hidden = true;
