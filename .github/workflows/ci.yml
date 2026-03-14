@@ -72,13 +72,26 @@ jobs:
       - name: Create dummy model files for CI build check
         run: |
           pip install pandas pyarrow
-          mkdir -p outputs_xgboost data/features
+          mkdir -p outputs_xgboost data/features data/gis
           python3 -c "
           import pickle
           with open('outputs_xgboost/xgboost_best.pkl', 'wb') as f:
               pickle.dump({'model': None}, f)
           import pandas as pd
           pd.DataFrame({'col': [0]}).to_parquet('data/features/dataset.parquet')
+          "
+          python3 -c "
+          import json
+          geojson = {
+              'type': 'FeatureCollection',
+              'features': [{
+                  'type': 'Feature',
+                  'properties': {'link_id': 'ci-link-001', 'road_name': 'CI Test Link', 'source': 'ci'},
+                  'geometry': {'type': 'LineString', 'coordinates': [[126.9780, 37.5665], [126.9790, 37.5670]]}
+              }]
+          }
+          with open('data/gis/seoul_links.geojson', 'w', encoding='utf-8') as f:
+              json.dump(geojson, f)
           "
 
       - name: Build Docker image

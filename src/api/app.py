@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 from src.api.dependencies import ModelRegistry
@@ -53,6 +53,13 @@ def _get_database_url() -> str | None:
         return cfg.get("database", {}).get("url")
     except Exception:
         return None
+
+
+def _ml_pipeline_mutations_disabled() -> bool:
+    """Disable expensive ML Pipeline mutations on hosted environments."""
+    if os.environ.get("DISABLE_ML_PIPELINE_MUTATIONS") == "1":
+        return True
+    return bool(os.environ.get("K_SERVICE"))
 
 
 @asynccontextmanager
@@ -184,6 +191,30 @@ except Exception:
 # ---------------------------------------------------------------------------
 try:
     from scripts.dashboard import app as ml_pipeline_app
+
+    if _ml_pipeline_mutations_disabled():
+        blocked_detail = "ML Pipeline execution is disabled on cloud"
+
+        @app.post("/api/run", include_in_schema=False)
+        async def block_pipeline_run() -> None:
+            raise HTTPException(status_code=403, detail=blocked_detail)
+
+        @app.post("/api/cancel", include_in_schema=False)
+        async def block_pipeline_cancel() -> None:
+            raise HTTPException(status_code=403, detail=blocked_detail)
+
+        @app.post("/api/force-reset", include_in_schema=False)
+        async def block_pipeline_force_reset() -> None:
+            raise HTTPException(status_code=403, detail=blocked_detail)
+
+        @app.post("/api/clean", include_in_schema=False)
+        async def block_pipeline_clean() -> None:
+            raise HTTPException(status_code=403, detail=blocked_detail)
+
+        @app.delete("/api/runs/{run_id}", include_in_schema=False)
+        async def block_pipeline_delete(run_id: str) -> None:
+            del run_id
+            raise HTTPException(status_code=403, detail=blocked_detail)
 
     app.mount("/ml-pipeline", ml_pipeline_app)
     app.mount("/api", _PrefixRestoringApp(ml_pipeline_app, "/api"))

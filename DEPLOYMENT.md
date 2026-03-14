@@ -54,6 +54,7 @@ Steps:
 
 - `xgboost_best.pkl`
 - `dataset.parquet`
+- `seoul_links.geojson`
 
 ## Cloud Run Notes
 

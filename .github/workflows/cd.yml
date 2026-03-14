@@ -43,13 +43,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p outputs_xgboost data/features
+          mkdir -p outputs_xgboost data/features data/gis
           gh release download "${{ env.RELEASE_TAG }}" \
             --pattern "xgboost_best.pkl" \
             --dir outputs_xgboost
           gh release download "${{ env.RELEASE_TAG }}" \
             --pattern "dataset.parquet" \
             --dir data/features
+          gh release download "${{ env.RELEASE_TAG }}" \
+            --pattern "seoul_links.geojson" \
+            --dir data/gis
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
