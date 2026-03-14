@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+from typing import cast
 
 from sqlalchemy import Select, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -157,7 +158,7 @@ async def list_latest_link_predictions(
 ) -> list[tuple[RoadLink, Prediction]]:
     """Return the latest prediction for each known road link."""
     result = await session.execute(_latest_predictions_stmt(limit))
-    return list(result.all())
+    return cast(list[tuple[RoadLink, Prediction]], result.all())
 
 
 async def get_link_history(
@@ -174,7 +175,7 @@ async def get_link_history(
         .limit(limit)
     )
     result = await session.execute(stmt)
-    return list(result.all())
+    return cast(list[tuple[RoadLink, Prediction]], result.all())
 
 
 async def get_prediction_detail(

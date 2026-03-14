@@ -46,7 +46,7 @@ def _get_database_url() -> str | None:
         return url
     config_path = os.environ.get("CONFIG_PATH", "configs/default.yaml")
     try:
-        import yaml
+        import yaml  # type: ignore[import-untyped]
 
         with open(config_path, encoding="utf-8") as f:
             cfg = yaml.safe_load(f)

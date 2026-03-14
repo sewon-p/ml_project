@@ -18,10 +18,10 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 import uvicorn
-import yaml
+import yaml  # type: ignore[import-untyped]
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -44,8 +44,13 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 RUNS_DIR = PROJECT_ROOT / "data" / "runs"
 
+class PipelineStepSpec(TypedDict):
+    label: str
+    cmd: list[str]
+
+
 # Pipeline step definitions
-PIPELINE_STEPS = {
+PIPELINE_STEPS: dict[str, PipelineStepSpec] = {
     "generate": {
         "label": "Generate Scenarios",
         "cmd": [sys.executable, "-m", "scripts.generate_scenarios"],

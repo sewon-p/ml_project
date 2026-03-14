@@ -18,6 +18,7 @@ import time
 from collections import deque
 from datetime import UTC, datetime
 from functools import lru_cache
+from typing import TypedDict, cast
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
@@ -79,6 +80,31 @@ class IngestResponse(BaseModel):
     session_id: str = ""
     buffer_count: int = 0
     prediction: dict | None = None
+
+
+class LinkMeta(TypedDict, total=False):
+    link_id: str
+    road_name: str | None
+    geometry_geojson: str | None
+    center_lat: float | None
+    center_lon: float | None
+    source: str
+
+
+class LivePredictionEntry(TypedDict):
+    prediction_id: int
+    session_id: str
+    observed_at: datetime
+    density: float
+    flow: float
+    fd_density: float
+    fd_flow: float
+    residual_density: float
+
+
+class LiveLinkState(TypedDict):
+    link: LinkMeta
+    history: list[LivePredictionEntry]
 
 
 # ---------------------------------------------------------------------------
@@ -157,19 +183,19 @@ class SessionBuffer:
     def get_window(self) -> list[dict]:
         return list(self.buffer)
 
-    def get_representative_link(self) -> dict | None:
-        counts: dict[str, dict[str, object]] = {}
+    def get_representative_link(self) -> LinkMeta | None:
+        counts: dict[str, dict[str, int | LinkMeta]] = {}
         for matched in self.link_buffer:
             if matched is None or matched.get("link_id") is None:
                 continue
             key = str(matched["link_id"])
             if key not in counts:
-                counts[key] = {"count": 0, "meta": matched}
-            counts[key]["count"] = int(counts[key]["count"]) + 1
+                counts[key] = {"count": 0, "meta": cast(LinkMeta, matched)}
+            counts[key]["count"] = cast(int, counts[key]["count"]) + 1
         if not counts:
             return None
-        best = max(counts.values(), key=lambda item: int(item["count"]))
-        return dict(best["meta"])
+        best = max(counts.values(), key=lambda item: cast(int, item["count"]))
+        return cast(LinkMeta, best["meta"]).copy()
 
 
 class SessionManager:
@@ -221,16 +247,21 @@ class SessionManager:
 
 sessions = SessionManager()
 
-_live_link_history: dict[str, dict] = {}
-_live_prediction_index: dict[int, tuple[str, dict]] = {}
+_live_link_history: dict[str, LiveLinkState] = {}
+_live_prediction_index: dict[int, tuple[str, LivePredictionEntry]] = {}
 
 
-def _store_live_prediction(link_meta: dict, prediction: dict, session_id: str) -> None:
+def _store_live_prediction(link_meta: LinkMeta, prediction: dict, session_id: str) -> None:
     """Keep recent link predictions in memory so the map can update without a DB."""
     link_id = str(link_meta["link_id"])
     observed_at = datetime.fromtimestamp(prediction["timestamp"], tz=UTC)
-    prediction_id = prediction.get("prediction_id") or int(prediction["timestamp"] * 1000)
-    entry = {
+    raw_prediction_id = prediction.get("prediction_id")
+    prediction_id = (
+        int(cast(int | float | str, raw_prediction_id))
+        if raw_prediction_id is not None
+        else int(float(prediction["timestamp"]) * 1000)
+    )
+    entry: LivePredictionEntry = {
         "prediction_id": int(prediction_id),
         "session_id": session_id,
         "observed_at": observed_at,
@@ -261,12 +292,14 @@ def _store_live_prediction(link_meta: dict, prediction: dict, session_id: str) -
     _live_prediction_index[entry["prediction_id"]] = (link_id, entry)
 
 
-def get_live_map_snapshot() -> dict[str, dict]:
+def get_live_map_snapshot() -> dict[str, LiveLinkState]:
     """Return in-memory link predictions generated through /ingest."""
     return _live_link_history
 
 
-def get_live_prediction_detail(prediction_id: int) -> tuple[dict, dict] | None:
+def get_live_prediction_detail(
+    prediction_id: int,
+) -> tuple[LinkMeta, LivePredictionEntry] | None:
     """Return one in-memory prediction and its link metadata."""
     found = _live_prediction_index.get(prediction_id)
     if found is None:
@@ -384,11 +417,15 @@ async def ingest(record: IngestRecord, request: Request) -> IngestResponse:
                 if representative_link is not None:
                     prediction["link_id"] = representative_link["link_id"]
                     prediction["road_name"] = representative_link.get("road_name")
-                    _store_live_prediction(representative_link, prediction, record.session_id)
+                    _store_live_prediction(
+                        cast(LinkMeta, representative_link), prediction, record.session_id
+                    )
                 elif matched_link is not None:
                     prediction["link_id"] = matched_link["link_id"]
                     prediction["road_name"] = matched_link.get("road_name")
-                    _store_live_prediction(matched_link, prediction, record.session_id)
+                    _store_live_prediction(
+                        cast(LinkMeta, matched_link), prediction, record.session_id
+                    )
                 await manager.send_to_session(record.session_id, prediction)
 
     # 5. Also publish to Kafka/Pub/Sub (best-effort, non-blocking)

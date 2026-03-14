@@ -7,6 +7,7 @@ import os
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -283,18 +284,19 @@ async def prediction_detail(
 
     links, history = _demo_payload()
     for link_id, entries in history.items():
-        for entry in entries:
-            if entry.prediction_id == prediction_id:
+        for demo_prediction in entries:
+            demo_entry = cast(LinkPredictionSummary, demo_prediction)
+            if demo_entry.prediction_id == prediction_id:
                 return PredictionDetailResponse(
-                    prediction_id=entry.prediction_id,
+                    prediction_id=demo_entry.prediction_id,
                     link=links.get(link_id),
-                    session_id=entry.session_id,
-                    observed_at=entry.observed_at,
-                    density=entry.density,
-                    flow=entry.flow,
-                    fd_density=entry.fd_density,
-                    fd_flow=entry.fd_flow,
-                    residual_density=entry.residual_density,
-                    fcd_records=_demo_fcd(entry),
+                    session_id=demo_entry.session_id,
+                    observed_at=demo_entry.observed_at,
+                    density=demo_entry.density,
+                    flow=demo_entry.flow,
+                    fd_density=demo_entry.fd_density,
+                    fd_flow=demo_entry.fd_flow,
+                    residual_density=demo_entry.residual_density,
+                    fcd_records=_demo_fcd(demo_entry),
                 )
     raise HTTPException(status_code=404, detail=f"Unknown prediction_id: {prediction_id}")
