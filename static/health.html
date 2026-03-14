@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UrbanFlow Health</title>
+  <link rel="stylesheet" href="/static/site.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">UF</div>
+        <div class="brand-copy">
+          <div class="brand-title">UrbanFlow Console</div>
+          <div class="brand-subtitle">Health and runtime status</div>
+        </div>
+        <a class="brand-shortcut" href="/ml-pipeline/">ML Pipeline</a>
+      </div>
+      <nav class="nav">
+        <a class="nav-link" href="/dashboard">Dashboard</a>
+        <a class="nav-link" href="/map">Map</a>
+        <a class="nav-link" href="/mobile">Mobile</a>
+        <a class="nav-link active" href="/health">Health</a>
+        <a class="nav-link" href="/docs">Docs</a>
+      </nav>
+    </header>
+
+    <main class="page">
+      <section class="hero">
+        <span class="eyebrow">Runtime</span>
+        <h1>Inspect service readiness.</h1>
+        <p>
+          This page renders the same JSON used by automated health checks, but in a human-friendly layout.
+          The raw response is still available from the same endpoint with <code>?format=json</code>.
+        </p>
+      </section>
+
+      <section class="grid two">
+        <div class="card">
+          <p class="kicker">Summary</p>
+          <div class="metric-grid">
+            <div class="metric">
+              <span class="metric-label">Status</span>
+              <div class="metric-value" id="statusValue">Loading</div>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Model</span>
+              <div class="metric-value" id="modelValue" style="font-size:1.1rem;">-</div>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Feature count</span>
+              <div class="metric-value" id="featureValue">-</div>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Residual correction</span>
+              <div class="metric-value" id="residualValue" style="font-size:1.1rem;">-</div>
+            </div>
+          </div>
+          <div class="btn-row" style="margin-top:16px;">
+            <button class="btn" id="refreshBtn" type="button">Refresh</button>
+            <a class="btn secondary" href="/health?format=json">Open raw JSON</a>
+          </div>
+        </div>
+
+        <div class="card stack">
+          <div>
+            <p class="kicker">Model Path</p>
+            <h2 id="pathValue">Loading</h2>
+          </div>
+          <div class="empty" id="noteBox">
+            Waiting for the latest health response.
+          </div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:18px;">
+        <p class="kicker">Raw Payload</p>
+        <h2>JSON response</h2>
+        <div class="log" id="rawPayload"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      UrbanFlow Console · Health
+    </footer>
+  </div>
+
+  <script>
+    async function loadHealth() {
+      const response = await fetch('/health?format=json');
+      const data = await response.json();
+      document.getElementById('statusValue').textContent = data.status.toUpperCase();
+      document.getElementById('modelValue').textContent = data.model;
+      document.getElementById('featureValue').textContent = String(data.n_features);
+      document.getElementById('residualValue').textContent = data.residual_correction ? 'Enabled' : 'Disabled';
+      document.getElementById('pathValue').textContent = data.model_path;
+      document.getElementById('noteBox').textContent =
+        `The API is healthy and currently serving the ${data.model} model with ${data.n_features} input features.`;
+      document.getElementById('rawPayload').textContent = JSON.stringify(data, null, 2);
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', loadHealth);
+    loadHealth();
+  </script>
+</body>
+</html>

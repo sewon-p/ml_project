@@ -1,0 +1,12 @@
+_base_: default.yaml
+
+data:
+  tabular_path: data/runs/20260314_025222/features/dataset.parquet
+  metadata_path: data/runs/20260314_025222/features/metadata.parquet
+  timeseries_path: data/runs/20260314_025222/features/timeseries.npz
+
+api:
+  model_path: data/runs/20260314_025222/outputs/xgboost_best.pkl
+
+database:
+  url: null

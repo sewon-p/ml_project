@@ -5,7 +5,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import GroupShuffleSplit
-from sklearn.preprocessing import StandardScaler
 
 CHANNELS = ["VX", "VY", "AX", "AY", "speed", "brake"]
 
@@ -64,30 +63,6 @@ def grouped_train_test_split(
     )
 
 
-def fit_scaler(
-    df: pd.DataFrame,
-    feature_columns: list[str],
-) -> StandardScaler:
-    """Fit a StandardScaler on the given feature columns."""
-    scaler = StandardScaler()
-    scaler.fit(df[feature_columns])
-    return scaler
-
-
-def apply_scaler(
-    df: pd.DataFrame,
-    feature_columns: list[str],
-    scaler: StandardScaler,
-) -> pd.DataFrame:
-    """Apply a fitted scaler to the feature columns.
-
-    Returns a copy.
-    """
-    df = df.copy()
-    df[feature_columns] = scaler.transform(df[feature_columns])
-    return df
-
-
 def pad_sequences(
     sequences: list[np.ndarray],
     max_len: int | None = None,
@@ -137,20 +112,3 @@ def pad_sequences(
             length = min(seq.shape[1], max_len)
             padded[i, :, :length] = seq[:, :length]
         return padded
-
-
-def segment_split(
-    fcd_df: pd.DataFrame,
-    link_length: float = 5000.0,
-    segment_length: float = 1000.0,
-) -> list[tuple[float, float]]:
-    """Return segment boundaries for a given link.
-
-    Returns list of (x_start, x_end) tuples.
-    """
-    segments = []
-    x = 0.0
-    while x + segment_length <= link_length + 1e-6:
-        segments.append((x, x + segment_length))
-        x += segment_length
-    return segments

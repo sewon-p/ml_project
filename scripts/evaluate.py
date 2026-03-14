@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 from pathlib import Path
 
@@ -11,7 +12,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from src.data.dataset import TimeSeriesDataset
-from src.data.io import read_parquet
+from src.data.io import load_data_filter_mask, read_parquet
 from src.data.preprocessing import grouped_train_test_split
 from src.evaluation.metrics import compute_all_metrics
 from src.models.cnn1d import CNN1DEstimator
@@ -54,8 +55,19 @@ def _evaluate_dl(
     ts_path = data_cfg.get("timeseries_path", "data/features/timeseries.npz")
     data = np.load(ts_path)
     sequences = data["sequences"]
-    actual_targets = data[target]
     scenario_ids = data["scenario_ids"]
+
+    # Load conditions (needed early for per-lane fallback)
+    meta_path = data_cfg.get("metadata_path", "data/features/metadata.parquet")
+    meta_df = read_parquet(meta_path)
+
+    # Per-lane target: density → density_per_lane, flow → flow_per_lane
+    per_lane_target = f"{target}_per_lane"
+    if per_lane_target in data.files:
+        actual_targets = data[per_lane_target]
+    else:
+        logger.info("Fallback: computing %s from %s / num_lanes", per_lane_target, target)
+        actual_targets = data[target].astype(np.float32) / meta_df["num_lanes"].values
 
     # Residual correction
     rc_cfg = cfg.get("residual_correction", {})
@@ -63,8 +75,14 @@ def _evaluate_dl(
     if residual_enabled:
         delta_key = "delta_density" if target == "density" else "delta_flow"
         fd_key = "k_fd" if target == "density" else "q_fd"
-        train_targets = data[delta_key]
-        fd_estimates = data[fd_key]
+        num_lanes = meta_df["num_lanes"].values
+        if per_lane_target in data.files:
+            train_targets = data[delta_key]
+            fd_estimates = data[fd_key]
+        else:
+            # Old data: k_fd/delta are absolute → convert to per-lane
+            train_targets = data[delta_key].astype(np.float32) / num_lanes
+            fd_estimates = data[fd_key].astype(np.float32) / num_lanes
         logger.info("Residual mode: delta=%s, fd=%s", delta_key, fd_key)
     else:
         train_targets = actual_targets
@@ -84,9 +102,17 @@ def _evaluate_dl(
     if model_config_path:
         model_params = load_config(model_config_path)
 
-    # Load conditions
-    meta_path = data_cfg.get("metadata_path", "data/features/metadata.parquet")
-    meta_df = read_parquet(meta_path)
+    # Apply config-driven data filters
+    mask = load_data_filter_mask(cfg, meta_df)
+    if not mask.all():
+        sequences = sequences[mask]
+        actual_targets = actual_targets[mask]
+        scenario_ids = scenario_ids[mask]
+        if residual_enabled:
+            train_targets = train_targets[mask]
+            fd_estimates = fd_estimates[mask]
+        meta_df = meta_df[mask].reset_index(drop=True)
+
     conditions = meta_df[["num_lanes", "speed_limit"]].values.astype(np.float32)
     n_conditions = conditions.shape[1]
 
@@ -94,8 +120,17 @@ def _evaluate_dl(
     loader_cls = _LOADERS[model_type]
     model = loader_cls.load(model_path, **model_params)
 
-    device = train_cfg.get("device", "cpu")
-    if device == "cuda" and not torch.cuda.is_available():
+    device = train_cfg.get("device", "auto")
+    if device == "auto":
+        if torch.cuda.is_available():
+            device = "cuda"
+        elif torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
+    elif device == "cuda" and not torch.cuda.is_available():
+        device = "cpu"
+    elif device == "mps" and not torch.backends.mps.is_available():
         device = "cpu"
 
     test_ds = TimeSeriesDataset(sequences[test_idx], train_targets[test_idx], conditions[test_idx])
@@ -124,18 +159,22 @@ def _evaluate_dl(
     metrics = compute_all_metrics(y_test, y_pred)
     logger.info("Test metrics: %s", metrics)
 
-    plots_dir = Path(cfg.get("output_dir", "outputs")) / "plots"
+    output_dir = Path(cfg.get("output_dir", "outputs"))
+    plots_dir = output_dir / "plots"
     plot_predicted_vs_actual(
         y_test, y_pred,
-        title=f"{model_type} — Predicted vs Actual ({target})",
-        save_path=plots_dir / "predicted_vs_actual.png",
+        title=f"{model_type} — Predicted vs Actual ({target}, per-lane)",
+        save_path=plots_dir / f"{model_type}_predicted_vs_actual.png",
     )
     plot_residuals(
         y_test, y_pred,
-        title=f"{model_type} — Residuals ({target})",
-        save_path=plots_dir / "residuals.png",
+        title=f"{model_type} — Residuals ({target}, per-lane)",
+        save_path=plots_dir / f"{model_type}_residuals.png",
     )
     logger.info("Plots saved to %s", plots_dir)
+
+    # Save metrics + predictions JSON for dashboard
+    _save_eval_results(output_dir, model_type, target, metrics, y_test, y_pred)
 
 
 def _evaluate_tabular(
@@ -149,12 +188,38 @@ def _evaluate_tabular(
     train_cfg = cfg.get("training", {})
 
     df = read_parquet(data_path)
+
+    # Apply config-driven data filters
+    mask = load_data_filter_mask(cfg, df)
+    if not mask.all():
+        df = df[mask].reset_index(drop=True)
+
     exclude = {
         "scenario_id", "probe_idx",
         "density", "flow", "demand_vehph",
+        "density_per_lane", "flow_per_lane",
         "k_fd", "q_fd", "delta_density", "delta_flow",
     }
     feature_columns = [c for c in df.columns if c not in exclude]
+
+    # Per-lane target: density → density_per_lane, flow → flow_per_lane
+    per_lane_target = f"{target}_per_lane"
+    old_data = per_lane_target not in df.columns
+    if old_data:
+        logger.info("Fallback: computing %s from %s / num_lanes", per_lane_target, target)
+        df[per_lane_target] = df[target] / df["num_lanes"]
+
+    # Residual correction
+    rc_cfg = cfg.get("residual_correction", {})
+    residual_enabled = rc_cfg.get("enabled", False)
+
+    # Ensure residual columns are per-lane scale for old data
+    if residual_enabled and old_data:
+        delta_col = "delta_density" if target == "density" else "delta_flow"
+        fd_col_name = "k_fd" if target == "density" else "q_fd"
+        df[delta_col] = df[delta_col] / df["num_lanes"]
+        df[fd_col_name] = df[fd_col_name] / df["num_lanes"]
+        logger.info("Converted %s, %s to per-lane scale", delta_col, fd_col_name)
 
     _, test_df = grouped_train_test_split(
         df,
@@ -168,33 +233,66 @@ def _evaluate_tabular(
         return
     model = loader_cls.load(model_path)
 
-    # Residual correction
-    rc_cfg = cfg.get("residual_correction", {})
-    residual_enabled = rc_cfg.get("enabled", False)
-
-    X_test = test_df[feature_columns].values
+    X_test = test_df[feature_columns]
     y_pred = model.predict(X_test)
 
     if residual_enabled:
         fd_col = "k_fd" if target == "density" else "q_fd"
         y_pred = test_df[fd_col].values + y_pred
-    y_test = test_df[target].values
+    y_test = test_df[per_lane_target].values
 
     metrics = compute_all_metrics(y_test, y_pred)
     logger.info("Test metrics: %s", metrics)
 
-    plots_dir = Path(cfg.get("output_dir", "outputs")) / "plots"
+    output_dir = Path(cfg.get("output_dir", "outputs"))
+    plots_dir = output_dir / "plots"
     plot_predicted_vs_actual(
         y_test, y_pred,
-        title=f"{model_type} — Predicted vs Actual ({target})",
-        save_path=plots_dir / "predicted_vs_actual.png",
+        title=f"{model_type} — Predicted vs Actual ({target}, per-lane)",
+        save_path=plots_dir / f"{model_type}_predicted_vs_actual.png",
     )
     plot_residuals(
         y_test, y_pred,
-        title=f"{model_type} — Residuals ({target})",
-        save_path=plots_dir / "residuals.png",
+        title=f"{model_type} — Residuals ({target}, per-lane)",
+        save_path=plots_dir / f"{model_type}_residuals.png",
     )
     logger.info("Plots saved to %s", plots_dir)
+
+    # Save metrics + predictions JSON for dashboard
+    _save_eval_results(output_dir, model_type, target, metrics, y_test, y_pred)
+
+
+def _save_eval_results(
+    output_dir: Path, model_type: str, target: str,
+    metrics: dict, y_test: np.ndarray, y_pred: np.ndarray,
+) -> None:
+    """Save evaluation metrics and scatter data as JSON."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Subsample for scatter plot (max 2000 points)
+    n = len(y_test)
+    if n > 2000:
+        idx = np.random.default_rng(42).choice(n, 2000, replace=False)
+        scatter_actual = y_test[idx]
+        scatter_pred = y_pred.ravel()[idx]
+    else:
+        scatter_actual = y_test
+        scatter_pred = y_pred.ravel()
+
+    result = {
+        "model_type": model_type,
+        "target": target,
+        "n_test": int(n),
+        "metrics": {k: round(float(v), 4) for k, v in metrics.items()},
+        "scatter": {
+            "actual": [round(float(x), 3) for x in scatter_actual],
+            "predicted": [round(float(x), 3) for x in scatter_pred],
+        },
+    }
+
+    path = output_dir / f"eval_{model_type}.json"
+    path.write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
+    logger.info("Eval results saved to %s", path)
 
 
 def main() -> None:
@@ -210,10 +308,12 @@ def main() -> None:
     target = train_cfg.get("target", "density")
     model_type = cfg.get("model", {}).get("type", "cnn1d")
 
+    output_dir = cfg.get("output_dir", "outputs")
+
     if model_type in DL_MODELS:
         model_path = (
             args.model_path
-            or f"outputs/{model_type}_best.pt"
+            or f"{output_dir}/{model_type}_best.pt"
         )
         _evaluate_dl(cfg, model_type, model_path, target)
     else:
@@ -225,7 +325,7 @@ def main() -> None:
         )
         model_path = (
             args.model_path
-            or f"outputs/{model_type}_best.pkl"
+            or f"{output_dir}/{model_type}_best.pkl"
         )
         _evaluate_tabular(
             cfg, model_type, model_path, target, data_path,

@@ -1,7 +1,9 @@
 import json
+
 import numpy as np
-import torch
 import pandas as pd
+import torch
+
 from src.evaluation.metrics import compute_all_metrics
 from src.models.cnn1d import CNN1DEstimator
 from src.models.lstm import LSTMEstimator
@@ -36,7 +38,9 @@ def predict_in_batches(model, X_np):
 metrics_dict = {}
 
 # CNN1D
-cnn = CNN1DEstimator.load('outputs/cnn1d/best_model.pt', input_size=6, hidden_channels=[32, 64], kernel_sizes=[3, 3])
+cnn = CNN1DEstimator.load(
+    'outputs/cnn1d/best_model.pt', input_size=6, hidden_channels=[32, 64], kernel_sizes=[3, 3]
+)
 cnn.model.to(device)
 cnn.model.eval()
 with torch.no_grad():
@@ -54,13 +58,16 @@ metrics_dict["LSTM"] = compute_all_metrics(y_test, y_pred_lstm)
 # XGBoost
 df = pd.read_parquet('data/features/dataset.parquet')
 test_df = df[df['scenario_id'].isin(test_ids)]
-exclude = {"scenario_id", "probe_idx", "density", "flow", "demand_vehph", "k_fd", "q_fd", "delta_density", "delta_flow"}
+exclude = {
+    "scenario_id", "probe_idx", "density", "flow",
+    "demand_vehph", "k_fd", "q_fd", "delta_density", "delta_flow",
+}
 f_cols = [c for c in df.columns if c not in exclude]
 
 xgb = XGBoostEstimator.load('outputs_xgboost/xgboost_best.pkl')
 y_pred_xgb = xgb.predict(test_df[f_cols].values)
 metrics_dict["XGBoost"] = compute_all_metrics(test_df['density'].values, y_pred_xgb)
 
-with open('outputs/metrics_summary.json', 'w') as f:
+with open('outputs/metrics_summary.json', 'w', encoding="utf-8") as f:
     json.dump(metrics_dict, f, indent=4)
 print("Saved to outputs/metrics_summary.json")

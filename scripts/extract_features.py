@@ -97,7 +97,7 @@ def _process_scenario(
 
         # Take exactly seq_len timesteps
         veh_df = veh_df.head(seq_len)
-        trajectory = _build_trajectory(veh_df)
+        trajectory = build_trajectory(veh_df)
 
         if len(trajectory) != seq_len:
             continue
@@ -159,9 +159,58 @@ def _fast_edie(
     return density, flow
 
 
-def _build_trajectory(veh_df: pd.DataFrame) -> pd.DataFrame:
-    """Build 6-channel trajectory — delegates to src.data.preprocessing."""
-    return build_trajectory(veh_df)
+def _backup_and_load_existing(
+    tabular_path: str,
+    timeseries_path: str,
+    metadata_path: str,
+) -> tuple[pd.DataFrame | None, np.ndarray | None, pd.DataFrame | None, set[int]]:
+    """Load existing feature files and return their data + extracted scenario IDs.
+
+    Also creates timestamped backup copies (e.g. dataset.bak_20260307.parquet).
+    """
+    from datetime import datetime
+
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    existing_ids: set[int] = set()
+    old_df = None
+    old_seqs = None
+    old_meta = None
+
+    tab_p = Path(tabular_path)
+    ts_p = Path(timeseries_path)
+    meta_p = Path(metadata_path)
+
+    if tab_p.exists() and meta_p.exists() and ts_p.exists():
+        old_df = pd.read_parquet(tab_p)
+        old_meta = pd.read_parquet(meta_p)
+        old_npz = np.load(ts_p)
+        old_seqs = old_npz["sequences"]
+        existing_ids = set(old_meta["scenario_id"].unique().tolist())
+
+        # Drop FD residual columns from old data to avoid NaN on merge.
+        # These columns are added by prepare_residuals.py and must be
+        # recomputed after the merge anyway.
+        fd_cols = {"k_fd", "q_fd", "delta_density", "delta_flow"}
+        drop_cols = [c for c in fd_cols if c in old_df.columns]
+        if drop_cols:
+            old_df = old_df.drop(columns=drop_cols)
+            logger.info("Dropped stale FD columns from old data: %s", drop_cols)
+
+        # Backup
+        import shutil
+
+        for p in (tab_p, meta_p, ts_p):
+            bak = p.with_suffix(f".bak_{stamp}{p.suffix}")
+            shutil.copy2(p, bak)
+            logger.info("Backup: %s -> %s", p.name, bak.name)
+
+        logger.info(
+            "Loaded existing: %d samples, %d scenarios",
+            len(old_df),
+            len(existing_ids),
+        )
+
+    return old_df, old_seqs, old_meta, existing_ids
 
 
 def main() -> None:
@@ -173,6 +222,12 @@ def main() -> None:
         default=None,
         type=str,
         help="Number of parallel workers (default: from config, 'auto' or int)",
+    )
+    parser.add_argument(
+        "--incremental",
+        action="store_true",
+        help="Only extract new scenarios, append to existing features. "
+        "Backs up old files with timestamp suffix.",
     )
     args = parser.parse_args()
 
@@ -195,9 +250,7 @@ def main() -> None:
     feature_cfg_path = cfg.get("features", {}).get("config")
     feature_names = None
     if feature_cfg_path:
-        from src.utils.config import load_config as _lc
-
-        feature_names = _lc(feature_cfg_path).get("features")
+        feature_names = load_config(feature_cfg_path).get("features")
 
     fcd_dir = output_cfg.get("fcd_dir", "data/fcd")
     features_dir = output_cfg.get("features_dir", "data/features")
@@ -212,6 +265,28 @@ def main() -> None:
         max_workers = max(1, (os.cpu_count() or 1) - 1)
     else:
         max_workers = int(workers_arg)
+
+    # Incremental mode: load existing data, skip already-extracted scenarios
+    old_df = None
+    old_seqs = None
+    old_meta = None
+    existing_ids: set[int] = set()
+
+    if args.incremental:
+        old_df, old_seqs, old_meta, existing_ids = _backup_and_load_existing(
+            tabular_path, timeseries_path, metadata_path,
+        )
+        before = len(scenarios)
+        scenarios = scenarios[~scenarios["scenario_id"].isin(existing_ids)]
+        logger.info(
+            "Incremental: %d total scenarios, %d already extracted, %d new to process",
+            before,
+            before - len(scenarios),
+            len(scenarios),
+        )
+        if scenarios.empty:
+            logger.info("No new scenarios to extract. Done.")
+            return
 
     # Build work items (link_length comes from each scenario row)
     work_items = [
@@ -265,28 +340,56 @@ def main() -> None:
                 _collect(result)
 
     logger.info(
-        "Done: %d/%d scenarios, %d extracted, %d total samples.",
+        "Done: %d/%d scenarios, %d extracted, %d new samples.",
         done, total, extracted, len(raw_sequences),
     )
 
-    if not tabular_records:
+    if not tabular_records and old_df is None:
         logger.warning("No records extracted.")
         return
 
+    # Build new DataFrames
+    new_df = pd.DataFrame(tabular_records) if tabular_records else None
+    new_meta = pd.DataFrame(meta_records) if meta_records else None
+    new_seqs = (
+        np.array(raw_sequences, dtype=np.float32) if raw_sequences else None
+    )
+
+    # Merge with existing data if incremental
+    if args.incremental and old_df is not None:
+        df = pd.concat([old_df, new_df], ignore_index=True) if new_df is not None else old_df
+        meta_df = (
+            pd.concat([old_meta, new_meta], ignore_index=True)
+            if new_meta is not None
+            else old_meta
+        )
+        stacked = (
+            np.concatenate([old_seqs, new_seqs], axis=0)
+            if new_seqs is not None
+            else old_seqs
+        )
+        logger.info(
+            "Merged: %d old + %d new = %d total samples",
+            len(old_df),
+            len(new_df) if new_df is not None else 0,
+            len(df),
+        )
+    else:
+        df = new_df
+        meta_df = new_meta
+        stacked = new_seqs
+
     # Save tabular features
-    df = pd.DataFrame(tabular_records)
     Path(tabular_path).parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(tabular_path, index=False)
     logger.info("Saved %d tabular records to %s", len(df), tabular_path)
 
     # Save metadata
-    meta_df = pd.DataFrame(meta_records)
     Path(metadata_path).parent.mkdir(parents=True, exist_ok=True)
     meta_df.to_parquet(metadata_path, index=False)
     logger.info("Saved metadata to %s", metadata_path)
 
-    # Stack time series (all exactly (6, seq_len), no padding needed)
-    stacked = np.array(raw_sequences, dtype=np.float32)  # (N, 6, seq_len)
+    # Save time series
     targets = meta_df["density"].values.astype(np.float32)
     flow_targets = meta_df["flow"].values.astype(np.float32)
     scenario_ids = meta_df["scenario_id"].values

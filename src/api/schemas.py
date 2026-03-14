@@ -2,30 +2,32 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
 class FCDRecord(BaseModel):
-    """Single FCD (Floating Car Data) record — 1초 단위 프로브 차량 관측."""
+    """Single Floating Car Data record."""
 
-    time: float = Field(description="시각 (초)")
-    x: float = Field(description="종방향 위치 (m)")
-    y: float = Field(description="횡방향 위치 (m)")
-    speed: float = Field(description="순간 속도 (m/s)")
-    brake: float = Field(default=0.0, description="브레이크 신호 (0 또는 1)")
+    time: float = Field(description="Timestamp in seconds")
+    x: float = Field(description="Longitudinal position in meters")
+    y: float = Field(description="Lateral position in meters")
+    speed: float = Field(description="Instantaneous speed in m/s")
+    brake: float = Field(default=0.0, description="Brake flag, 0 or 1")
 
 
 class PredictRequest(BaseModel):
-    """POST /predict 요청 — 300초 프로브 차량 FCD + 도로 조건."""
+    """Payload for POST /predict."""
 
     fcd_records: list[FCDRecord] = Field(
-        description="프로브 차량 FCD 레코드 (300행, 1초 간격)",
+        description="Probe-vehicle FCD records, typically 300 rows at 1 Hz",
     )
     speed_limit: float = Field(
-        description="제한속도 (m/s). 예: 60km/h → 16.67, 80km/h → 22.22",
+        description="Speed limit in m/s, for example 16.67 for 60 km/h",
     )
     num_lanes: int = Field(
-        description="차로 수 (1~3)",
+        description="Lane count",
     )
 
     model_config = {
@@ -46,16 +48,16 @@ class PredictRequest(BaseModel):
 
 
 class PredictResponse(BaseModel):
-    """POST /predict 응답 — 교통 밀도/교통량 추정 결과."""
+    """Prediction output returned by POST /predict."""
 
     prediction_id: int | None = Field(
-        default=None, description="DB 저장된 prediction ID (DB 미연결 시 null)"
+        default=None, description="Stored prediction ID, or null when DB storage is unavailable"
     )
-    density: float = Field(description="최종 밀도 (veh/km) = FD 베이스라인 + ML 보정")
-    flow: float = Field(description="최종 교통량 (veh/hr)")
-    fd_density: float = Field(description="Underwood FD 베이스라인 밀도 (veh/km)")
-    fd_flow: float = Field(description="Underwood FD 베이스라인 교통량 (veh/hr)")
-    residual_density: float = Field(description="ML 보정값 Δk (veh/km)")
+    density: float = Field(description="Final density estimate in veh/km")
+    flow: float = Field(description="Final flow estimate in veh/h")
+    fd_density: float = Field(description="Underwood FD baseline density in veh/km")
+    fd_flow: float = Field(description="Underwood FD baseline flow in veh/h")
+    residual_density: float = Field(description="ML residual correction Delta k")
 
     model_config = {
         "json_schema_extra": {
@@ -73,11 +75,64 @@ class PredictResponse(BaseModel):
     }
 
 
-class HealthResponse(BaseModel):
-    """GET /health 응답."""
+class RoadLinkSummary(BaseModel):
+    """Road link metadata exposed to the map GUI."""
 
-    status: str = Field(description="서버 상태")
-    model: str = Field(description="모델 타입")
-    model_path: str = Field(description="모델 파일 경로")
-    residual_correction: bool = Field(description="잔차 보정 사용 여부")
-    n_features: int = Field(description="피처 수")
+    link_id: str = Field(description="External GIS link identifier")
+    road_name: str | None = Field(default=None, description="Human-readable road name")
+    source: str = Field(description="Source of the link metadata")
+    geometry_geojson: str | None = Field(default=None, description="GeoJSON geometry string")
+    center_lat: float | None = Field(default=None, description="Center latitude")
+    center_lon: float | None = Field(default=None, description="Center longitude")
+
+
+class LinkPredictionSummary(BaseModel):
+    """Latest or historical prediction tied to a road link."""
+
+    prediction_id: int = Field(description="Prediction identifier")
+    session_id: str | None = Field(default=None, description="Mobile session identifier")
+    observed_at: datetime = Field(description="Timestamp of the prediction")
+    density: float = Field(description="Estimated density in veh/km")
+    flow: float = Field(description="Estimated flow in veh/h")
+    fd_density: float = Field(description="FD baseline density in veh/km")
+    fd_flow: float = Field(description="FD baseline flow in veh/h")
+    residual_density: float = Field(description="Residual correction Delta k")
+
+
+class LinkLatestResponse(BaseModel):
+    """Map layer payload: one latest prediction per link."""
+
+    link: RoadLinkSummary
+    latest_prediction: LinkPredictionSummary
+
+
+class LinkHistoryResponse(BaseModel):
+    """Historical predictions for one link."""
+
+    link: RoadLinkSummary
+    history: list[LinkPredictionSummary]
+
+
+class PredictionDetailResponse(BaseModel):
+    """Detailed prediction view for the right-side drawer/modal."""
+
+    prediction_id: int = Field(description="Prediction identifier")
+    link: RoadLinkSummary | None = Field(default=None, description="Linked road segment")
+    session_id: str | None = Field(default=None, description="Mobile session identifier")
+    observed_at: datetime = Field(description="Prediction timestamp")
+    density: float = Field(description="Estimated density in veh/km")
+    flow: float = Field(description="Estimated flow in veh/h")
+    fd_density: float = Field(description="FD baseline density in veh/km")
+    fd_flow: float = Field(description="FD baseline flow in veh/h")
+    residual_density: float = Field(description="Residual correction Delta k")
+    fcd_records: list[FCDRecord] = Field(description="Underlying 300-second FCD window")
+
+
+class HealthResponse(BaseModel):
+    """GET /health response."""
+
+    status: str = Field(description="Service status")
+    model: str = Field(description="Loaded model type")
+    model_path: str = Field(description="Resolved model file path")
+    residual_correction: bool = Field(description="Whether residual correction is enabled")
+    n_features: int = Field(description="Feature count used by the model")

@@ -1,6 +1,6 @@
 [project]
 name = "ml-project"
-version = "0.1.0"
+version = "0.2.0"
 description = "Probe vehicle speed patterns to traffic density/flow estimation using SUMO + ML"
 requires-python = ">=3.10"
 dependencies = [

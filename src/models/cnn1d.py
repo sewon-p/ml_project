@@ -13,6 +13,16 @@ from src.models.base import BaseEstimator
 from src.utils.checkpoint import load_checkpoint, save_checkpoint
 
 
+def _resolve_device(device: str) -> str:
+    if device == "auto":
+        if torch.cuda.is_available():
+            return "cuda"
+        if torch.backends.mps.is_available():
+            return "mps"
+        return "cpu"
+    return device
+
+
 class CNN1D(nn.Module):
     """1D Convolutional Neural Network for regression on speed sequences."""
 
@@ -63,7 +73,7 @@ class CNN1DEstimator(BaseEstimator):
 
     def __init__(self, **params: Any):
         self.params = params
-        self.device = torch.device(params.get("device", "cpu"))
+        self.device = torch.device(_resolve_device(params.get("device", "cpu")))
         _keys = (
             "in_channels",
             "seq_len",

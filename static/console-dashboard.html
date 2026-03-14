@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UrbanFlow Console</title>
+  <link rel="stylesheet" href="/static/site.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">UF</div>
+        <div class="brand-copy">
+          <div class="brand-title">UrbanFlow Console</div>
+          <div class="brand-subtitle">Traffic density estimation from mobile probe traces</div>
+        </div>
+        <a class="brand-shortcut" href="/ml-pipeline/">ML Pipeline</a>
+      </div>
+      <nav class="nav">
+        <a class="nav-link active" href="/dashboard">Dashboard</a>
+        <a class="nav-link" href="/map">Map</a>
+        <a class="nav-link" href="/mobile">Mobile</a>
+        <a class="nav-link" href="/health">Health</a>
+        <a class="nav-link" href="/docs">Docs</a>
+      </nav>
+    </header>
+
+    <main class="page">
+      <section class="hero">
+        <span class="eyebrow">Intern Project Demo</span>
+        <h1>One probe vehicle, one clean monitoring surface.</h1>
+        <p>
+          This console bundles the mobile collection flow, live link map, health check,
+          and API documentation into a single English-first presentation. It is designed
+          to be submission-ready: minimal, legible, and easy to demo.
+        </p>
+      </section>
+
+      <section class="grid three">
+        <a class="card" href="/map">
+          <p class="kicker">Live Surface</p>
+          <h2>Map</h2>
+          <p class="muted">Review link-level density snapshots, open link history, and inspect prediction details.</p>
+        </a>
+        <a class="card" href="/mobile">
+          <p class="kicker">Collection</p>
+          <h2>Mobile Probe</h2>
+          <p class="muted">Stream GPS and motion data from a phone directly into the inference pipeline.</p>
+        </a>
+        <a class="card" href="/docs">
+          <p class="kicker">Reference</p>
+          <h2>API Docs</h2>
+          <p class="muted">Swagger documentation for `/predict`, `/ingest`, `/map/*`, and related routes.</p>
+        </a>
+      </section>
+
+      <section class="grid two" style="margin-top:18px;">
+        <div class="card stack">
+          <div>
+            <p class="kicker">System Status</p>
+            <h2>Service Health</h2>
+            <p class="muted">Live readout from the running FastAPI application.</p>
+          </div>
+          <div class="metric-grid">
+            <div class="metric">
+              <span class="metric-label">Status</span>
+              <div class="metric-value" id="healthStatus">Loading</div>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Model</span>
+              <div class="metric-value" id="healthModel" style="font-size:1.15rem;">-</div>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Features</span>
+              <div class="metric-value" id="healthFeatures">-</div>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Residual Mode</span>
+              <div class="metric-value" id="healthResidual" style="font-size:1.15rem;">-</div>
+            </div>
+          </div>
+          <div class="btn-row">
+            <a class="btn" href="/health">Open Health</a>
+            <button class="btn secondary" id="refreshHealthBtn" type="button">Refresh</button>
+          </div>
+        </div>
+
+        <div class="card stack">
+          <div>
+            <p class="kicker">Map Feed</p>
+            <h2>Latest Link Feed</h2>
+            <p class="muted">A quick view of how many links are currently available in the map layer.</p>
+          </div>
+          <div class="metric-grid">
+            <div class="metric">
+              <span class="metric-label">Links Returned</span>
+              <div class="metric-value" id="mapCount">Loading</div>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Latest Sample</span>
+              <div class="metric-value" id="mapSample" style="font-size:1.15rem;">-</div>
+            </div>
+          </div>
+          <p class="footnote">
+            If the database is empty, the map switches to a local demo layer backed by the Seoul centerline GeoJSON.
+          </p>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:18px;">
+        <p class="kicker">Demo Flow</p>
+        <h2>How the pieces connect</h2>
+        <div class="grid two">
+          <div class="empty">
+            <strong>1. Mobile collection</strong><br>
+            The phone page sends GPS, speed, heading, and acceleration to <code>/ingest</code> at 1 Hz.
+          </div>
+          <div class="empty">
+            <strong>2. Link attribution</strong><br>
+            Incoming points are matched against the local Seoul road centerline layer.
+          </div>
+          <div class="empty">
+            <strong>3. Density estimation</strong><br>
+            A 300-second rolling window triggers prediction and stores or serves link-level results.
+          </div>
+          <div class="empty">
+            <strong>4. Map review</strong><br>
+            The map page colors links and exposes history and detail panels for presentation.
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      UrbanFlow Console · Dashboard
+    </footer>
+  </div>
+
+  <script>
+    async function loadHealth() {
+      const response = await fetch('/health?format=json');
+      const data = await response.json();
+      document.getElementById('healthStatus').textContent = data.status.toUpperCase();
+      document.getElementById('healthModel').textContent = data.model;
+      document.getElementById('healthFeatures').textContent = String(data.n_features);
+      document.getElementById('healthResidual').textContent = data.residual_correction ? 'Enabled' : 'Disabled';
+    }
+
+    async function loadMapSample() {
+      const response = await fetch('/map/links/latest?limit=4');
+      const data = await response.json();
+      document.getElementById('mapCount').textContent = String(data.length);
+      document.getElementById('mapSample').textContent = data[0]?.link?.link_id || 'No data';
+    }
+
+    document.getElementById('refreshHealthBtn').addEventListener('click', async () => {
+      await Promise.all([loadHealth(), loadMapSample()]);
+    });
+
+    Promise.all([loadHealth(), loadMapSample()]);
+  </script>
+</body>
+</html>

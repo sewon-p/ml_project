@@ -15,7 +15,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from src.data.dataset import TimeSeriesDataset
-from src.data.io import read_parquet
+from src.data.io import load_data_filter_mask, read_parquet
 from src.data.preprocessing import grouped_train_test_split
 from src.evaluation.metrics import compute_all_metrics
 from src.models.factory import create_model
@@ -64,9 +64,20 @@ def train_dl(cfg: dict, args: argparse.Namespace) -> None:
     data_cfg = cfg.get("data", {})
     model_type = model_cfg.get("type", "cnn1d")
 
-    device = train_cfg.get("device", "cuda")
-    if device == "cuda" and not torch.cuda.is_available():
+    device = train_cfg.get("device", "auto")
+    if device == "auto":
+        if torch.cuda.is_available():
+            device = "cuda"
+        elif torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
+        logger.info("Auto-detected device: %s", device)
+    elif device == "cuda" and not torch.cuda.is_available():
         logger.warning("CUDA not available, falling back to CPU.")
+        device = "cpu"
+    elif device == "mps" and not torch.backends.mps.is_available():
+        logger.warning("MPS not available, falling back to CPU.")
         device = "cpu"
 
     # Load time series data
@@ -79,24 +90,51 @@ def train_dl(cfg: dict, args: argparse.Namespace) -> None:
     target_name = train_cfg.get("target", "density")
     scenario_ids = data["scenario_ids"]  # (N,)
 
+    # Load conditions (num_lanes, speed_limit) from metadata (needed early for fallback)
+    meta_path = data_cfg.get("metadata_path", "data/features/metadata.parquet")
+    meta_df = read_parquet(meta_path)
+
+    # Per-lane target: density → density_per_lane, flow → flow_per_lane
+    per_lane_target = f"{target_name}_per_lane"
+    if per_lane_target in data.files:
+        actual_targets = data[per_lane_target]
+    else:
+        logger.info("Fallback: computing %s from %s / num_lanes", per_lane_target, target_name)
+        actual_targets = data[target_name].astype(np.float32) / meta_df["num_lanes"].values
+
     # Residual correction: switch target to delta if enabled
     rc_cfg = cfg.get("residual_correction", {})
     residual_enabled = rc_cfg.get("enabled", False)
     fd_estimates = None
-    actual_targets = data[target_name]  # (N,) — always keep original for eval
 
     if residual_enabled:
         delta_key = "delta_density" if target_name == "density" else "delta_flow"
         fd_key = "k_fd" if target_name == "density" else "q_fd"
-        targets = data[delta_key]
-        fd_estimates = data[fd_key]
+        num_lanes = meta_df["num_lanes"].values
+        # Ensure residual targets and FD estimates are per-lane scale
+        if per_lane_target in data.files:
+            # prepare_residuals already produced per-lane k_fd/delta
+            targets = data[delta_key]
+            fd_estimates = data[fd_key]
+        else:
+            # Old data: k_fd/delta are absolute → convert to per-lane
+            targets = data[delta_key].astype(np.float32) / num_lanes
+            fd_estimates = data[fd_key].astype(np.float32) / num_lanes
         logger.info("Residual mode: target=%s, fd_key=%s", delta_key, fd_key)
     else:
         targets = actual_targets
 
-    # Load conditions (num_lanes, speed_limit) from metadata
-    meta_path = data_cfg.get("metadata_path", "data/features/metadata.parquet")
-    meta_df = read_parquet(meta_path)
+    # Apply config-driven data filters
+    mask = load_data_filter_mask(cfg, meta_df)
+    if not mask.all():
+        sequences = sequences[mask]
+        scenario_ids = scenario_ids[mask]
+        actual_targets = actual_targets[mask]
+        targets = targets[mask]
+        if fd_estimates is not None:
+            fd_estimates = fd_estimates[mask]
+        meta_df = meta_df[mask].reset_index(drop=True)
+
     conditions = meta_df[["num_lanes", "speed_limit"]].values.astype(np.float32)
     n_conditions = conditions.shape[1]
 
@@ -124,6 +162,10 @@ def train_dl(cfg: dict, args: argparse.Namespace) -> None:
 
     batch_size = train_cfg.get("batch_size", 128)
     num_workers = train_cfg.get("num_workers", 4)
+    # Small datasets: multiprocessing overhead >> computation cost
+    if len(train_ds) < 1000:
+        num_workers = 0
+        logger.info("Small dataset (%d samples), using num_workers=0", len(train_ds))
 
     train_loader = DataLoader(
         train_ds, batch_size=batch_size, shuffle=True,
@@ -204,6 +246,12 @@ def train_tabular(cfg: dict, args: argparse.Namespace) -> None:
         "tabular_path", "data/features/dataset.parquet"
     )
     df = read_parquet(data_path)
+
+    # Apply config-driven data filters
+    mask = load_data_filter_mask(cfg, df)
+    if not mask.all():
+        df = df[mask].reset_index(drop=True)
+
     logger.info(
         "Loaded dataset: %d rows, %d columns", len(df), len(df.columns),
     )
@@ -211,20 +259,34 @@ def train_tabular(cfg: dict, args: argparse.Namespace) -> None:
     exclude = {
         "scenario_id", "probe_idx",
         "density", "flow", "demand_vehph",
+        "density_per_lane", "flow_per_lane",
         "k_fd", "q_fd", "delta_density", "delta_flow",
     }
     feature_columns = [c for c in df.columns if c not in exclude]
     target_name = train_cfg.get("target", "density")
 
+    # Per-lane target: density → density_per_lane, flow → flow_per_lane
+    per_lane_target = f"{target_name}_per_lane"
+    old_data = per_lane_target not in df.columns
+    if old_data:
+        logger.info("Fallback: computing %s from %s / num_lanes", per_lane_target, target_name)
+        df[per_lane_target] = df[target_name] / df["num_lanes"]
+
     # Residual correction: switch target
     rc_cfg = cfg.get("residual_correction", {})
     residual_enabled = rc_cfg.get("enabled", False)
     if residual_enabled:
-        target = "delta_density" if target_name == "density" else "delta_flow"
+        delta_col = "delta_density" if target_name == "density" else "delta_flow"
         fd_col = "k_fd" if target_name == "density" else "q_fd"
+        if old_data:
+            # Old data: k_fd/delta are absolute → convert to per-lane
+            df[delta_col] = df[delta_col] / df["num_lanes"]
+            df[fd_col] = df[fd_col] / df["num_lanes"]
+            logger.info("Converted %s, %s to per-lane scale", delta_col, fd_col)
+        target = delta_col
         logger.info("Residual mode: target=%s, fd_col=%s", target, fd_col)
     else:
-        target = target_name
+        target = per_lane_target
 
     train_df, test_df = grouped_train_test_split(
         df,
@@ -247,11 +309,11 @@ def train_tabular(cfg: dict, args: argparse.Namespace) -> None:
     results = trainer.fit(train_df, feature_columns, target)
     logger.info("CV Results: %s", results["mean_metrics"])
 
-    test_preds = trainer.predict(test_df[feature_columns].values)
+    test_preds = trainer.predict(test_df[feature_columns])
     if residual_enabled:
         restored_preds = test_df[fd_col].values + test_preds
         test_metrics = compute_all_metrics(
-            test_df[target_name].values, restored_preds,
+            test_df[per_lane_target].values, restored_preds,
         )
         logger.info("Test metrics (restored from residual): %s", test_metrics)
     else:

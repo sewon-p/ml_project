@@ -7,6 +7,7 @@ from collections.abc import AsyncGenerator
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,15 @@ async def close_db() -> None:
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Yield an async session (for use with FastAPI Depends)."""
     if async_session_factory is None:
-        raise RuntimeError("Database not initialized. Call init_db() first.")
+        raise HTTPException(status_code=503, detail="Database not initialized")
+    async with async_session_factory() as session:
+        yield session
+
+
+async def get_optional_session() -> AsyncGenerator[AsyncSession | None, None]:
+    """Yield a DB session when available, otherwise None."""
+    if async_session_factory is None:
+        yield None
+        return
     async with async_session_factory() as session:
         yield session

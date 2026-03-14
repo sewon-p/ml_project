@@ -65,8 +65,12 @@ def main() -> None:
     parser.add_argument("--warmup", type=float, default=300.0)
     parser.add_argument("--collect", type=float, default=600.0)
     parser.add_argument("--min-rows", type=int, default=1000)
-    parser.add_argument("--delete-invalid", action="store_true", help="Delete invalid scenario dirs")
-    parser.add_argument("--delete-empty-dirs", action="store_true", help="Delete dirs without fcd.csv")
+    parser.add_argument(
+        "--delete-invalid", action="store_true", help="Delete invalid scenario dirs"
+    )
+    parser.add_argument(
+        "--delete-empty-dirs", action="store_true", help="Delete dirs without fcd.csv"
+    )
     args = parser.parse_args()
 
     fcd_dir = Path(args.fcd_dir)
@@ -100,7 +104,7 @@ def main() -> None:
                 fcd_path.unlink(missing_ok=True)
                 print(f"  Deleted invalid fcd.csv: {d.name} ({result})")
 
-    print(f"\n=== Validation Results ===")
+    print("\n=== Validation Results ===")
     print(f"  Valid:       {stats['ok']}")
     print(f"  Missing:     {stats['missing']} (no fcd.csv)")
     print(f"  Invalid:     {stats['invalid']} (truncated/corrupted)")
@@ -108,7 +112,7 @@ def main() -> None:
     print(f"  Usable samples: ~{stats['ok'] * 5}")
 
     if invalid_dirs and not args.delete_invalid:
-        print(f"\nInvalid scenarios (run with --delete-invalid to clean):")
+        print("\nInvalid scenarios (run with --delete-invalid to clean):")
         for name, reason in invalid_dirs[:20]:
             print(f"  {name}: {reason}")
         if len(invalid_dirs) > 20:

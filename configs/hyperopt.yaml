@@ -1,0 +1,20 @@
+_base_: default.yaml
+
+model:
+  type: xgboost
+
+hyperopt:
+  window_sizes: [10, 30, 60, 120, 180, 300]
+  n_trials: 100
+  n_splits: 3          # CV folds (3 for speed)
+  target: density
+  direction: minimize   # RMSE minimization
+  storage: outputs_xgboost/hyperopt.db  # Optuna SQLite
+
+  search_space:
+    n_estimators: [100, 1000]
+    max_depth: [3, 10]
+    learning_rate: [0.01, 0.3]
+    subsample: [0.5, 1.0]
+    colsample_bytree: [0.5, 1.0]
+    min_child_weight: [1, 10]

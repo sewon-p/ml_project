@@ -10,12 +10,27 @@ import numpy as np
 from src.models.base import BaseEstimator
 from src.utils.checkpoint import load_checkpoint, save_checkpoint
 
+_DL_ONLY_KEYS = {
+    "in_channels",
+    "seq_len",
+    "n_filters",
+    "kernel_size",
+    "dropout",
+    "n_conditions",
+    "hidden_size",
+    "num_layers",
+}
+
 
 class XGBoostEstimator(BaseEstimator):
     """XGBoost regressor wrapper."""
 
     def __init__(self, **params: Any):
         import xgboost as xgb
+
+        # Filter out DL-specific params
+        for k in _DL_ONLY_KEYS:
+            params.pop(k, None)
 
         defaults = {
             "n_estimators": 500,
@@ -44,7 +59,9 @@ class XGBoostEstimator(BaseEstimator):
             early_stopping = kwargs.get("early_stopping_rounds", 50)
             self.model.set_params(early_stopping_rounds=early_stopping)
         self.model.fit(X_train, y_train, verbose=kwargs.get("verbose", False), **fit_params)
-        return {"n_estimators_used": self.model.best_iteration or self.params["n_estimators"]}
+        best_iter = getattr(self.model.get_booster(), "best_iteration", None)
+        n_used = best_iter if best_iter is not None else self.params["n_estimators"]
+        return {"n_estimators_used": n_used}
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         return self.model.predict(X)
@@ -68,6 +85,10 @@ class LightGBMEstimator(BaseEstimator):
 
     def __init__(self, **params: Any):
         import lightgbm as lgb
+
+        # Filter out DL-specific and unsupported params
+        for k in _DL_ONLY_KEYS | {"device"}:
+            params.pop(k, None)
 
         defaults = {
             "n_estimators": 500,

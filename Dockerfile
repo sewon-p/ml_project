@@ -1,6 +1,7 @@
 FROM python:3.13-slim AS base
 
 WORKDIR /app
+ENV PYTHONPATH=/app
 
 # System deps (numpy/scipy build 시 필요할 수 있음)
 RUN apt-get update && \
@@ -13,6 +14,7 @@ RUN pip install --no-cache-dir ".[api,streaming,gcp]"
 
 # 소스 코드 복사
 COPY src/ src/
+COPY scripts/ scripts/
 COPY configs/ configs/
 
 # 모바일 웹페이지 정적 파일

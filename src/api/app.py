@@ -5,10 +5,11 @@ from __future__ import annotations
 import logging
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncIterator
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 from src.api.dependencies import ModelRegistry
 from src.api.inference import predict_density
@@ -24,6 +25,20 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+class _PrefixRestoringApp:
+    """ASGI wrapper that restores a stripped mount prefix for a sub-application."""
+
+    def __init__(self, asgi_app, prefix: str) -> None:
+        self.asgi_app = asgi_app
+        self.prefix = prefix
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in {"http", "websocket"}:
+            scope = dict(scope)
+            scope["path"] = f"{self.prefix}{scope['path']}"
+        await self.asgi_app(scope, receive, send)
+
+
 def _get_database_url() -> str | None:
     """Resolve DATABASE_URL from environment or config."""
     url = os.environ.get("DATABASE_URL")
@@ -33,7 +48,7 @@ def _get_database_url() -> str | None:
     try:
         import yaml
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             cfg = yaml.safe_load(f)
         return cfg.get("database", {}).get("url")
     except Exception:
@@ -85,12 +100,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="Traffic Density Estimator",
+    title="UrbanFlow API",
     description=(
-        "프로브 차량의 원시 FCD 데이터(300초)를 입력받아 "
-        "교통 밀도(veh/km)와 교통량(veh/hr)을 추정합니다.\n\n"
-        "**추론 흐름:** FCD → 6채널 trajectory → 피처 추출 → XGBoost → "
-        "Underwood FD 베이스라인 + ML 잔차 보정"
+        "Estimate traffic density and flow from a single mobile probe trajectory.\n\n"
+        "Inference flow: raw FCD -> 6-channel trajectory -> feature extraction -> "
+        "XGBoost residual model -> Underwood FD baseline restoration."
     ),
     version="0.1.0",
     lifespan=lifespan,
@@ -155,20 +169,76 @@ except Exception:
     logger.info("Streaming ingest router not available — skipping")
 
 # ---------------------------------------------------------------------------
+# Map router
+# ---------------------------------------------------------------------------
+try:
+    from src.api.map import router as map_router
+
+    app.include_router(map_router)
+    logger.info("Map router mounted (/map/*)")
+except Exception:
+    logger.info("Map router not available — skipping")
+
+# ---------------------------------------------------------------------------
+# ML Pipeline sub-app
+# ---------------------------------------------------------------------------
+try:
+    from scripts.dashboard import app as ml_pipeline_app
+
+    app.mount("/ml-pipeline", ml_pipeline_app)
+    app.mount("/api", _PrefixRestoringApp(ml_pipeline_app, "/api"))
+    logger.info("ML Pipeline mounted (/ml-pipeline/*)")
+except Exception:
+    logger.info("ML Pipeline app not available — skipping", exc_info=True)
+
+# ---------------------------------------------------------------------------
 # Static files (mobile.html)
 # ---------------------------------------------------------------------------
 if _HAS_STATICFILES:
-    import pathlib
-
-    _static_dir = pathlib.Path(__file__).resolve().parent.parent.parent / "static"
+    _static_dir = Path(__file__).resolve().parent.parent.parent / "static"
     if _static_dir.is_dir():
         app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
         logger.info("Static files mounted from %s", _static_dir)
 
 
+def _static_page(name: str) -> FileResponse:
+    assert _HAS_STATICFILES
+    page = _static_dir / name
+    return FileResponse(page)
+
+
+@app.get("/", include_in_schema=False)
+async def root() -> RedirectResponse:
+    return RedirectResponse(url="/dashboard")
+
+
+@app.get("/dashboard", include_in_schema=False)
+async def dashboard_page() -> FileResponse:
+    return _static_page("console-dashboard.html")
+
+
+@app.get("/ml-pipeline", include_in_schema=False)
+async def ml_pipeline_root() -> RedirectResponse:
+    return RedirectResponse(url="/ml-pipeline/")
+
+
+@app.get("/map", include_in_schema=False)
+async def map_page() -> FileResponse:
+    return _static_page("link-history-map.html")
+
+
+@app.get("/mobile", include_in_schema=False)
+async def mobile_page() -> FileResponse:
+    return _static_page("mobile.html")
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health(request: Request) -> HealthResponse:
-    """서버 상태 및 로드된 모델 정보를 반환합니다."""
+    """Return service health and loaded model metadata."""
+    if request.query_params.get("format") != "json":
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept and _HAS_STATICFILES:
+            return _static_page("health.html")  # type: ignore[return-value]
     registry: ModelRegistry = request.app.state.registry
     return HealthResponse(
         status="ok",

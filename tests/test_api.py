@@ -37,6 +37,7 @@ def _make_mock_registry() -> MagicMock:
     registry = MagicMock()
     registry.model_path = "outputs/xgboost_best.pkl"
     registry.residual_enabled = True
+    registry.fd_model = "underwood"
     registry.v_free_factor = 1.1
     registry.vehicle_length = 4.5
     registry.min_gap = 2.5

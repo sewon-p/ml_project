@@ -13,8 +13,11 @@ Also publishes to Kafka/Pub/Sub if available (for external consumers).
 from __future__ import annotations
 
 import logging
+import os
 import time
 from collections import deque
+from datetime import UTC, datetime
+from functools import lru_cache
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
@@ -23,8 +26,23 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_WINDOW_SIZE = 300
+_WINDOW_SIZE = int(os.environ.get("WINDOW_SIZE", "300"))
 _SESSION_TIMEOUT = 600  # 10 min
+_LIVE_HISTORY_LIMIT = 20
+
+
+@lru_cache(maxsize=1)
+def _get_link_matcher():
+    """Lazily load the local GIS matcher from config, if configured."""
+    from src.gis import LinkMatcher
+
+    config_path = os.environ.get("CONFIG_PATH", "configs/default.yaml")
+    matcher = LinkMatcher.from_config(config_path)
+    if matcher is None:
+        logger.info("GIS link matcher unavailable — ingest will run without map matching")
+    else:
+        logger.info("GIS link matcher loaded from %s", matcher.road_links_path)
+    return matcher
 
 
 # ---------------------------------------------------------------------------
@@ -46,6 +64,12 @@ class IngestRecord(BaseModel):
     timestamp: float = Field(default=0.0, description="Unix timestamp (seconds)")
     speed_limit: float = Field(default=22.22, description="Road speed limit (m/s)")
     num_lanes: int = Field(default=2, description="Number of lanes")
+    link_id: str | None = Field(default=None, description="Matched road link ID")
+    road_name: str | None = Field(default=None, description="Matched road name")
+    geometry_geojson: str | None = Field(default=None, description="Matched link GeoJSON")
+    center_lat: float | None = Field(default=None, description="Matched link center latitude")
+    center_lon: float | None = Field(default=None, description="Matched link center longitude")
+    link_source: str = Field(default="unknown", description="GIS source for the matched link")
 
 
 class IngestResponse(BaseModel):
@@ -68,6 +92,7 @@ class SessionBuffer:
     def __init__(self, session_id: str) -> None:
         self.session_id = session_id
         self.buffer: deque[dict] = deque(maxlen=_WINDOW_SIZE)
+        self.link_buffer: deque[dict | None] = deque(maxlen=_WINDOW_SIZE)
         self.last_active = time.time()
         self.prediction_count = 0
         self.speed_limit = 22.22
@@ -77,7 +102,7 @@ class SessionBuffer:
 
         self.fusion = SensorFusion(use_kalman=True)
 
-    def add_raw(self, record: IngestRecord) -> dict:
+    def add_raw(self, record: IngestRecord) -> tuple[dict, dict | None]:
         """Fuse a raw sensor reading and add to buffer. Returns FCD dict."""
         self.speed_limit = record.speed_limit
         self.num_lanes = record.num_lanes
@@ -94,7 +119,32 @@ class SessionBuffer:
             timestamp=record.timestamp,
         )
         self.buffer.append(fcd)
-        return fcd
+
+        matched_link = None
+        if record.link_id is not None:
+            matched_link = {
+                "link_id": record.link_id,
+                "road_name": record.road_name,
+                "geometry_geojson": record.geometry_geojson,
+                "center_lat": record.center_lat,
+                "center_lon": record.center_lon,
+                "source": record.link_source,
+            }
+        else:
+            matcher = _get_link_matcher()
+            if matcher is not None:
+                match = matcher.match(lat=record.lat, lon=record.lon, heading=record.heading)
+                if match is not None:
+                    matched_link = {
+                        "link_id": match.link_id,
+                        "road_name": match.road_name,
+                        "geometry_geojson": match.geometry_geojson,
+                        "center_lat": match.center_lat,
+                        "center_lon": match.center_lon,
+                        "source": match.source,
+                    }
+        self.link_buffer.append(matched_link)
+        return fcd, matched_link
 
     @property
     def ready(self) -> bool:
@@ -106,6 +156,20 @@ class SessionBuffer:
 
     def get_window(self) -> list[dict]:
         return list(self.buffer)
+
+    def get_representative_link(self) -> dict | None:
+        counts: dict[str, dict[str, object]] = {}
+        for matched in self.link_buffer:
+            if matched is None or matched.get("link_id") is None:
+                continue
+            key = str(matched["link_id"])
+            if key not in counts:
+                counts[key] = {"count": 0, "meta": matched}
+            counts[key]["count"] = int(counts[key]["count"]) + 1
+        if not counts:
+            return None
+        best = max(counts.values(), key=lambda item: int(item["count"]))
+        return dict(best["meta"])
 
 
 class SessionManager:
@@ -156,6 +220,61 @@ class SessionManager:
 
 
 sessions = SessionManager()
+
+_live_link_history: dict[str, dict] = {}
+_live_prediction_index: dict[int, tuple[str, dict]] = {}
+
+
+def _store_live_prediction(link_meta: dict, prediction: dict, session_id: str) -> None:
+    """Keep recent link predictions in memory so the map can update without a DB."""
+    link_id = str(link_meta["link_id"])
+    observed_at = datetime.fromtimestamp(prediction["timestamp"], tz=UTC)
+    entry = {
+        "prediction_id": int(prediction.get("prediction_id") or int(prediction["timestamp"] * 1000)),
+        "session_id": session_id,
+        "observed_at": observed_at,
+        "density": float(prediction["density"]),
+        "flow": float(prediction["flow"]),
+        "fd_density": float(prediction["fd_density"]),
+        "fd_flow": float(prediction["fd_flow"]),
+        "residual_density": float(prediction["residual_density"]),
+    }
+
+    state = _live_link_history.setdefault(
+        link_id,
+        {
+            "link": {
+                "link_id": link_id,
+                "road_name": link_meta.get("road_name"),
+                "source": link_meta.get("source", "live"),
+                "geometry_geojson": link_meta.get("geometry_geojson"),
+                "center_lat": link_meta.get("center_lat"),
+                "center_lon": link_meta.get("center_lon"),
+            },
+            "history": [],
+        },
+    )
+    history = state["history"]
+    history.insert(0, entry)
+    del history[_LIVE_HISTORY_LIMIT:]
+    _live_prediction_index[entry["prediction_id"]] = (link_id, entry)
+
+
+def get_live_map_snapshot() -> dict[str, dict]:
+    """Return in-memory link predictions generated through /ingest."""
+    return _live_link_history
+
+
+def get_live_prediction_detail(prediction_id: int) -> tuple[dict, dict] | None:
+    """Return one in-memory prediction and its link metadata."""
+    found = _live_prediction_index.get(prediction_id)
+    if found is None:
+        return None
+    link_id, entry = found
+    state = _live_link_history.get(link_id)
+    if state is None:
+        return None
+    return state["link"], entry
 
 
 # ---------------------------------------------------------------------------
@@ -220,7 +339,7 @@ async def ingest(record: IngestRecord, request: Request) -> IngestResponse:
     """
     # 1-2. Fuse and buffer
     session = sessions.get_or_create(record.session_id)
-    session.add_raw(record)
+    _, matched_link = session.add_raw(record)
 
     # 3. Predict if buffer is full
     prediction = None
@@ -231,6 +350,42 @@ async def ingest(record: IngestRecord, request: Request) -> IngestResponse:
 
             # 4. Push to WebSocket
             if prediction:
+                representative_link = session.get_representative_link()
+                if getattr(request.app.state, "db_available", False):
+                    try:
+                        from datetime import UTC, datetime
+
+                        from src.api.crud import save_prediction
+                        from src.api.database import async_session_factory
+
+                        assert async_session_factory is not None
+                        async with async_session_factory() as db_session:
+                            prediction_id = await save_prediction(
+                                session=db_session,
+                                speed_limit=record.speed_limit,
+                                num_lanes=record.num_lanes,
+                                fcd_records=session.get_window(),
+                                result=prediction,
+                                session_id=record.session_id,
+                                link_id=(representative_link or {}).get("link_id"),
+                                road_name=(representative_link or {}).get("road_name"),
+                                geometry_geojson=(representative_link or {}).get("geometry_geojson"),
+                                center_lat=(representative_link or {}).get("center_lat"),
+                                center_lon=(representative_link or {}).get("center_lon"),
+                                source=str((representative_link or {}).get("source", "unknown")),
+                                observed_at=datetime.fromtimestamp(record.timestamp, tz=UTC),
+                            )
+                        prediction["prediction_id"] = prediction_id
+                    except Exception:
+                        logger.warning("Failed to save ingest prediction to DB", exc_info=True)
+                if representative_link is not None:
+                    prediction["link_id"] = representative_link["link_id"]
+                    prediction["road_name"] = representative_link.get("road_name")
+                    _store_live_prediction(representative_link, prediction, record.session_id)
+                elif matched_link is not None:
+                    prediction["link_id"] = matched_link["link_id"]
+                    prediction["road_name"] = matched_link.get("road_name")
+                    _store_live_prediction(matched_link, prediction, record.session_id)
                 await manager.send_to_session(record.session_id, prediction)
 
     # 5. Also publish to Kafka/Pub/Sub (best-effort, non-blocking)

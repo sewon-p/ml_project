@@ -1,14 +1,15 @@
 """Quick test training script."""
 import logging
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 import numpy as np
-import torch
+from torch.utils.data import DataLoader
+
 from src.data.dataset import TimeSeriesDataset
+from src.evaluation.metrics import compute_all_metrics
 from src.models.factory import create_model
 from src.training.trainer_dl import DLTrainer
-from src.evaluation.metrics import compute_all_metrics
-from torch.utils.data import DataLoader
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 data = np.load("data/features_test/timeseries.npz")
 sequences = data["sequences"]

@@ -60,9 +60,20 @@ def _run_dl_experiment(cfg: dict, exp_name: str) -> dict:
     data_cfg = cfg.get("data", {})
     model_type = model_cfg.get("type", "cnn1d")
 
-    device = train_cfg.get("device", "cuda")
-    if device == "cuda" and not torch.cuda.is_available():
+    device = train_cfg.get("device", "auto")
+    if device == "auto":
+        if torch.cuda.is_available():
+            device = "cuda"
+        elif torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
+        logger.info("Auto-detected device: %s", device)
+    elif device == "cuda" and not torch.cuda.is_available():
         logger.warning("CUDA not available, falling back to CPU.")
+        device = "cpu"
+    elif device == "mps" and not torch.backends.mps.is_available():
+        logger.warning("MPS not available, falling back to CPU.")
         device = "cpu"
 
     # Load time series
@@ -113,6 +124,9 @@ def _run_dl_experiment(cfg: dict, exp_name: str) -> dict:
 
     batch_size = train_cfg.get("batch_size", 128)
     num_workers = train_cfg.get("num_workers", 4)
+    if len(sequences) < 1000:
+        num_workers = 0
+        logger.info("Small dataset (%d samples), using num_workers=0", len(sequences))
 
     train_loader = DataLoader(
         TimeSeriesDataset(sequences[train_idx], targets[train_idx], conditions[train_idx]),
@@ -271,7 +285,7 @@ def main() -> None:
 
     output_dir = Path(cfg.get("output_dir", "outputs")) / exp_name
     output_dir.mkdir(parents=True, exist_ok=True)
-    with open(output_dir / "test_metrics.json", "w") as f:
+    with open(output_dir / "test_metrics.json", "w", encoding="utf-8") as f:
         json.dump(test_metrics, f, indent=2)
 
 

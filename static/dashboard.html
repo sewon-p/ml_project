@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ML Pipeline Dashboard v0.2.0</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --border: #2a2d3a;
+    --text: #e0e0e0;
+    --muted: #888;
+    --accent: #4f8ff7;
+    --accent2: #38b2ac;
+    --danger: #e53e3e;
+    --success: #38a169;
+    --warn: #d69e2e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    padding: 24px;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+  h1 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--success); }
+  h1 .dot.off { background: var(--muted); }
+  h2 { font-size: 1.1rem; color: var(--accent); margin-bottom: 12px; }
+  h3 { font-size: 0.95rem; margin-bottom: 8px; }
+
+  .grid { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+  input[type=number], select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+  }
+  input[type=number]:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  /* Tabs */
+  .tab-bar {
+    display: flex; gap: 0; margin-bottom: 16px;
+    border-bottom: 2px solid var(--border);
+  }
+  .tab-btn {
+    padding: 10px 20px; border: none; background: transparent;
+    color: var(--muted); font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -2px; transition: all 0.15s;
+  }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-btn:hover { color: var(--text); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Checkbox */
+  .checkbox-group { margin-bottom: 12px; }
+  .checkbox-group label {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--text); cursor: pointer; padding: 6px 0; font-size: 0.9rem;
+  }
+  .checkbox-group input[type=checkbox] {
+    accent-color: var(--accent); width: 16px; height: 16px;
+  }
+  .step-num {
+    display: inline-block; width: 22px; height: 22px; line-height: 22px;
+    text-align: center; border-radius: 50%; background: var(--border);
+    font-size: 0.75rem; font-weight: 600; margin-right: 4px;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px 20px; border: none; border-radius: 8px;
+    font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #3a7ae0; }
+  .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { background: #c53030; }
+  .btn-sm { padding: 5px 12px; font-size: 0.8rem; border-radius: 6px; }
+  .btn-outline {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+  }
+  .btn-outline:hover { border-color: var(--accent); color: var(--text); }
+  .btn-group { display: flex; gap: 8px; margin-top: 4px; }
+
+  /* Progress */
+  .progress-section { margin-bottom: 16px; }
+  .progress-bar-bg {
+    height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;
+    margin: 8px 0;
+  }
+  .progress-bar-fill {
+    height: 100%; background: var(--accent); border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+  .progress-bar-fill.error { background: var(--danger); }
+  .progress-info {
+    display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--muted);
+  }
+  .status-badge {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 0.8rem; font-weight: 600;
+  }
+  .badge-running { background: rgba(79,143,247,0.2); color: var(--accent); }
+  .badge-idle { background: rgba(136,136,136,0.2); color: var(--muted); }
+  .badge-done { background: rgba(56,161,105,0.2); color: var(--success); }
+  .badge-error { background: rgba(229,62,62,0.2); color: var(--danger); }
+
+  /* Log */
+  .log-box {
+    background: #0d0f14;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    height: 320px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #aaa;
+  }
+  .log-box .error { color: var(--danger); }
+  .log-box .success { color: var(--success); }
+  .log-box .info { color: var(--accent); }
+
+  /* Asset cards for resume */
+  .asset-list { max-height: 240px; overflow-y: auto; }
+  .asset-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .asset-item:hover { border-color: var(--accent); }
+  .asset-item.selected { border-color: var(--accent); background: rgba(79,143,247,0.08); }
+  .asset-item .title { font-weight: 600; font-size: 0.9rem; }
+  .asset-item .meta { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+
+  /* Run history */
+  .run-list { max-height: 300px; overflow-y: auto; }
+  .run-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .run-item .run-info { flex: 1; }
+  .run-item .run-id { font-weight: 600; font-size: 0.9rem; }
+  .run-item .run-meta { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .run-status {
+    display: inline-block; padding: 1px 8px; border-radius: 10px;
+    font-size: 0.72rem; font-weight: 600;
+  }
+  .run-status.completed { background: rgba(56,161,105,0.2); color: var(--success); }
+  .run-status.running { background: rgba(79,143,247,0.2); color: var(--accent); }
+  .run-status.failed { background: rgba(229,62,62,0.2); color: var(--danger); }
+  .run-status.pending { background: rgba(136,136,136,0.2); color: var(--muted); }
+  .run-status.cancelled { background: rgba(214,158,46,0.2); color: var(--warn); }
+
+  .spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .timer { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .hint { font-size: 0.8rem; color: var(--muted); margin-bottom: 12px; }
+
+  /* Eval results */
+  .eval-model { margin-bottom: 20px; }
+  .eval-model h3 { color: var(--accent2); margin-bottom: 8px; }
+  .metrics-table {
+    width: 100%; border-collapse: collapse; margin-bottom: 12px;
+    font-size: 0.88rem;
+  }
+  .metrics-table th {
+    text-align: left; padding: 6px 12px; background: var(--bg);
+    border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 600;
+  }
+  .metrics-table td {
+    padding: 6px 12px; border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+  .metrics-table td.val { font-weight: 700; font-size: 1rem; }
+  .scatter-container {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px; display: inline-block;
+  }
+  .scatter-container canvas { display: block; }
+
+  /* Scenario Config tab */
+  .sc-section { margin-bottom: 16px; }
+  .sc-section h3 { color: var(--accent2); margin-bottom: 8px; font-size: 0.95rem; }
+  .sc-row {
+    display: grid;
+    grid-template-columns: 160px 90px 70px 70px 70px 70px;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+  }
+  .sc-row label { color: var(--muted); font-size: 0.82rem; margin-bottom: 0; }
+  .sc-row input, .sc-row select {
+    padding: 5px 6px; font-size: 0.82rem; margin-bottom: 0;
+  }
+  .sc-row .sc-extra { display: none; }
+  .sc-row .sc-extra.visible { display: block; }
+  .sc-fixed { color: var(--muted); font-size: 0.85rem; padding: 4px 0; }
+  .sc-derived { color: var(--muted); font-size: 0.82rem; font-style: italic; padding: 4px 0; }
+  .sc-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px;
+  }
+  .sc-header h2 { margin-bottom: 0; }
+  details.sc-details { margin-bottom: 12px; }
+  details.sc-details summary {
+    cursor: pointer; font-weight: 600; color: var(--accent2);
+    font-size: 0.95rem; padding: 6px 0;
+  }
+  .sc-check-group { display: flex; gap: 12px; align-items: center; margin-bottom: 6px; }
+  .sc-check-group label {
+    display: flex; align-items: center; gap: 4px;
+    color: var(--text); font-size: 0.85rem; margin-bottom: 0;
+  }
+  .sc-check-group input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
+</style>
+</head>
+<body>
+
+<h1>
+  <div class="dot off" id="statusDot"></div>
+  ML Pipeline Dashboard
+  <span style="font-size:0.7rem;color:var(--muted);font-weight:400;">v0.2.0</span>
+  <span class="status-badge badge-idle" id="statusBadge">Idle</span>
+</h1>
+
+<div class="grid">
+  <!-- LEFT: Controls -->
+  <div>
+    <!-- Common Settings -->
+    <div class="card">
+      <h2>Common Settings</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div>
+          <label>CPU Workers (Simulation)</label>
+          <select id="maxWorkers">
+            <option value="0">Auto (CPU - 1)</option>
+          </select>
+        </div>
+        <div>
+          <label>Training Device</label>
+          <select id="trainDevice">
+            <option value="auto">Auto Detect</option>
+            <option value="cuda">CUDA (NVIDIA)</option>
+            <option value="mps">MPS (Apple Silicon)</option>
+            <option value="cpu">CPU</option>
+          </select>
+        </div>
+      </div>
+      <div class="hint" id="coreHint"></div>
+    </div>
+
+    <!-- Mode Tabs -->
+    <div class="card">
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('scratch')">From Scratch</button>
+        <button class="tab-btn" onclick="switchTab('resume')">Resume from Assets</button>
+        <button class="tab-btn" onclick="switchTab('scenario')">Scenario Config</button>
+      </div>
+
+      <!-- Tab: From Scratch -->
+      <div class="tab-panel active" id="tab-scratch">
+        <label>Number of Scenarios</label>
+        <input type="number" id="numScenarios" value="1000" min="10" max="100000" step="100">
+        <label>Probes per Scenario</label>
+        <input type="number" id="numProbes" value="5" min="1" max="20">
+        <div class="hint">
+          Total trajectories: <strong id="totalTrajectories">5000</strong>
+        </div>
+
+        <h3>Pipeline Steps</h3>
+        <div class="checkbox-group" id="scratchSteps">
+          <label><input type="checkbox" value="generate" checked>
+            <span class="step-num">1</span> Generate Scenarios</label>
+          <label><input type="checkbox" value="simulate" checked>
+            <span class="step-num">2</span> SUMO Simulation</label>
+          <label><input type="checkbox" value="extract" checked>
+            <span class="step-num">3</span> Feature Extraction</label>
+          <label><input type="checkbox" value="residuals" checked>
+            <span class="step-num">4</span> FD Residual Calc</label>
+          <div id="fdModelSection" style="margin: 4px 0 4px 28px; padding: 6px 10px; background: var(--bg-card); border-radius: 6px; border: 1px solid var(--border);">
+            <div style="font-size: 0.85em; color: var(--text-secondary); margin-bottom: 4px;">FD Model</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.9em;">
+              <label><input type="radio" name="fdModel" value="greenshields"> Greenshields</label>
+              <label><input type="radio" name="fdModel" value="greenberg"> Greenberg</label>
+              <label><input type="radio" name="fdModel" value="underwood" checked> Underwood</label>
+              <label><input type="radio" name="fdModel" value="drake"> Drake</label>
+              <label><input type="radio" name="fdModel" value="multi_regime"> Multi-regime</label>
+            </div>
+          </div>
+          <label><input type="checkbox" value="train">
+            <span class="step-num">5</span> Model Training</label>
+          <label><input type="checkbox" value="evaluate">
+            <span class="step-num">6</span> Evaluation</label>
+        </div>
+
+        <div id="modelTypeSection">
+          <h3>Model Selection</h3>
+          <div class="checkbox-group" id="modelTypes">
+            <label><input type="checkbox" value="cnn1d" checked> CNN-1D</label>
+            <label><input type="checkbox" value="lstm"> LSTM</label>
+            <label><input type="checkbox" value="xgboost"> XGBoost</label>
+            <label><input type="checkbox" value="lightgbm"> LightGBM</label>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnRunScratch" onclick="runFromScratch()">Run</button>
+          <button class="btn btn-danger" id="btnCancel" onclick="cancelPipeline()" style="display:none">Cancel</button>
+          <button class="btn btn-outline" id="btnForceReset" onclick="forceReset()" style="display:none">Force Reset</button>
+        </div>
+      </div>
+
+      <!-- Tab: Resume -->
+      <div class="tab-panel" id="tab-resume">
+        <label>Asset Type</label>
+        <select id="assetStageSelect" onchange="loadAssetsForStage()">
+          <option value="">-- Select --</option>
+          <option value="scenarios">Scenarios (scenarios.csv)</option>
+          <option value="fcd">FCD Simulation Results</option>
+          <option value="features">Feature Dataset</option>
+          <option value="model">Trained Models</option>
+        </select>
+
+        <div id="assetBrowser" style="display:none">
+          <label>Select Asset</label>
+          <div class="asset-list" id="assetList"></div>
+        </div>
+
+        <div id="dataFilterSection" style="display:none; margin-top:12px;">
+          <h3>Data Filters</h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div>
+              <label style="margin-bottom:4px;">Lanes</label>
+              <div class="checkbox-group" id="filterLanes"></div>
+            </div>
+            <div>
+              <label style="margin-bottom:4px;">Speed Limit (km/h)</label>
+              <div class="checkbox-group" id="filterSpeedLimits"></div>
+            </div>
+          </div>
+          <div id="filterSummary" style="font-size:0.82rem; color:var(--accent2); margin-top:4px;"></div>
+        </div>
+
+        <div id="resumeStepsSection" style="display:none; margin-top:12px;">
+          <h3>Steps to Run</h3>
+          <div class="checkbox-group" id="resumeSteps"></div>
+          <div id="resumeModelTypeSection" style="display:none;">
+            <h3>Model Selection</h3>
+            <div class="checkbox-group" id="resumeModelTypes">
+              <label><input type="checkbox" value="cnn1d" checked> CNN-1D</label>
+              <label><input type="checkbox" value="lstm"> LSTM</label>
+              <label><input type="checkbox" value="xgboost"> XGBoost</label>
+              <label><input type="checkbox" value="lightgbm"> LightGBM</label>
+            </div>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnRunResume" onclick="runResume()" disabled>Run</button>
+          <button class="btn btn-danger" id="btnCancelResume" onclick="cancelPipeline()" style="display:none">Cancel</button>
+          <button class="btn btn-outline" id="btnForceResetResume" onclick="forceReset()" style="display:none">Force Reset</button>
+        </div>
+      </div>
+
+      <!-- Tab: Scenario Config -->
+      <div class="tab-panel" id="tab-scenario">
+        <div class="sc-header">
+          <h2>Scenario Configuration</h2>
+          <button class="btn btn-outline btn-sm" onclick="loadScenarioDefaults()">Load Defaults</button>
+        </div>
+
+        <!-- Network Settings -->
+        <div class="sc-section">
+          <h3>Network Settings</h3>
+          <div style="margin-bottom:8px;">
+            <label style="margin-bottom:4px;">Speed Limit (km/h)</label>
+            <div class="sc-check-group" id="speedLimitChecks">
+              <label><input type="checkbox" value="50" checked> 50</label>
+              <label><input type="checkbox" value="60" checked> 60</label>
+              <label><input type="checkbox" value="80" checked> 80</label>
+              <label><input type="checkbox" value="100" checked> 100</label>
+            </div>
+          </div>
+          <div id="scRow_num_lanes"></div>
+          <div class="sc-derived">Link Length: derived (speed_limit &times; 600 &times; 1.2)</div>
+        </div>
+
+        <!-- Demand Settings -->
+        <div class="sc-section">
+          <h3>Demand Settings</h3>
+          <div id="scRow_per_lane_demand_vehph"></div>
+          <div id="scRow_truck_ratio"></div>
+          <div class="sc-derived">Total Demand: per_lane_demand &times; num_lanes</div>
+        </div>
+
+        <!-- Passenger Vehicle Parameters -->
+        <details class="sc-details" open>
+          <summary>Passenger Vehicle Parameters</summary>
+          <div class="sc-fixed">Length: 4.5 m (fixed)</div>
+          <div id="scRow_passenger_tau"></div>
+          <div id="scRow_passenger_decel"></div>
+          <div id="scRow_passenger_minGap"></div>
+          <div id="scRow_passenger_speedFactor"></div>
+          <div id="scRow_passenger_sigma"></div>
+          <div id="scRow_passenger_accel"></div>
+        </details>
+
+        <!-- Truck Vehicle Parameters -->
+        <details class="sc-details">
+          <summary>Truck Vehicle Parameters</summary>
+          <div class="sc-fixed">Length: 12.0 m (fixed)</div>
+          <div id="scRow_truck_tau"></div>
+          <div id="scRow_truck_decel"></div>
+          <div id="scRow_truck_minGap"></div>
+          <div id="scRow_truck_speedFactor"></div>
+          <div id="scRow_truck_sigma"></div>
+          <div id="scRow_truck_accel"></div>
+        </details>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="card" id="progressCard" style="display:none">
+      <h2>Progress</h2>
+      <div class="progress-section">
+        <div class="progress-info">
+          <span id="progressLabel">Waiting...</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
+        </div>
+      </div>
+      <div style="text-align:center; margin: 12px 0;">
+        <div class="timer" id="elapsedTimer">00:00</div>
+        <div style="font-size:0.8rem; color:var(--muted)">Elapsed</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Log + Run History -->
+  <div>
+    <!-- Log -->
+    <div class="card">
+      <h2>Execution Log</h2>
+      <div class="log-box" id="logBox">Logs will appear here when the pipeline runs.</div>
+    </div>
+
+    <!-- Eval Results -->
+    <div class="card" id="evalCard" style="display:none">
+      <h2>Evaluation Results</h2>
+      <div id="evalContent"></div>
+    </div>
+
+    <!-- Run History -->
+    <div class="card">
+      <h2>Run History</h2>
+      <div class="run-list" id="runList">
+        <div style="color:var(--muted)">Loading...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+// --- Tab switching ---
+let scenarioDefaultsLoaded = false;
+function switchTab(tab) {
+  $$('.tab-btn').forEach(b => b.classList.remove('active'));
+  $$('.tab-panel').forEach(p => p.classList.remove('active'));
+  const tabs = { scratch: 0, resume: 1, scenario: 2 };
+  const idx = tabs[tab] ?? 0;
+  $$('.tab-btn')[idx].classList.add('active');
+  $(`#tab-${tab}`).classList.add('active');
+  // Auto-load scenario defaults on first open
+  if (tab === 'scenario' && !scenarioDefaultsLoaded) {
+    loadScenarioDefaults();
+    scenarioDefaultsLoaded = true;
+  }
+}
+
+// --- Total trajectories ---
+function updateTotal() {
+  const n = parseInt($('#numScenarios').value) || 0;
+  const p = parseInt($('#numProbes').value) || 0;
+  $('#totalTrajectories').textContent = (n * p).toLocaleString();
+}
+$('#numScenarios').addEventListener('input', updateTotal);
+$('#numProbes').addEventListener('input', updateTotal);
+
+// Toggle model type section based on train checkbox
+function updateModelTypeVisibility() {
+  const trainChecked = !!$('#scratchSteps input[value="train"]:checked');
+  $('#modelTypeSection').style.display = trainChecked ? 'block' : 'none';
+}
+$$('#scratchSteps input[type="checkbox"]').forEach(cb =>
+  cb.addEventListener('change', updateModelTypeVisibility)
+);
+updateModelTypeVisibility();
+
+// --- CPU core selector ---
+(function initCoreSelector() {
+  const sel = $('#maxWorkers');
+  const cores = navigator.hardwareConcurrency || 4;
+  for (let i = 1; i <= cores; i++) {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = `${i} cores`;
+    sel.appendChild(opt);
+  }
+  $('#coreHint').textContent = `This system: ${cores} cores`;
+})();
+function getMaxWorkers() { return parseInt($('#maxWorkers').value) || 0; }
+function getDevice() { return $('#trainDevice').value; }
+
+// --- Helpers ---
+function fmtTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// --- Asset browser for resume mode ---
+let selectedAsset = null;
+let currentNextSteps = [];
+let assetData = [];
+
+async function loadAssetsForStage() {
+  const stage = $('#assetStageSelect').value;
+  selectedAsset = null;
+  assetData = [];
+  $('#resumeStepsSection').style.display = 'none';
+  $('#dataFilterSection').style.display = 'none';
+  $('#btnRunResume').disabled = true;
+
+  if (!stage) {
+    $('#assetBrowser').style.display = 'none';
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/assets-by-stage/${stage}`);
+    const data = await res.json();
+    currentNextSteps = data.next_steps || [];
+    assetData = data.assets || [];
+
+    const list = $('#assetList');
+    if (!data.assets || data.assets.length === 0) {
+      list.innerHTML = '<div style="color:var(--muted);padding:12px;">No assets available.</div>';
+      $('#assetBrowser').style.display = 'block';
+      return;
+    }
+
+    list.innerHTML = data.assets.map((a, i) => {
+      let detail = '';
+      if (a.count !== undefined) detail = `${a.count} items`;
+      if (a.samples !== undefined) detail = `${a.samples} samples, ${a.scenarios || '?'} scenarios`;
+      if (a.files) detail = a.files.join(', ');
+      return `<div class="asset-item" data-idx="${i}" onclick="selectAsset(${i}, '${a.run_id}')">
+        <div class="title">${a.run_id === 'legacy' ? 'Legacy (data/)' : 'Run ' + a.run_id}</div>
+        <div class="meta">${detail} ${a.created ? '| ' + a.created : ''}</div>
+      </div>`;
+    }).join('');
+
+    $('#assetBrowser').style.display = 'block';
+  } catch (e) {
+    console.error('Asset load error:', e);
+  }
+}
+
+function selectAsset(idx, runId) {
+  const stage = $('#assetStageSelect').value;
+  selectedAsset = { idx, runId, stage };
+
+  // Highlight selected
+  $$('.asset-item').forEach(el => el.classList.remove('selected'));
+  $$(`.asset-item[data-idx="${idx}"]`).forEach(el => el.classList.add('selected'));
+
+  // Data filter checkboxes for features stage
+  const filterSec = $('#dataFilterSection');
+  if (stage === 'features' && assetData[idx]) {
+    const asset = assetData[idx];
+    const lanes = asset.available_lanes || [];
+    const speeds = asset.available_speed_limits_kmh || [];
+    if (lanes.length > 0 || speeds.length > 0) {
+      $('#filterLanes').innerHTML = lanes.map(l =>
+        `<label><input type="checkbox" value="${l}" checked onchange="updateFilterSummary()"> ${l}L</label>`
+      ).join('');
+      $('#filterSpeedLimits').innerHTML = speeds.map(s =>
+        `<label><input type="checkbox" value="${s}" checked onchange="updateFilterSummary()"> ${s}</label>`
+      ).join('');
+      updateFilterSummary();
+      filterSec.style.display = 'block';
+    } else {
+      filterSec.style.display = 'none';
+    }
+  } else {
+    filterSec.style.display = 'none';
+  }
+
+  // Show next steps
+  const stepsHtml = currentNextSteps.map((s, i) => {
+    const labels = {
+      generate: 'Generate Scenarios',
+      simulate: 'SUMO Simulation',
+      extract: 'Feature Extraction',
+      residuals: 'FD Residual Calc',
+      train: 'Model Training',
+      evaluate: 'Evaluation'
+    };
+    let extra = '';
+    if (s === 'residuals') {
+      extra = `<div id="resumeFdModelSection" style="margin: 4px 0 4px 28px; padding: 6px 10px; background: var(--bg-card); border-radius: 6px; border: 1px solid var(--border);">
+        <div style="font-size: 0.85em; color: var(--text-secondary); margin-bottom: 4px;">FD Model</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.9em;">
+          <label><input type="radio" name="resumeFdModel" value="greenshields"> Greenshields</label>
+          <label><input type="radio" name="resumeFdModel" value="greenberg"> Greenberg</label>
+          <label><input type="radio" name="resumeFdModel" value="underwood" checked> Underwood</label>
+          <label><input type="radio" name="resumeFdModel" value="drake"> Drake</label>
+          <label><input type="radio" name="resumeFdModel" value="multi_regime"> Multi-regime</label>
+        </div>
+      </div>`;
+    }
+    return `<label><input type="checkbox" value="${s}" ${i === 0 ? 'checked' : ''}>
+      <span class="step-num">${i+1}</span> ${labels[s] || s}</label>${extra}`;
+  }).join('');
+
+  $('#resumeSteps').innerHTML = stepsHtml;
+  $('#resumeStepsSection').style.display = 'block';
+  $('#btnRunResume').disabled = false;
+  // Show model selector if train is available
+  $('#resumeModelTypeSection').style.display =
+    currentNextSteps.includes('train') ? 'block' : 'none';
+}
+
+// --- Data filter helpers ---
+function updateFilterSummary() {
+  const filters = collectDataFilters();
+  const el = $('#filterSummary');
+  if (!filters) {
+    el.textContent = 'All data selected (no filter)';
+  } else {
+    const parts = [];
+    if (filters.lanes) parts.push(filters.lanes.map(l => l + 'L').join(', '));
+    if (filters.speed_limits_kmh) parts.push(filters.speed_limits_kmh.join('/') + ' km/h');
+    el.textContent = 'Filter: ' + parts.join(' · ');
+  }
+}
+
+function collectDataFilters() {
+  const filterSec = $('#dataFilterSection');
+  if (filterSec.style.display === 'none') return null;
+
+  const allLanes = [...$$('#filterLanes input[type=checkbox]')];
+  const checkedLanes = allLanes.filter(c => c.checked).map(c => parseInt(c.value));
+  const allSpeeds = [...$$('#filterSpeedLimits input[type=checkbox]')];
+  const checkedSpeeds = allSpeeds.filter(c => c.checked).map(c => parseInt(c.value));
+
+  // All checked = no filter
+  if (checkedLanes.length === allLanes.length && checkedSpeeds.length === allSpeeds.length) {
+    return null;
+  }
+  const f = {};
+  if (checkedLanes.length < allLanes.length && checkedLanes.length > 0) f.lanes = checkedLanes;
+  if (checkedSpeeds.length < allSpeeds.length && checkedSpeeds.length > 0) f.speed_limits_kmh = checkedSpeeds;
+  return Object.keys(f).length > 0 ? f : null;
+}
+
+// --- Model types ---
+function getModelTypes() {
+  return [...$$('#modelTypes input:checked')].map(c => c.value);
+}
+
+// --- Run from scratch ---
+async function runFromScratch() {
+  const steps = [...$$('#scratchSteps input:checked')].map(c => c.value);
+  if (steps.length === 0) { alert('Please select at least one step.'); return; }
+  if (steps.includes('train') && getModelTypes().length === 0) {
+    alert('Please select at least one model to train.'); return;
+  }
+
+  const fdModelEl = document.querySelector('input[name="fdModel"]:checked');
+  const body = {
+    mode: 'from_scratch',
+    steps,
+    num_scenarios: parseInt($('#numScenarios').value) || 1000,
+    num_probes: parseInt($('#numProbes').value) || 5,
+    max_workers: getMaxWorkers(),
+    device: getDevice(),
+    model_types: getModelTypes(),
+    fd_model: fdModelEl ? fdModelEl.value : 'underwood',
+  };
+
+  // Include scenario config when generating scenarios
+  if (steps.includes('generate')) {
+    body.scenario_config = collectScenarioConfig();
+  }
+
+  await startPipeline(body);
+}
+
+// --- Run resume ---
+async function runResume() {
+  if (!selectedAsset) { alert('Please select an asset.'); return; }
+
+  const steps = [...$$('#resumeSteps input:checked')].map(c => c.value);
+  if (steps.length === 0) { alert('Please select at least one step.'); return; }
+
+  const resumeModels = [...$$('#resumeModelTypes input:checked')].map(c => c.value);
+  if (steps.includes('train') && resumeModels.length === 0) {
+    alert('Please select at least one model to train.'); return;
+  }
+
+  const resumeFdEl = document.querySelector('input[name="resumeFdModel"]:checked');
+  const body = {
+    mode: 'resume',
+    steps,
+    max_workers: getMaxWorkers(),
+    device: getDevice(),
+    model_types: resumeModels,
+    source_run_id: selectedAsset.runId,
+    source_stage: selectedAsset.stage,
+    fd_model: resumeFdEl ? resumeFdEl.value : 'underwood',
+    data_filters: collectDataFilters(),
+  };
+
+  await startPipeline(body);
+}
+
+// --- Common pipeline start ---
+async function startPipeline(body) {
+  const res = await fetch('/api/run', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body),
+  });
+  const d = await res.json();
+  if (d.error) { alert(d.error); return; }
+
+  $('#progressCard').style.display = 'block';
+  startLogStream();
+  pollId = setInterval(pollStatus, 1000);
+  pollStatus();
+}
+
+// --- Cancel / Force Reset ---
+async function cancelPipeline() {
+  if (!confirm('Cancel the pipeline?')) return;
+  await fetch('/api/cancel', { method: 'POST' });
+}
+async function forceReset() {
+  if (!confirm('Force reset: Use when the process has died but the state is stuck. Reset?')) return;
+  await fetch('/api/force-reset', { method: 'POST' });
+  pollStatus();
+  refreshRuns();
+}
+
+// --- Status polling ---
+let pollId = null;
+let logEventSource = null;
+
+async function pollStatus() {
+  try {
+    const res = await fetch('/api/status');
+    const d = await res.json();
+    const dot = $('#statusDot');
+    const badge = $('#statusBadge');
+    const progCard = $('#progressCard');
+
+    if (d.running) {
+      dot.className = 'dot';
+      badge.className = 'status-badge badge-running';
+      badge.innerHTML = '<span class="spinner"></span> Running';
+      progCard.style.display = 'block';
+      disableRunButtons(true);
+      showCancelButtons(true);
+
+      const pct = d.total_steps > 0 ? Math.round((d.step_index - 1) / d.total_steps * 100) : 0;
+      $('#progressLabel').textContent = `${d.step_index}/${d.total_steps} — ${d.current_step}`;
+      $('#progressPct').textContent = pct + '%';
+      $('#progressBar').style.width = pct + '%';
+      $('#progressBar').className = 'progress-bar-fill';
+      $('#elapsedTimer').textContent = fmtTime(d.elapsed);
+    } else {
+      dot.className = 'dot off';
+      disableRunButtons(false);
+      showCancelButtons(false);
+
+      if (d.error) {
+        badge.className = 'status-badge badge-error';
+        badge.textContent = 'Error';
+        $('#progressBar').className = 'progress-bar-fill error';
+        $('#progressBar').style.width = '100%';
+        $('#progressLabel').textContent = d.error;
+      } else if (d.elapsed > 0) {
+        badge.className = 'status-badge badge-done';
+        badge.textContent = 'Done';
+        $('#progressBar').style.width = '100%';
+        $('#progressLabel').textContent = 'Done';
+        $('#progressPct').textContent = '100%';
+      } else {
+        badge.className = 'status-badge badge-idle';
+        badge.textContent = 'Idle';
+      }
+
+      $('#elapsedTimer').textContent = fmtTime(d.elapsed);
+
+      if (pollId && !d.running) {
+        clearInterval(pollId);
+        pollId = null;
+        refreshRuns();
+        if (logEventSource) { logEventSource.close(); logEventSource = null; }
+        // Auto-load eval results
+        if (d.run_id) loadEvalResults(d.run_id);
+      }
+    }
+
+    // Only update log from poll when SSE is not active (avoids race condition)
+    if (!logEventSource && d.log_tail && d.log_tail.length > 0) {
+      updateLogFromArray(d.log_tail);
+    }
+  } catch (e) {
+    console.error('Poll error:', e);
+  }
+}
+
+function disableRunButtons(disabled) {
+  const s = $('#btnRunScratch');
+  const r = $('#btnRunResume');
+  if (s) s.disabled = disabled;
+  if (r) r.disabled = disabled;
+}
+
+function showCancelButtons(show) {
+  const display = show ? 'inline-flex' : 'none';
+  const c1 = $('#btnCancel');
+  const c2 = $('#btnCancelResume');
+  const fr = $('#btnForceReset');
+  const fr2 = $('#btnForceResetResume');
+  if (c1) c1.style.display = display;
+  if (c2) c2.style.display = display;
+  if (fr) fr.style.display = display;
+  if (fr2) fr2.style.display = display;
+}
+
+// --- Log ---
+function classifyLog(line) {
+  if (line.includes('Failed') || line.includes('ERROR') || line.includes('Error')) return 'error';
+  if (line.includes('Done') || line.includes('DONE')) return 'success';
+  if (line.startsWith('>>>') || line.startsWith('<<<') || line.startsWith('===')) return 'info';
+  return '';
+}
+
+function updateLogFromArray(lines) {
+  const box = $('#logBox');
+  box.innerHTML = lines.map(l => {
+    const cls = classifyLog(l);
+    return cls ? `<span class="${cls}">${esc(l)}</span>` : esc(l);
+  }).join('\n');
+  box.scrollTop = box.scrollHeight;
+}
+
+function startLogStream() {
+  if (logEventSource) logEventSource.close();
+  const box = $('#logBox');
+  box.innerHTML = '';
+  logEventSource = new EventSource('/api/logs');
+  logEventSource.onmessage = (e) => {
+    const line = e.data;
+    if (line === '[DONE]') {
+      logEventSource.close();
+      logEventSource = null;
+      return;
+    }
+    const cls = classifyLog(line);
+    box.innerHTML += `<span class="${cls}">${esc(line)}</span>\n`;
+    box.scrollTop = box.scrollHeight;
+  };
+}
+
+// --- Run History ---
+async function refreshRuns() {
+  try {
+    const res = await fetch('/api/runs');
+    const runs = await res.json();
+    const list = $('#runList');
+
+    if (!runs || runs.length === 0) {
+      list.innerHTML = '<div style="color:var(--muted);padding:8px;">No run history.</div>';
+      return;
+    }
+
+    list.innerHTML = runs.map(r => {
+      const isLegacy = r.run_id === 'legacy';
+      const label = isLegacy ? 'Legacy (data/)' : r.run_id;
+      const statusCls = r.status || 'completed';
+
+      // Build asset summary
+      const parts = [];
+      if (r.assets.scenarios) parts.push(`Scenarios: ${r.assets.scenarios.count}`);
+      if (r.assets.fcd) parts.push(`FCD: ${r.assets.fcd.count}`);
+      if (r.assets.features) parts.push(`Features: ${r.assets.features.samples || '?'} samples`);
+      if (r.assets.model) parts.push(`Models: ${r.assets.model.count}`);
+      const assetStr = parts.length > 0 ? parts.join(' | ') : 'No assets';
+
+      const modeLabel = r.mode === 'resume' ? `Resume (from ${r.source_run_id || '?'})` :
+                        r.mode === 'legacy' ? 'Legacy' : 'From Scratch';
+
+      // Scenario info line
+      let scLine = '';
+      if (r.scenario_info) {
+        const si = r.scenario_info;
+        const slStr = Array.isArray(si.speed_limits) ? si.speed_limits.join('/') + ' km/h' : '';
+        const nlStr = si.lanes ? `${si.lanes}L` : '';
+        const dStr = si.demand_per_lane ? `${si.demand_per_lane} veh/hr/lane` : '';
+        scLine = [slStr, nlStr, dStr].filter(Boolean).join(' · ');
+      }
+      if (r.fd_model) {
+        scLine = scLine ? `${scLine} · FD: ${r.fd_model}` : `FD: ${r.fd_model}`;
+      }
+
+      // Data filter display
+      let filterLine = '';
+      if (r.data_filters) {
+        const fp = [];
+        if (r.data_filters.lanes) fp.push(r.data_filters.lanes.map(l => l + 'L').join(','));
+        if (r.data_filters.speed_limits_kmh) fp.push(r.data_filters.speed_limits_kmh.join('/') + ' km/h');
+        if (fp.length > 0) filterLine = 'Filter: ' + fp.join(' · ');
+      }
+
+      const deleteBtn = isLegacy ? '' :
+        `<button class="btn btn-danger btn-sm" onclick="deleteRun('${r.run_id}')">Delete</button>`;
+      const evalBtn = `<button class="btn btn-outline btn-sm" onclick="loadEvalResults('${r.run_id}')" style="margin-right:4px">Results</button>`;
+
+      return `<div class="run-item">
+        <div class="run-info">
+          <div class="run-id">${esc(label)} <span class="run-status ${statusCls}">${statusCls}</span></div>
+          <div class="run-meta">${esc(modeLabel)} | ${esc(r.created || '')}${r.num_scenarios ? ' | ' + r.num_scenarios + ' scenarios' : ''}</div>
+          ${scLine ? `<div class="run-meta" style="color:var(--accent2)">${esc(scLine)}</div>` : ''}
+          ${filterLine ? `<div class="run-meta" style="color:var(--warn)">${esc(filterLine)}</div>` : ''}
+          <div class="run-meta">${esc(assetStr)}</div>
+          ${r.completed_steps && r.completed_steps.length > 0 ?
+            `<div class="run-meta">Done: ${r.completed_steps.join(' → ')}</div>` : ''}
+        </div>
+        <div>${evalBtn}${deleteBtn}</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    console.error('Run list error:', e);
+  }
+}
+
+async function deleteRun(runId) {
+  if (!confirm(`Delete Run ${runId}? All data will be removed.`)) return;
+  try {
+    const res = await fetch(`/api/runs/${runId}`, { method: 'DELETE' });
+    const d = await res.json();
+    if (d.error) { alert(d.error); return; }
+    refreshRuns();
+  } catch (e) {
+    alert('Delete failed: ' + e.message);
+  }
+}
+
+// --- Eval Results ---
+async function loadEvalResults(runId) {
+  try {
+    const res = await fetch(`/api/eval/${runId}`);
+    const data = await res.json();
+    if (!data.results || data.results.length === 0) return;
+
+    const card = $('#evalCard');
+    const content = $('#evalContent');
+    card.style.display = 'block';
+    content.innerHTML = '';
+
+    data.results.forEach((r, idx) => {
+      const m = r.metrics;
+      const div = document.createElement('div');
+      div.className = 'eval-model';
+      div.innerHTML = `
+        <h3>${r.model_type.toUpperCase()} — ${r.target} (n=${r.n_test})</h3>
+        <table class="metrics-table">
+          <tr><th>Metric</th><th>Value</th></tr>
+          <tr><td>RMSE</td><td class="val">${m.rmse ?? '-'}</td></tr>
+          <tr><td>MAE</td><td class="val">${m.mae ?? '-'}</td></tr>
+          <tr><td>MAPE</td><td class="val">${m.mape != null ? (m.mape * 100).toFixed(1) + '%' : '-'}</td></tr>
+          <tr><td>R²</td><td class="val">${m.r2 ?? '-'}</td></tr>
+        </table>
+        <div class="scatter-container">
+          <canvas id="scatter_${idx}" width="360" height="360"></canvas>
+        </div>
+      `;
+      content.appendChild(div);
+
+      // Draw scatter plot
+      if (r.scatter) {
+        requestAnimationFrame(() => drawScatter(`scatter_${idx}`, r.scatter.actual, r.scatter.predicted, r.target));
+      }
+    });
+  } catch (e) {
+    console.error('Eval load error:', e);
+  }
+}
+
+function drawScatter(canvasId, actual, predicted, target) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const pad = 45;
+
+  // Clear
+  ctx.fillStyle = '#0f1117';
+  ctx.fillRect(0, 0, W, H);
+
+  if (!actual || actual.length === 0) return;
+
+  // Range
+  const allVals = actual.concat(predicted);
+  let mn = Math.min(...allVals), mx = Math.max(...allVals);
+  const margin = (mx - mn) * 0.05 || 1;
+  mn -= margin; mx += margin;
+
+  const toX = v => pad + (v - mn) / (mx - mn) * (W - pad * 2);
+  const toY = v => H - pad - (v - mn) / (mx - mn) * (H - pad * 2);
+
+  // Grid lines
+  ctx.strokeStyle = '#2a2d3a';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const v = mn + (mx - mn) * i / 4;
+    const x = toX(v), y = toY(v);
+    ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, pad); ctx.lineTo(x, H - pad); ctx.stroke();
+    ctx.fillStyle = '#888';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(v.toFixed(0), pad - 4, y + 3);
+    ctx.textAlign = 'center';
+    ctx.fillText(v.toFixed(0), x, H - pad + 14);
+  }
+
+  // 1:1 line
+  ctx.strokeStyle = '#e53e3e';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(toX(mn), toY(mn));
+  ctx.lineTo(toX(mx), toY(mx));
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Points
+  ctx.fillStyle = 'rgba(79,143,247,0.4)';
+  for (let i = 0; i < actual.length; i++) {
+    const x = toX(actual[i]);
+    const y = toY(predicted[i]);
+    ctx.beginPath();
+    ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Axis labels
+  ctx.fillStyle = '#aaa';
+  ctx.font = '12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`Actual ${target}`, W / 2, H - 4);
+  ctx.save();
+  ctx.translate(12, H / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText(`Predicted ${target}`, 0, 0);
+  ctx.restore();
+}
+
+// --- Scenario Config ---
+const SC_PARAMS = [
+  { key: 'num_lanes', label: 'Num Lanes (ea)', isInt: true },
+  { key: 'per_lane_demand_vehph', label: 'Per-Lane Demand (veh/hr)', isInt: true },
+  { key: 'truck_ratio', label: 'Truck Ratio (0\u20131)' },
+  { key: 'passenger_tau', label: 'Headway tau (s)' },
+  { key: 'passenger_decel', label: 'Deceleration (m/s\u00B2)' },
+  { key: 'passenger_minGap', label: 'Min Gap (m)' },
+  { key: 'passenger_speedFactor', label: 'Speed Factor (×)' },
+  { key: 'passenger_sigma', label: 'Sigma (0\u20131)' },
+  { key: 'passenger_accel', label: 'Acceleration (m/s\u00B2)' },
+  { key: 'truck_tau', label: 'Headway tau (s)' },
+  { key: 'truck_decel', label: 'Deceleration (m/s\u00B2)' },
+  { key: 'truck_minGap', label: 'Min Gap (m)' },
+  { key: 'truck_speedFactor', label: 'Speed Factor (×)' },
+  { key: 'truck_sigma', label: 'Sigma (0\u20131)' },
+  { key: 'truck_accel', label: 'Acceleration (m/s\u00B2)' },
+];
+
+// Hardcoded fallback defaults (mirrors configs/default.yaml)
+const SCENARIO_FALLBACK = {
+  speed_limit_kmh: [50, 60, 80, 100],
+  num_lanes: { min: 1, max: 3 },
+  per_lane_demand_vehph: { min: 200, max: 2200 },
+  truck_ratio: { min: 0.05, max: 0.25 },
+  passenger_tau: { min: 0.8, max: 2.0 },
+  passenger_decel: { min: 3.0, max: 6.0 },
+  passenger_minGap: { min: 1.5, max: 3.5 },
+  passenger_speedFactor: { min: 0.85, max: 1.15 },
+  passenger_sigma: { min: 0.3, max: 0.7 },
+  passenger_accel: { min: 1.5, max: 3.5 },
+  truck_tau: { min: 1.0, max: 2.5 },
+  truck_decel: { min: 2.0, max: 4.5 },
+  truck_minGap: { min: 2.0, max: 5.0 },
+  truck_speedFactor: { min: 0.75, max: 0.95 },
+  truck_sigma: { min: 0.2, max: 0.6 },
+  truck_accel: { min: 0.8, max: 2.0 },
+};
+
+function renderParamRow(key, label, cfg) {
+  const container = $(`#scRow_${key}`);
+  if (!container) return;
+  const dist = cfg.dist || 'uniform';
+  const mn = cfg.min ?? '';
+  const mx = cfg.max ?? '';
+  const mean = cfg.mean ?? '';
+  const std = cfg.std ?? '';
+  const showExtra = dist === 'normal' ? 'visible' : '';
+
+  container.innerHTML = `
+    <div class="sc-row">
+      <label>${esc(label)}</label>
+      <select id="sc_dist_${key}" onchange="onDistChange('${key}')">
+        <option value="uniform" ${dist==='uniform'?'selected':''}>Uniform</option>
+        <option value="normal" ${dist==='normal'?'selected':''}>Normal</option>
+      </select>
+      <input type="number" id="sc_min_${key}" value="${mn}" step="any" placeholder="min">
+      <input type="number" id="sc_max_${key}" value="${mx}" step="any" placeholder="max">
+      <input type="number" id="sc_mean_${key}" value="${mean}" step="any" placeholder="mean"
+        class="sc-extra ${showExtra}">
+      <input type="number" id="sc_std_${key}" value="${std}" step="any" placeholder="std"
+        class="sc-extra ${showExtra}">
+    </div>`;
+}
+
+function onDistChange(key) {
+  const dist = $(`#sc_dist_${key}`).value;
+  const row = $(`#scRow_${key}`);
+  row.querySelectorAll('.sc-extra').forEach(el => {
+    el.classList.toggle('visible', dist === 'normal');
+  });
+}
+
+function populateScenarioFields(data) {
+  // Speed limit checkboxes
+  const allowed = data.speed_limit_kmh || [50, 60, 80, 100];
+  $$('#speedLimitChecks input[type=checkbox]').forEach(cb => {
+    cb.checked = allowed.includes(parseInt(cb.value));
+  });
+
+  // Param rows
+  SC_PARAMS.forEach(p => {
+    const cfg = data[p.key];
+    if (cfg && typeof cfg === 'object') {
+      renderParamRow(p.key, p.label, cfg);
+    }
+  });
+}
+
+async function loadScenarioDefaults() {
+  try {
+    const res = await fetch('/api/defaults/scenario');
+    const data = await res.json();
+    if (data.error) {
+      console.error(data.error);
+      populateScenarioFields(SCENARIO_FALLBACK);
+      return;
+    }
+    populateScenarioFields(data);
+  } catch (e) {
+    console.error('Failed to load scenario defaults:', e);
+    populateScenarioFields(SCENARIO_FALLBACK);
+  }
+}
+
+function collectScenarioConfig() {
+  const cfg = {};
+
+  // Speed limit
+  const checked = [...$$('#speedLimitChecks input:checked')].map(c => parseInt(c.value));
+  if (checked.length > 0) cfg.speed_limit_kmh = checked;
+
+  // All param rows
+  SC_PARAMS.forEach(p => {
+    const distEl = $(`#sc_dist_${p.key}`);
+    const minEl = $(`#sc_min_${p.key}`);
+    const maxEl = $(`#sc_max_${p.key}`);
+    if (!distEl || !minEl || !maxEl) return;
+
+    const dist = distEl.value;
+    const mn = parseFloat(minEl.value);
+    const mx = parseFloat(maxEl.value);
+    if (isNaN(mn) || isNaN(mx)) return;
+
+    const entry = { dist, min: mn, max: mx };
+    if (dist === 'normal') {
+      const mean = parseFloat($(`#sc_mean_${p.key}`).value);
+      const std = parseFloat($(`#sc_std_${p.key}`).value);
+      if (!isNaN(mean)) entry.mean = mean;
+      if (!isNaN(std)) entry.std = std;
+    }
+    cfg[p.key] = entry;
+  });
+
+  return cfg;
+}
+
+// --- Init ---
+populateScenarioFields(SCENARIO_FALLBACK);  // Render all param rows immediately
+refreshRuns();
+updateTotal();
+pollStatus();
+</script>
+</body>
+</html>

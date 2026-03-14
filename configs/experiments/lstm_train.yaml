@@ -6,7 +6,7 @@ model:
 
 training:
   target: density
-  device: cuda
+  device: auto
   max_epochs: 200
   batch_size: 128
   num_workers: 0

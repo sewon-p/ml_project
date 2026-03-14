@@ -66,7 +66,7 @@ def _run_single_scenario(
 
         fcd_out = net_dir / "fcd.csv"
         result = run_sumo_simulation(
-            net_file=net_file.with_suffix(".nod.xml").parent / "network.net.xml",
+            net_file=net_file,
             route_file=route_file,
             output_fcd=fcd_out,
             sumo_binary=sim_cfg.get("sumo_binary", "sumo"),
@@ -77,7 +77,7 @@ def _run_single_scenario(
         )
         return result
     except Exception as e:
-        logger.error("Scenario %d failed: %s", sid, e)
+        logger.error("Scenario %d failed: %s", sid, e, exc_info=True)
         return None
 
 
@@ -87,13 +87,15 @@ def _is_scenario_done(fcd_dir: Path, sid: int) -> bool:
     return fcd_csv.exists() and fcd_csv.stat().st_size > 0
 
 
-def _worker(args: tuple[dict, dict, str, bool]) -> dict[str, Any] | None:
-    """Multiprocessing worker wrapper."""
+def _worker(args: tuple[dict, dict, str, bool]) -> tuple[int, bool]:
+    """Multiprocessing worker wrapper. Returns (scenario_id, success)."""
     row_dict, sim_cfg, fcd_dir_str, resume = args
+    sid = int(row_dict["scenario_id"])
     fcd_dir = Path(fcd_dir_str)
-    if resume and _is_scenario_done(fcd_dir, int(row_dict["scenario_id"])):
-        return None
-    return _run_single_scenario(row_dict, sim_cfg, fcd_dir)
+    if resume and _is_scenario_done(fcd_dir, sid):
+        return sid, True
+    result = _run_single_scenario(row_dict, sim_cfg, fcd_dir)
+    return sid, result is not None
 
 
 def _resolve_max_workers(value: str | int | None) -> int:
@@ -132,11 +134,7 @@ def main() -> None:
     max_workers_cfg = args.workers or sim_cfg.get("max_workers", "auto")
     max_workers = _resolve_max_workers(max_workers_cfg)
 
-    logger.info(
-        "Running %d scenarios with %d workers",
-        len(scenarios),
-        max_workers,
-    )
+    print(f"[Simulation] {len(scenarios)} scenarios, {max_workers} workers", flush=True)
 
     # Resume: count already-done scenarios
     if args.resume:
@@ -145,12 +143,9 @@ def main() -> None:
             for _, row in scenarios.iterrows()
             if _is_scenario_done(fcd_dir, int(row["scenario_id"]))
         )
-        logger.info(
-            "Resume mode: %d/%d already done, %d remaining.",
-            done,
-            len(scenarios),
-            len(scenarios) - done,
-        )
+        total = len(scenarios)
+        remaining = total - done
+        print(f"[Simulation] Resume: {done}/{total} done, {remaining} remaining", flush=True)
     else:
         done = 0
 
@@ -159,16 +154,29 @@ def main() -> None:
         (row.to_dict(), sim_cfg, str(fcd_dir), args.resume) for _, row in scenarios.iterrows()
     ]
 
-    if max_workers <= 1:
-        # Sequential execution
-        for item in work_items:
-            _worker(item)
-    else:
-        # Parallel execution
-        with multiprocessing.Pool(processes=max_workers) as pool:
-            pool.map(_worker, work_items)
+    total = len(work_items)
+    completed = 0
+    failed = 0
 
-    logger.info("All %d simulations complete.", len(scenarios))
+    if max_workers <= 1:
+        for item in work_items:
+            sid, ok = _worker(item)
+            completed += 1
+            if not ok:
+                failed += 1
+            if completed % 20 == 0 or completed == total:
+                print(f"[Simulation] {completed}/{total} done ({failed} failed)", flush=True)
+    else:
+        # imap_unordered with chunksize=1 for optimal load balancing
+        with multiprocessing.Pool(processes=max_workers) as pool:
+            for sid, ok in pool.imap_unordered(_worker, work_items, chunksize=1):
+                completed += 1
+                if not ok:
+                    failed += 1
+                if completed % 20 == 0 or completed == total:
+                    print(f"[Simulation] {completed}/{total} done ({failed} failed)", flush=True)
+
+    print(f"[Simulation] All done: {total} scenarios ({failed} failed)", flush=True)
 
 
 if __name__ == "__main__":

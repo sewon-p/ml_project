@@ -43,6 +43,7 @@ class ModelRegistry:
         # --- residual correction config ---
         rc = cfg.get("residual_correction", {})
         self.residual_enabled: bool = rc.get("enabled", True)
+        self.fd_model: str = rc.get("fd_model", "underwood")
         self.v_free_factor: float = rc.get("v_free_factor", 1.1)
         self.vehicle_length: float = rc.get("vehicle_length", 4.5)
         self.min_gap: float = rc.get("min_gap", 2.5)

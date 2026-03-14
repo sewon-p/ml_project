@@ -1,7 +1,25 @@
+import os
+import shutil
 import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Any
+
+
+def _resolve_sumo_tool(name: str) -> str:
+    """Resolve a SUMO tool (netconvert etc.) using SUMO_HOME if needed."""
+    if shutil.which(name):
+        return name
+    sumo_home = os.environ.get("SUMO_HOME", "")
+    if sumo_home:
+        full = os.path.join(sumo_home, "bin", name)
+        if os.path.isfile(full):
+            return full
+        full_exe = full + ".exe"
+        if os.path.isfile(full_exe):
+            return full_exe
+    raise FileNotFoundError(
+        f"'{name}' not found in PATH or SUMO_HOME={sumo_home!r}. Install SUMO and set SUMO_HOME."
+    )
 
 
 def build_single_link_network(
@@ -50,9 +68,10 @@ def build_single_link_network(
 
     # Run netconvert to produce .net.xml
     net_path = output_path.parent / "network.net.xml"
-    subprocess.run(
+    netconvert_bin = _resolve_sumo_tool("netconvert")
+    result = subprocess.run(
         [
-            "netconvert",
+            netconvert_bin,
             "--node-files",
             str(nodes_path),
             "--edge-files",
@@ -60,11 +79,13 @@ def build_single_link_network(
             "--output-file",
             str(net_path),
         ],
-        check=True,
         capture_output=True,
+        text=True,
     )
+    if result.returncode != 0:
+        raise RuntimeError(f"netconvert failed (exit {result.returncode}): {result.stderr.strip()}")
 
-    return output_path
+    return net_path
 
 
 def _add_vtype(
@@ -129,6 +150,8 @@ def build_route_file(
         begin=str(begin),
         end=str(end),
         vehsPerHour=str(passenger_demand),
+        departLane="best",
+        departSpeed="max",
     )
 
     # Truck flow
@@ -143,17 +166,9 @@ def build_route_file(
             begin=str(begin),
             end=str(end),
             vehsPerHour=str(truck_demand),
+            departLane="best",
+            departSpeed="max",
         )
 
     ET.ElementTree(routes).write(str(output_path), xml_declaration=True, encoding="UTF-8")
     return output_path
-
-
-def extract_vehicle_params(row: Any, prefix: str) -> dict[str, float]:
-    """Extract vehicle type params from a scenario row by column prefix."""
-    params: dict[str, float] = {}
-    for key in ("length", "tau", "decel", "minGap", "speedFactor", "sigma", "accel"):
-        col = f"{prefix}_{key}"
-        if col in row.index:
-            params[key] = float(row[col])
-    return params

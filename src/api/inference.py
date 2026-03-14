@@ -8,7 +8,7 @@ import pandas as pd
 from src.api.dependencies import ModelRegistry
 from src.data.preprocessing import build_trajectory
 from src.features.pipeline import extract_features
-from src.models.underwood import compute_fd_estimates
+from src.models.fd_models import compute_fd_density
 
 
 def predict_density(
@@ -53,7 +53,8 @@ def predict_density(
     # 6. FD baseline
     speed_mean = float(np.mean(trajectory["speed"].values))
     v_free = speed_limit * registry.v_free_factor
-    fd = compute_fd_estimates(
+    fd = compute_fd_density(
+        registry.fd_model,
         np.array(speed_mean),
         np.array(v_free),
         num_lanes,
