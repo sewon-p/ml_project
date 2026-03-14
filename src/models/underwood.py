@@ -2,8 +2,8 @@
 
 u = u_f × exp(-k / k_m)   →   k = k_m × ln(u_f / u)
 
-Greenshields(선형)는 자유류 근처에서 k≈0으로 붕괴하지만,
-Underwood(지수)는 중간대 추정이 훨씬 안정적이다.
+Greenshields (linear) collapses to k≈0 near free-flow,
+while Underwood (exponential) gives much more stable estimates in the mid-range.
 
 Used by prepare_residuals.py to pre-compute k_fd, q_fd, delta_density, delta_flow.
 """

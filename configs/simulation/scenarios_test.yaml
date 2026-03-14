@@ -1,4 +1,4 @@
-# 테스트용 소규모 시나리오 설정 (10개 시나리오 × 5 프로브 = 50 샘플)
+# Small-scale test scenario config (10 scenarios × 5 probes = 50 samples)
 _base_: scenarios.yaml
 
 scenarios:

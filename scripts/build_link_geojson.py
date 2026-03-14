@@ -98,7 +98,10 @@ def build_features(
         join_key = None
         if mapping_rows is not None and mapping_join_column is not None:
             join_key = _coerce_str(properties.get(mapping_join_column))
-        mapping_row = mapping_rows.get(join_key, {}) if mapping_rows is not None and join_key else {}
+        mapping_row = (
+            mapping_rows.get(join_key, {})
+            if mapping_rows is not None and join_key else {}
+        )
 
         merged_properties = {**properties, **mapping_row}
         link_id = _pick_value(
@@ -142,10 +145,20 @@ def main() -> None:
         default="road_name,ROAD_NAME,도로명,rd_nm",
         help="Comma-separated property candidates for the output road_name",
     )
-    parser.add_argument("--mapping-csv", default=None, help="Optional metadata CSV to join")
-    parser.add_argument("--mapping-join-column", default=None, help="Property name used to join CSV rows")
-    parser.add_argument("--mapping-key-column", default=None, help="CSV key column")
-    parser.add_argument("--mapping-link-id-column", default=None, help="CSV column for final link_id")
+    parser.add_argument(
+        "--mapping-csv", default=None, help="Optional metadata CSV to join",
+    )
+    parser.add_argument(
+        "--mapping-join-column", default=None,
+        help="Property name used to join CSV rows",
+    )
+    parser.add_argument(
+        "--mapping-key-column", default=None, help="CSV key column",
+    )
+    parser.add_argument(
+        "--mapping-link-id-column", default=None,
+        help="CSV column for final link_id",
+    )
     parser.add_argument("--mapping-road-name-column", default=None, help="CSV column for road_name")
     parser.add_argument(
         "--region-property",
@@ -155,7 +168,7 @@ def main() -> None:
     parser.add_argument(
         "--region-value",
         default=None,
-        help="Expected region value, e.g. 서울특별시",
+        help="Expected region value, e.g. Seoul",
     )
     args = parser.parse_args()
 

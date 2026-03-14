@@ -120,11 +120,11 @@ app = FastAPI(
 
 @app.post("/predict", response_model=PredictResponse)
 async def predict(body: PredictRequest, request: Request) -> PredictResponse:
-    """원시 FCD 레코드로부터 교통 밀도와 교통량을 추정합니다.
+    """Estimate traffic density and flow from raw FCD records.
 
-    - **fcd_records**: 300행의 FCD 레코드 (1초 간격, time/x/y/speed/brake)
-    - **speed_limit**: 해당 도로의 제한속도 (m/s)
-    - **num_lanes**: 차로 수
+    - **fcd_records**: 300 rows of FCD records (1-second interval, time/x/y/speed/brake)
+    - **speed_limit**: Road speed limit (m/s)
+    - **num_lanes**: Number of lanes
     """
     registry: ModelRegistry = request.app.state.registry
     fcd_dicts = [r.model_dump() for r in body.fcd_records]
