@@ -32,6 +32,7 @@ from src.visualization.prediction_plots import (
 logger = logging.getLogger(__name__)
 
 DL_MODELS = {"cnn1d", "lstm"}
+SHAP_MODELS = {"xgboost", "lightgbm"}
 
 _LOADERS = {
     "xgboost": XGBoostEstimator,
@@ -200,6 +201,11 @@ def _evaluate_tabular(
         "density_per_lane", "flow_per_lane",
         "k_fd", "q_fd", "delta_density", "delta_flow",
     }
+    # Apply user-selected feature exclusions from dashboard
+    user_exclude = train_cfg.get("exclude_features") or []
+    if user_exclude:
+        exclude.update(user_exclude)
+        logger.info("Excluding %d user-selected features: %s", len(user_exclude), user_exclude)
     feature_columns = [c for c in df.columns if c not in exclude]
 
     # Per-lane target: density → density_per_lane, flow → flow_per_lane
@@ -258,13 +264,81 @@ def _evaluate_tabular(
     )
     logger.info("Plots saved to %s", plots_dir)
 
+    # SHAP feature importance (tree-based models only)
+    feature_importance = _compute_shap_importance(
+        cfg, model, X_test, feature_columns, model_type, plots_dir,
+    )
+
     # Save metrics + predictions JSON for dashboard
-    _save_eval_results(output_dir, model_type, target, metrics, y_test, y_pred)
+    _save_eval_results(
+        output_dir, model_type, target, metrics, y_test, y_pred,
+        feature_importance=feature_importance,
+    )
+
+
+def _compute_shap_importance(
+    cfg: dict,
+    model: object,
+    X_test: np.ndarray | object,
+    feature_columns: list[str],
+    model_type: str,
+    plots_dir: Path,
+) -> dict[str, float] | None:
+    """Compute SHAP feature importance for tree-based models."""
+    eval_cfg = cfg.get("evaluation", {}).get("shap", {})
+    if not eval_cfg.get("enabled", False):
+        return None
+    if model_type not in SHAP_MODELS:
+        return None
+
+    try:
+        import shap
+    except ImportError:
+        logger.warning("shap not installed, skipping feature importance")
+        return None
+
+    max_samples = eval_cfg.get("max_samples", 500)
+    X = np.asarray(X_test)
+    if len(X) > max_samples:
+        idx = np.random.default_rng(42).choice(len(X), max_samples, replace=False)
+        X = X[idx]
+
+    try:
+        explainer = shap.TreeExplainer(model.model)
+        shap_values = explainer.shap_values(X)
+
+        # mean |SHAP| per feature
+        mean_abs = np.abs(shap_values).mean(axis=0)
+        importance = dict(zip(feature_columns, mean_abs.tolist()))
+        # Sort descending, top 20
+        top = dict(sorted(importance.items(), key=lambda x: x[1], reverse=True)[:20])
+
+        # Plot
+        plots_dir.mkdir(parents=True, exist_ok=True)
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots(figsize=(10, 8))
+        names = list(top.keys())
+        values = list(top.values())
+        ax.barh(names[::-1], values[::-1])
+        ax.set_xlabel("Mean |SHAP value|")
+        ax.set_title(f"{model_type} — Feature Importance (Top 20)")
+        fig.tight_layout()
+        fig.savefig(plots_dir / f"{model_type}_feature_importance.png", dpi=150)
+        plt.close(fig)
+        logger.info("SHAP feature importance saved (%d features)", len(top))
+        return top
+    except Exception:
+        logger.warning("SHAP computation failed", exc_info=True)
+        return None
 
 
 def _save_eval_results(
     output_dir: Path, model_type: str, target: str,
     metrics: dict, y_test: np.ndarray, y_pred: np.ndarray,
+    feature_importance: dict[str, float] | None = None,
 ) -> None:
     """Save evaluation metrics and scatter data as JSON."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -279,7 +353,7 @@ def _save_eval_results(
         scatter_actual = y_test
         scatter_pred = y_pred.ravel()
 
-    result = {
+    result: dict = {
         "model_type": model_type,
         "target": target,
         "n_test": int(n),
@@ -289,6 +363,10 @@ def _save_eval_results(
             "predicted": [round(float(x), 3) for x in scatter_pred],
         },
     }
+    if feature_importance is not None:
+        result["feature_importance"] = {
+            k: round(float(v), 6) for k, v in feature_importance.items()
+        }
 
     path = output_dir / f"eval_{model_type}.json"
     path.write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")

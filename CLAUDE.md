@@ -51,6 +51,11 @@ python scripts/evaluate.py --config configs/default.yaml
 # Run full pipeline (simulate → extract → train → evaluate)
 python scripts/run_all.py --config configs/default.yaml
 
+# Build normalized Seoul GIS link layer
+python scripts/build_link_geojson.py \
+  --centerlines raw/seoul_centerlines.geojson \
+  --output data/gis/seoul_links.geojson
+
 # TensorBoard
 tensorboard --logdir runs/
 ```
@@ -69,6 +74,9 @@ tensorboard --logdir runs/
 - `src/training/` — 학습 인프라. Tabular trainer (GroupKFold CV), DL trainer (PyTorch loop), Optuna hyperopt
 - `src/simulation/` — SUMO 시뮬레이션. 동적 도로 길이 네트워크, 시나리오 매트릭스, 5-프로브 무작위 선택, 6채널 시계열 추출, Edie ground truth
 - `src/evaluation/` — 평가. RMSE/MAE/MAPE/R², 교통상태 분류, SHAP 분석, 결과 집계
+- `src/api/` — FastAPI 추론, 모바일 ingest, DB 저장, 링크 이력 조회 API
+- `src/gis/` — 로컬 GeoJSON 기반 링크 매칭. 모바일 GPS를 nearest road link로 스냅
+- `src/streaming/` — Kafka/PubSub consumer/producer, sensor fusion
 - `src/visualization/` — 시각화. FD plot, predicted vs actual, SHAP, 모델 비교
 - `src/utils/` — 공통 유틸. config 로딩 (`_base_` 상속), 로깅, seed 관리, 체크포인트 save/load
 - `configs/` — YAML 설정. `default.yaml` + 실험별/모델별/피처별 오버라이드
@@ -84,3 +92,4 @@ tensorboard --logdir runs/
 - **GroupKFold by scenario_id**: 학습/검증 split 시 scenario_id 기준으로 그룹 분리 (데이터 누출 방지)
 - **SUMO 의존성 격리**: `src/simulation/`에만 traci/sumolib 의존, 나머지 모듈은 독립 실행 가능
 - 데이터 I/O는 Parquet 포맷 사용 (`src/data/io.py`)
+- 링크 기반 지도 이력은 `data/gis/seoul_links.geojson`를 읽어 활성화됨. 준비 절차는 `data/gis/README.md`

@@ -64,20 +64,9 @@ def train_dl(cfg: dict, args: argparse.Namespace) -> None:
     data_cfg = cfg.get("data", {})
     model_type = model_cfg.get("type", "cnn1d")
 
-    device = train_cfg.get("device", "auto")
-    if device == "auto":
-        if torch.cuda.is_available():
-            device = "cuda"
-        elif torch.backends.mps.is_available():
-            device = "mps"
-        else:
-            device = "cpu"
-        logger.info("Auto-detected device: %s", device)
-    elif device == "cuda" and not torch.cuda.is_available():
+    device = train_cfg.get("device", "cuda")
+    if device == "cuda" and not torch.cuda.is_available():
         logger.warning("CUDA not available, falling back to CPU.")
-        device = "cpu"
-    elif device == "mps" and not torch.backends.mps.is_available():
-        logger.warning("MPS not available, falling back to CPU.")
         device = "cpu"
 
     # Load time series data
@@ -162,10 +151,6 @@ def train_dl(cfg: dict, args: argparse.Namespace) -> None:
 
     batch_size = train_cfg.get("batch_size", 128)
     num_workers = train_cfg.get("num_workers", 4)
-    # Small datasets: multiprocessing overhead >> computation cost
-    if len(train_ds) < 1000:
-        num_workers = 0
-        logger.info("Small dataset (%d samples), using num_workers=0", len(train_ds))
 
     train_loader = DataLoader(
         train_ds, batch_size=batch_size, shuffle=True,
@@ -262,6 +247,11 @@ def train_tabular(cfg: dict, args: argparse.Namespace) -> None:
         "density_per_lane", "flow_per_lane",
         "k_fd", "q_fd", "delta_density", "delta_flow",
     }
+    # Apply user-selected feature exclusions from dashboard
+    user_exclude = train_cfg.get("exclude_features") or []
+    if user_exclude:
+        exclude.update(user_exclude)
+        logger.info("Excluding %d user-selected features: %s", len(user_exclude), user_exclude)
     feature_columns = [c for c in df.columns if c not in exclude]
     target_name = train_cfg.get("target", "density")
 

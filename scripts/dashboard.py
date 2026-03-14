@@ -18,10 +18,10 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any
 
 import uvicorn
-import yaml  # type: ignore[import-untyped]
+import yaml
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -44,13 +44,8 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 RUNS_DIR = PROJECT_ROOT / "data" / "runs"
 
-class PipelineStepSpec(TypedDict):
-    label: str
-    cmd: list[str]
-
-
 # Pipeline step definitions
-PIPELINE_STEPS: dict[str, PipelineStepSpec] = {
+PIPELINE_STEPS = {
     "generate": {
         "label": "Generate Scenarios",
         "cmd": [sys.executable, "-m", "scripts.generate_scenarios"],
@@ -145,7 +140,10 @@ class RunManager:
                 df = pd.read_parquet(tab)
                 feat_info: dict[str, Any] = {
                     "samples": len(df),
-                    "scenarios": int(df["scenario_id"].nunique()) if "scenario_id" in df.columns else 0,
+                    "scenarios": (
+                        int(df["scenario_id"].nunique())
+                        if "scenario_id" in df.columns else 0
+                    ),
                 }
                 # Scan available lanes / speed_limits for data filtering
                 meta_path = base_dir / "features" / "metadata.parquet"
@@ -200,7 +198,18 @@ class RunManager:
             "data_filters": manifest.get("data_filters"),
             "assets": {},
         }
-        self._scan_assets(run_dir, info)
+        # For resume runs, also scan the source run's output directory
+        extra_model_dirs: list[Path] | None = None
+        source_run_id = manifest.get("source_run_id")
+        if source_run_id:
+            source_dir = self._resolve_run_dir(source_run_id)
+            if source_dir:
+                extra_model_dirs = [source_dir / "outputs"]
+                # Also scan source features/fcd if this run has none
+                if not (run_dir / "features").exists() and (source_dir / "features").exists():
+                    self._scan_assets(source_dir, info, model_dirs=extra_model_dirs)
+                    return info
+        self._scan_assets(run_dir, info, model_dirs=extra_model_dirs)
         return info
 
     def _scan_legacy(self) -> dict[str, Any] | None:
@@ -264,7 +273,8 @@ class RunManager:
                    steps: list[str] | None = None,
                    scenario_config: dict | None = None,
                    fd_model: str = "underwood",
-                   data_filters: dict | None = None) -> tuple[str, Path]:
+                   data_filters: dict | None = None,
+                   exclude_features: list[str] | None = None) -> tuple[str, Path]:
         """Create a new run directory with manifest and config overlay."""
         run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
         run_dir = self.runs_dir / run_id
@@ -283,7 +293,7 @@ class RunManager:
             "num_scenarios": num_scenarios,
             "num_probes": num_probes,
             "max_workers": max_workers,
-            "fd_model": fd_model,
+            "fd_model": fd_model if steps and "residuals" in steps else None,
             "steps": steps or [],
             "completed_steps": [],
             "status": "pending",
@@ -291,6 +301,8 @@ class RunManager:
         }
         if data_filters:
             manifest["data_filters"] = data_filters
+        if exclude_features:
+            manifest["exclude_features"] = exclude_features
         (run_dir / "manifest.json").write_text(
             json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
         )
@@ -299,7 +311,8 @@ class RunManager:
         self._write_run_config(
             run_dir, source_run_id, source_stage, max_workers, device,
             scenario_config=scenario_config, fd_model=fd_model,
-            data_filters=data_filters,
+            data_filters=data_filters, exclude_features=exclude_features,
+            steps=steps,
         )
 
         # Apply data filters: copy filtered feature files to new run dir
@@ -370,7 +383,9 @@ class RunManager:
                           max_workers: int = 0, device: str = "auto",
                           scenario_config: dict | None = None,
                           fd_model: str = "underwood",
-                          data_filters: dict | None = None) -> None:
+                          data_filters: dict | None = None,
+                          exclude_features: list[str] | None = None,
+                          steps: list[str] | None = None) -> None:
         """Generate run_config.yaml that inherits from default.yaml."""
         run_id = run_dir.name
         # Compute relative path from run_dir to configs/default.yaml
@@ -402,14 +417,24 @@ class RunManager:
         if resolved_device:
             overlay["training"] = {"device": resolved_device}
 
-        # FD model selection
-        overlay["residual_correction"] = {"fd_model": fd_model}
+        if exclude_features:
+            overlay.setdefault("training", {})["exclude_features"] = exclude_features
+
+        # FD residual correction: only enable when 'residuals' step is selected
+        if steps and "residuals" in steps:
+            overlay["residual_correction"] = {"enabled": True, "fd_model": fd_model}
+        else:
+            overlay["residual_correction"] = {"enabled": False}
 
         # If resuming from a source run, point the relevant source paths
         if source_run_id and source_stage:
             source_dir = self._resolve_run_dir(source_run_id)
             if source_dir:
-                src = str(source_dir).replace("\\", "/")
+                # Always use relative path from project root
+                try:
+                    src = str(source_dir.relative_to(PROJECT_ROOT)).replace("\\", "/")
+                except ValueError:
+                    src = str(source_dir).replace("\\", "/")
                 # Map stage -> which paths to inherit from source
                 if source_stage == "scenarios":
                     overlay["output"]["scenarios_csv"] = f"{src}/scenarios.csv"
@@ -430,11 +455,14 @@ class RunManager:
                         overlay["data"]["timeseries_path"] = f"{src}/features/timeseries.npz"
                         overlay["data"]["metadata_path"] = f"{src}/features/metadata.parquet"
                 elif source_stage == "model":
-                    overlay["data"]["tabular_path"] = f"{src}/features/dataset.parquet"
-                    overlay["data"]["timeseries_path"] = f"{src}/features/timeseries.npz"
-                    overlay["data"]["metadata_path"] = f"{src}/features/metadata.parquet"
-                    # Point to source model for evaluation
-                    overlay["output_dir"] = f"{src}/outputs"
+                    # Resolve data paths from source run's config (it may itself
+                    # be a resume run without its own features/ directory).
+                    data_paths = self._resolve_data_paths(source_dir)
+                    overlay["data"]["tabular_path"] = data_paths["tabular_path"]
+                    overlay["data"]["timeseries_path"] = data_paths["timeseries_path"]
+                    overlay["data"]["metadata_path"] = data_paths["metadata_path"]
+                    # Follow the chain to find the actual output_dir with models
+                    overlay["output_dir"] = self._resolve_output_dir(source_dir)
 
         # Merge UI scenario config overrides into the simulation section
         if scenario_config:
@@ -445,6 +473,81 @@ class RunManager:
             yaml.dump(overlay, default_flow_style=False, allow_unicode=True),
             encoding="utf-8",
         )
+
+    def _resolve_data_paths(self, run_dir: Path) -> dict[str, str]:
+        """Resolve actual data paths from a run's config, following the chain.
+
+        A resume run may not have its own features/ directory; its run_config
+        points to the original source.  Read those paths instead of assuming
+        ``{run_dir}/features/``.
+        """
+        try:
+            src = str(run_dir.relative_to(PROJECT_ROOT)).replace("\\", "/")
+        except ValueError:
+            src = str(run_dir).replace("\\", "/")
+        defaults = {
+            "tabular_path": f"{src}/features/dataset.parquet",
+            "timeseries_path": f"{src}/features/timeseries.npz",
+            "metadata_path": f"{src}/features/metadata.parquet",
+        }
+        cfg_path = run_dir / "run_config.yaml"
+        if not cfg_path.exists():
+            return defaults
+        try:
+            with open(cfg_path, encoding="utf-8") as f:
+                cfg = yaml.safe_load(f) or {}
+            data_cfg = cfg.get("data", {})
+            return {
+                "tabular_path": data_cfg.get("tabular_path", defaults["tabular_path"]),
+                "timeseries_path": data_cfg.get("timeseries_path", defaults["timeseries_path"]),
+                "metadata_path": data_cfg.get("metadata_path", defaults["metadata_path"]),
+            }
+        except Exception:
+            return defaults
+
+    def _resolve_output_dir(self, run_dir: Path) -> str:
+        """Follow resume chain to find the output_dir that actually has models."""
+        visited: set[str] = set()
+        current = run_dir
+        while current and str(current) not in visited:
+            visited.add(str(current))
+            out = current / "outputs"
+            models = list(out.glob("*.pt")) + list(out.glob("*.pkl"))
+            if models:
+                try:
+                    return str(out.relative_to(PROJECT_ROOT)).replace("\\", "/")
+                except ValueError:
+                    return str(out).replace("\\", "/")
+            # Read this run's config to find its output_dir
+            cfg_path = current / "run_config.yaml"
+            if not cfg_path.exists():
+                break
+            try:
+                with open(cfg_path, encoding="utf-8") as f:
+                    cfg = yaml.safe_load(f) or {}
+                od = cfg.get("output_dir", "")
+                if od and (PROJECT_ROOT / od).exists():
+                    models = list((PROJECT_ROOT / od).glob("*.pt")) + list(
+                        (PROJECT_ROOT / od).glob("*.pkl")
+                    )
+                    if models:
+                        return od
+                # Follow source_run_id chain via manifest
+                manifest_path = current / "manifest.json"
+                if manifest_path.exists():
+                    m = json.loads(manifest_path.read_text(encoding="utf-8"))
+                    src_id = m.get("source_run_id")
+                    if src_id:
+                        current = self._resolve_run_dir(src_id)
+                        continue
+            except Exception:
+                pass
+            break
+        # Fallback: use the run_dir itself
+        try:
+            return str((run_dir / "outputs").relative_to(PROJECT_ROOT)).replace("\\", "/")
+        except ValueError:
+            return str(run_dir / "outputs").replace("\\", "/")
 
     def _resolve_run_dir(self, run_id: str) -> Path | None:
         """Resolve run_id to its directory."""
@@ -609,6 +712,7 @@ class RunRequest(BaseModel):
     scenario_config: dict | None = None  # UI-supplied scenario parameter overrides
     fd_model: str = "underwood"  # greenshields | greenberg | underwood | drake | multi_regime
     data_filters: dict | None = None  # {"lanes": [2,3], "speed_limits_kmh": [80,100]}
+    exclude_features: list[str] | None = None  # features to exclude from training/eval
 
 
 # ---------------------------------------------------------------------------
@@ -705,6 +809,7 @@ async def _run_pipeline(req: RunRequest) -> None:
             scenario_config=req.scenario_config,
             fd_model=req.fd_model,
             data_filters=req.data_filters,
+            exclude_features=req.exclude_features,
         )
         state.current_run_id = run_id
         state.current_run_dir = run_dir
@@ -714,10 +819,25 @@ async def _run_pipeline(req: RunRequest) -> None:
         state.log_lines.append(f"=== Run {run_id} Started (mode={req.mode}) ===")
 
         # Build effective step list: expand train/evaluate per model type
+        # Auto-detect available models from output_dir if none specified
+        model_types = list(req.model_types)
+        if not model_types and "evaluate" in req.steps:
+            with open(config_path, encoding="utf-8") as _f:
+                run_cfg = yaml.safe_load(_f) or {}
+            out_path = PROJECT_ROOT / run_cfg.get("output_dir", "")
+            if out_path.exists():
+                for f in out_path.iterdir():
+                    if f.suffix == ".pt" and f.stem.endswith("_best"):
+                        model_types.append(f.stem.replace("_best", ""))
+                    elif f.suffix == ".pkl" and f.stem.endswith("_best"):
+                        model_types.append(f.stem.replace("_best", ""))
+                if model_types:
+                    logger.info("Auto-detected models: %s", model_types)
+
         expanded_steps: list[tuple[str, str | None]] = []  # (step_key, model_type)
         for s in req.steps:
-            if s in ("train", "evaluate") and req.model_types:
-                for mt in req.model_types:
+            if s in ("train", "evaluate") and model_types:
+                for mt in model_types:
                     expanded_steps.append((s, mt))
             else:
                 expanded_steps.append((s, None))
@@ -958,6 +1078,19 @@ async def get_eval_results(run_id: str):
         if not run_dir.exists():
             return {"error": f"Run {run_id} not found"}
         output_dirs = [run_dir / "outputs"]
+        # Also check output_dir from run_config (may point to source run)
+        cfg_path = run_dir / "run_config.yaml"
+        if cfg_path.exists():
+            try:
+                with open(cfg_path, encoding="utf-8") as f:
+                    cfg = yaml.safe_load(f) or {}
+                od = cfg.get("output_dir")
+                if od:
+                    resolved = PROJECT_ROOT / od
+                    if resolved not in output_dirs:
+                        output_dirs.append(resolved)
+            except Exception:
+                pass
 
     results = []
     for odir in output_dirs:
@@ -992,7 +1125,11 @@ async def clean_data():
         return {"error": "Cannot clean while pipeline is running"}
 
     deleted = []
-    for d in ["data/fcd", "data/features", "data/sumo_networks", "outputs", "outputs_xgboost", "data/runs"]:
+    dirs = [
+        "data/fcd", "data/features", "data/sumo_networks",
+        "outputs", "outputs_xgboost", "data/runs",
+    ]
+    for d in dirs:
         p = PROJECT_ROOT / d
         if p.exists():
             shutil.rmtree(p)

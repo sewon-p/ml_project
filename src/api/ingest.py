@@ -32,6 +32,7 @@ router = APIRouter()
 _WINDOW_SIZE = int(os.environ.get("WINDOW_SIZE", "300"))
 _SESSION_TIMEOUT = 600  # 10 min
 _LIVE_HISTORY_LIMIT = 20
+_MATCH_SKIP_DISTANCE_M = 30.0  # skip GIS matching if moved less than this
 
 
 @lru_cache(maxsize=1)
@@ -142,6 +143,8 @@ class SessionBuffer:
         self.prediction_count = 0
         self.speed_limit = 22.22
         self.num_lanes = 2
+        self._last_match_lat: float | None = None
+        self._last_match_lon: float | None = None
 
         from src.streaming.fusion import SensorFusion
 
@@ -175,7 +178,9 @@ class SessionBuffer:
                 "center_lon": record.center_lon,
                 "source": record.link_source,
             }
-        else:
+            self._last_match_lat = record.lat
+            self._last_match_lon = record.lon
+        elif self._should_rematch(record.lat, record.lon):
             matcher = _get_link_matcher()
             if matcher is not None:
                 match = matcher.match(lat=record.lat, lon=record.lon)
@@ -188,8 +193,25 @@ class SessionBuffer:
                         "center_lon": match.center_lon,
                         "source": match.source,
                     }
-        self.last_link = cast(LinkMeta | None, matched_link)
+            self._last_match_lat = record.lat
+            self._last_match_lon = record.lon
+        else:
+            # Reuse last match — position hasn't changed enough
+            matched_link = self.last_link.copy() if self.last_link else None
+        if matched_link is not None:
+            self.last_link = cast(LinkMeta | None, matched_link)
         return fcd, matched_link
+
+    def _should_rematch(self, lat: float, lon: float) -> bool:
+        """Only re-run GIS matching if moved more than _MATCH_SKIP_DISTANCE_M."""
+        if self._last_match_lat is None:
+            return True
+        import math
+
+        dlat = math.radians(lat - self._last_match_lat)
+        dlon = math.radians(lon - self._last_match_lon) * math.cos(math.radians(lat))
+        dist_m = math.sqrt(dlat * dlat + dlon * dlon) * 6_371_000.0
+        return dist_m > _MATCH_SKIP_DISTANCE_M
 
     @property
     def ready(self) -> bool:

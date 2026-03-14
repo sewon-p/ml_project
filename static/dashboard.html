@@ -341,6 +341,76 @@
             <label><input type="checkbox" value="lightgbm"> LightGBM</label>
           </div>
         </div>
+
+        <div id="featureSelectionSection">
+          <h3 style="display:flex; align-items:center; justify-content:space-between;">
+            Feature Selection
+            <button class="btn btn-outline btn-sm" onclick="toggleAllFeatures('scratch')">Select All / Deselect All</button>
+          </h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 16px; font-size:0.82rem; max-height:280px; overflow-y:auto; margin-bottom:12px;">
+            <div>
+              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Speed</div>
+              <div class="checkbox-group" style="margin-bottom:4px;">
+                <label><input type="checkbox" class="feat-cb" value="speed_mean" checked> speed_mean</label>
+                <label><input type="checkbox" class="feat-cb" value="speed_std" checked> speed_std</label>
+                <label><input type="checkbox" class="feat-cb" value="speed_cv" checked> speed_cv</label>
+                <label><input type="checkbox" class="feat-cb" value="speed_iqr" checked> speed_iqr</label>
+                <label><input type="checkbox" class="feat-cb" value="speed_min" checked> speed_min</label>
+                <label><input type="checkbox" class="feat-cb" value="speed_max" checked> speed_max</label>
+                <label><input type="checkbox" class="feat-cb" value="speed_median" checked> speed_median</label>
+                <label><input type="checkbox" class="feat-cb" value="speed_p10" checked> speed_p10</label>
+                <label><input type="checkbox" class="feat-cb" value="speed_p90" checked> speed_p90</label>
+              </div>
+              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">VY</div>
+              <div class="checkbox-group" style="margin-bottom:4px;">
+                <label><input type="checkbox" class="feat-cb" value="vy_mean" checked> vy_mean</label>
+                <label><input type="checkbox" class="feat-cb" value="vy_std" checked> vy_std</label>
+                <label><input type="checkbox" class="feat-cb" value="vy_min" checked> vy_min</label>
+                <label><input type="checkbox" class="feat-cb" value="vy_max" checked> vy_max</label>
+              </div>
+              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Acceleration</div>
+              <div class="checkbox-group" style="margin-bottom:4px;">
+                <label><input type="checkbox" class="feat-cb" value="ax_mean" checked> ax_mean</label>
+                <label><input type="checkbox" class="feat-cb" value="ax_std" checked> ax_std</label>
+                <label><input type="checkbox" class="feat-cb" value="ay_mean" checked> ay_mean</label>
+                <label><input type="checkbox" class="feat-cb" value="ay_std" checked> ay_std</label>
+                <label><input type="checkbox" class="feat-cb" value="jerk_mean" checked> jerk_mean</label>
+                <label><input type="checkbox" class="feat-cb" value="jerk_std" checked> jerk_std</label>
+              </div>
+            </div>
+            <div>
+              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Stop</div>
+              <div class="checkbox-group" style="margin-bottom:4px;">
+                <label><input type="checkbox" class="feat-cb" value="stop_count" checked> stop_count</label>
+                <label><input type="checkbox" class="feat-cb" value="stop_time_ratio" checked> stop_time_ratio</label>
+                <label><input type="checkbox" class="feat-cb" value="mean_stop_duration" checked> mean_stop_duration</label>
+              </div>
+              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Time-Series</div>
+              <div class="checkbox-group" style="margin-bottom:4px;">
+                <label><input type="checkbox" class="feat-cb" value="speed_autocorr_lag1" checked> speed_autocorr_lag1</label>
+                <label><input type="checkbox" class="feat-cb" value="speed_fft_dominant_freq" checked> speed_fft_dominant_freq</label>
+                <label><input type="checkbox" class="feat-cb" value="sample_entropy" checked> sample_entropy</label>
+              </div>
+              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Brake</div>
+              <div class="checkbox-group" style="margin-bottom:4px;">
+                <label><input type="checkbox" class="feat-cb" value="brake_count" checked> brake_count</label>
+                <label><input type="checkbox" class="feat-cb" value="brake_time_ratio" checked> brake_time_ratio</label>
+                <label><input type="checkbox" class="feat-cb" value="mean_brake_duration" checked> mean_brake_duration</label>
+              </div>
+              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Lateral</div>
+              <div class="checkbox-group" style="margin-bottom:4px;">
+                <label><input type="checkbox" class="feat-cb" value="vy_variance" checked> vy_variance</label>
+                <label><input type="checkbox" class="feat-cb" value="vy_energy" checked> vy_energy</label>
+              </div>
+              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Conditions</div>
+              <div class="checkbox-group" style="margin-bottom:4px;">
+                <label><input type="checkbox" class="feat-cb" value="num_lanes" checked> num_lanes</label>
+                <label><input type="checkbox" class="feat-cb" value="speed_limit" checked> speed_limit</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="btn-group">
           <button class="btn btn-primary" id="btnRunScratch" onclick="runFromScratch()">Run</button>
           <button class="btn btn-danger" id="btnCancel" onclick="cancelPipeline()" style="display:none">Cancel</button>
@@ -389,6 +459,74 @@
               <label><input type="checkbox" value="lstm"> LSTM</label>
               <label><input type="checkbox" value="xgboost"> XGBoost</label>
               <label><input type="checkbox" value="lightgbm"> LightGBM</label>
+            </div>
+          </div>
+          <div id="resumeFeatureSection" style="display:none;">
+            <h3 style="display:flex; align-items:center; justify-content:space-between;">
+              Feature Selection
+              <button class="btn btn-outline btn-sm" onclick="toggleAllFeatures('resume')">Select All / Deselect All</button>
+            </h3>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 16px; font-size:0.82rem; max-height:280px; overflow-y:auto; margin-bottom:12px;">
+              <div>
+                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Speed</div>
+                <div class="checkbox-group" style="margin-bottom:4px;">
+                  <label><input type="checkbox" class="resume-feat-cb" value="speed_mean" checked> speed_mean</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="speed_std" checked> speed_std</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="speed_cv" checked> speed_cv</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="speed_iqr" checked> speed_iqr</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="speed_min" checked> speed_min</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="speed_max" checked> speed_max</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="speed_median" checked> speed_median</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="speed_p10" checked> speed_p10</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="speed_p90" checked> speed_p90</label>
+                </div>
+                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">VY</div>
+                <div class="checkbox-group" style="margin-bottom:4px;">
+                  <label><input type="checkbox" class="resume-feat-cb" value="vy_mean" checked> vy_mean</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="vy_std" checked> vy_std</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="vy_min" checked> vy_min</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="vy_max" checked> vy_max</label>
+                </div>
+                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Acceleration</div>
+                <div class="checkbox-group" style="margin-bottom:4px;">
+                  <label><input type="checkbox" class="resume-feat-cb" value="ax_mean" checked> ax_mean</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="ax_std" checked> ax_std</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="ay_mean" checked> ay_mean</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="ay_std" checked> ay_std</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="jerk_mean" checked> jerk_mean</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="jerk_std" checked> jerk_std</label>
+                </div>
+              </div>
+              <div>
+                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Stop</div>
+                <div class="checkbox-group" style="margin-bottom:4px;">
+                  <label><input type="checkbox" class="resume-feat-cb" value="stop_count" checked> stop_count</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="stop_time_ratio" checked> stop_time_ratio</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="mean_stop_duration" checked> mean_stop_duration</label>
+                </div>
+                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Time-Series</div>
+                <div class="checkbox-group" style="margin-bottom:4px;">
+                  <label><input type="checkbox" class="resume-feat-cb" value="speed_autocorr_lag1" checked> speed_autocorr_lag1</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="speed_fft_dominant_freq" checked> speed_fft_dominant_freq</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="sample_entropy" checked> sample_entropy</label>
+                </div>
+                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Brake</div>
+                <div class="checkbox-group" style="margin-bottom:4px;">
+                  <label><input type="checkbox" class="resume-feat-cb" value="brake_count" checked> brake_count</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="brake_time_ratio" checked> brake_time_ratio</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="mean_brake_duration" checked> mean_brake_duration</label>
+                </div>
+                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Lateral</div>
+                <div class="checkbox-group" style="margin-bottom:4px;">
+                  <label><input type="checkbox" class="resume-feat-cb" value="vy_variance" checked> vy_variance</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="vy_energy" checked> vy_energy</label>
+                </div>
+                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Conditions</div>
+                <div class="checkbox-group" style="margin-bottom:4px;">
+                  <label><input type="checkbox" class="resume-feat-cb" value="num_lanes" checked> num_lanes</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="speed_limit" checked> speed_limit</label>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -671,9 +809,11 @@ function selectAsset(idx, runId) {
   $('#resumeSteps').innerHTML = stepsHtml;
   $('#resumeStepsSection').style.display = 'block';
   $('#btnRunResume').disabled = false;
-  // Show model selector if train is available
-  $('#resumeModelTypeSection').style.display =
-    currentNextSteps.includes('train') ? 'block' : 'none';
+  // Show model selector if train or evaluate is available
+  const showTrainEval = currentNextSteps.includes('train') || currentNextSteps.includes('evaluate');
+  $('#resumeModelTypeSection').style.display = showTrainEval ? 'block' : 'none';
+  // Show feature selection if train is available
+  $('#resumeFeatureSection').style.display = currentNextSteps.includes('train') ? 'block' : 'none';
 }
 
 // --- Data filter helpers ---
@@ -709,6 +849,21 @@ function collectDataFilters() {
   return Object.keys(f).length > 0 ? f : null;
 }
 
+// --- Feature selection ---
+function collectExcludeFeatures(mode) {
+  const cls = mode === 'resume' ? '.resume-feat-cb' : '.feat-cb';
+  const all = [...document.querySelectorAll(cls)];
+  const unchecked = all.filter(c => !c.checked).map(c => c.value);
+  return unchecked.length > 0 ? unchecked : null;
+}
+
+function toggleAllFeatures(mode) {
+  const cls = mode === 'resume' ? '.resume-feat-cb' : '.feat-cb';
+  const all = [...document.querySelectorAll(cls)];
+  const allChecked = all.every(c => c.checked);
+  all.forEach(c => c.checked = !allChecked);
+}
+
 // --- Model types ---
 function getModelTypes() {
   return [...$$('#modelTypes input:checked')].map(c => c.value);
@@ -732,6 +887,7 @@ async function runFromScratch() {
     device: getDevice(),
     model_types: getModelTypes(),
     fd_model: fdModelEl ? fdModelEl.value : 'underwood',
+    exclude_features: collectExcludeFeatures('scratch'),
   };
 
   // Include scenario config when generating scenarios
@@ -750,8 +906,8 @@ async function runResume() {
   if (steps.length === 0) { alert('Please select at least one step.'); return; }
 
   const resumeModels = [...$$('#resumeModelTypes input:checked')].map(c => c.value);
-  if (steps.includes('train') && resumeModels.length === 0) {
-    alert('Please select at least one model to train.'); return;
+  if ((steps.includes('train') || steps.includes('evaluate')) && resumeModels.length === 0) {
+    alert('Please select at least one model.'); return;
   }
 
   const resumeFdEl = document.querySelector('input[name="resumeFdModel"]:checked');
@@ -765,6 +921,7 @@ async function runResume() {
     source_stage: selectedAsset.stage,
     fd_model: resumeFdEl ? resumeFdEl.value : 'underwood',
     data_filters: collectDataFilters(),
+    exclude_features: collectExcludeFeatures('resume'),
   };
 
   await startPipeline(body);
@@ -1040,6 +1197,16 @@ async function loadEvalResults(runId) {
       if (r.scatter) {
         requestAnimationFrame(() => drawScatter(`scatter_${idx}`, r.scatter.actual, r.scatter.predicted, r.target));
       }
+
+      // Draw feature importance bar chart
+      if (r.feature_importance && Object.keys(r.feature_importance).length > 0) {
+        const fiDiv = document.createElement('div');
+        fiDiv.className = 'scatter-container';
+        fiDiv.style.marginTop = '12px';
+        fiDiv.innerHTML = `<canvas id="fi_${idx}" width="480" height="400"></canvas>`;
+        div.appendChild(fiDiv);
+        requestAnimationFrame(() => drawFeatureImportance(`fi_${idx}`, r.feature_importance));
+      }
     });
   } catch (e) {
     console.error('Eval load error:', e);
@@ -1114,6 +1281,60 @@ function drawScatter(canvasId, actual, predicted, target) {
   ctx.rotate(-Math.PI / 2);
   ctx.fillText(`Predicted ${target}`, 0, 0);
   ctx.restore();
+}
+
+function drawFeatureImportance(canvasId, importance) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // Clear
+  ctx.fillStyle = '#0f1117';
+  ctx.fillRect(0, 0, W, H);
+
+  // Sort by value descending, take top 20
+  const entries = Object.entries(importance)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 20);
+  if (entries.length === 0) return;
+
+  const maxVal = entries[0][1];
+  const n = entries.length;
+  const padLeft = 160, padRight = 20, padTop = 30, padBottom = 30;
+  const barArea = H - padTop - padBottom;
+  const barH = Math.min(16, (barArea / n) * 0.7);
+  const gap = (barArea - barH * n) / (n + 1);
+
+  // Title
+  ctx.fillStyle = '#e0e0e0';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Feature Importance (mean |SHAP|)', W / 2, 18);
+
+  // Draw bars (bottom-up = least important at top, most at bottom → reversed for horizontal bar)
+  entries.reverse();
+  entries.forEach((entry, i) => {
+    const [name, val] = entry;
+    const y = padTop + gap + i * (barH + gap);
+    const barW = (val / maxVal) * (W - padLeft - padRight);
+
+    // Bar
+    ctx.fillStyle = '#4f8ff7';
+    ctx.fillRect(padLeft, y, barW, barH);
+
+    // Label
+    ctx.fillStyle = '#ccc';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name.length > 22 ? name.slice(0, 20) + '..' : name, padLeft - 6, y + barH / 2);
+
+    // Value
+    ctx.fillStyle = '#888';
+    ctx.textAlign = 'left';
+    ctx.fillText(val.toFixed(4), padLeft + barW + 4, y + barH / 2);
+  });
 }
 
 // --- Scenario Config ---

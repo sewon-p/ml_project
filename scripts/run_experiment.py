@@ -204,6 +204,11 @@ def _run_tabular_experiment(cfg: dict, exp_name: str) -> dict:
         "density", "flow", "demand_vehph",
         "k_fd", "q_fd", "delta_density", "delta_flow",
     }
+    # Apply user-selected feature exclusions from dashboard
+    user_exclude = cfg.get("training", {}).get("exclude_features") or []
+    if user_exclude:
+        exclude.update(user_exclude)
+        logger.info("Excluding %d user-selected features: %s", len(user_exclude), user_exclude)
     feature_columns = [c for c in df.columns if c not in exclude]
 
     feature_names = cfg.get("features", {}).get("selected")

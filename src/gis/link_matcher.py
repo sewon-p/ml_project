@@ -85,8 +85,16 @@ def _flatten_lines(geometry: dict[str, Any]) -> list[list[tuple[float, float]]]:
     return []
 
 
+_GRID_CELL_DEG = 0.001  # ~100m at mid-latitudes
+
+
 class LinkMatcher:
-    """Loads GeoJSON road links and matches GPS points to the nearest link."""
+    """Loads GeoJSON road links and matches GPS points to the nearest link.
+
+    Uses a grid-based spatial index (cell size ~100 m) so that each ``match()``
+    call only examines the handful of links near the query point instead of
+    scanning all 400 k+ links.
+    """
 
     def __init__(
         self,
@@ -105,6 +113,8 @@ class LinkMatcher:
         self.max_match_distance_m = max_match_distance_m
         self.heading_weight_m = heading_weight_m
         self.links = self._load_links()
+        self._grid: dict[tuple[int, int], list[_PreparedLink]] = {}
+        self._build_grid()
 
     @classmethod
     def from_config(cls, config_path: str | Path) -> LinkMatcher | None:
@@ -172,6 +182,44 @@ class LinkMatcher:
             )
         return prepared
 
+    # ------------------------------------------------------------------
+    # Grid spatial index
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _cell(lat: float, lon: float) -> tuple[int, int]:
+        return int(math.floor(lat / _GRID_CELL_DEG)), int(math.floor(lon / _GRID_CELL_DEG))
+
+    def _build_grid(self) -> None:
+        """Assign each link to every grid cell its segments touch."""
+        for link in self.links:
+            cells_seen: set[tuple[int, int]] = set()
+            # Index by center
+            cells_seen.add(self._cell(link.center_lat, link.center_lon))
+            # Index by each segment endpoint
+            for (lon1, lat1), (lon2, lat2) in link.segments:
+                cells_seen.add(self._cell(lat1, lon1))
+                cells_seen.add(self._cell(lat2, lon2))
+            for cell in cells_seen:
+                self._grid.setdefault(cell, []).append(link)
+
+    def _nearby_links(self, lat: float, lon: float) -> list[_PreparedLink]:
+        """Return links in the query cell and its 8 neighbours."""
+        ci, cj = self._cell(lat, lon)
+        candidates: list[_PreparedLink] = []
+        seen_ids: set[str] = set()
+        for di in (-1, 0, 1):
+            for dj in (-1, 0, 1):
+                for link in self._grid.get((ci + di, cj + dj), ()):
+                    if link.link_id not in seen_ids:
+                        seen_ids.add(link.link_id)
+                        candidates.append(link)
+        return candidates
+
+    # ------------------------------------------------------------------
+    # Match
+    # ------------------------------------------------------------------
+
     def match(
         self,
         *,
@@ -182,11 +230,15 @@ class LinkMatcher:
         if not self.links:
             return None
 
+        candidates = self._nearby_links(lat, lon)
+        if not candidates:
+            return None
+
         best_link = None
         best_score = float("inf")
         best_distance = float("inf")
 
-        for link in self.links:
+        for link in candidates:
             point_xy = _project_to_local_m(lat, lon, link.center_lat, link.center_lon)
             min_distance = float("inf")
             best_segment_heading = 0.0
