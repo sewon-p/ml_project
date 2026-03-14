@@ -229,8 +229,9 @@ def _store_live_prediction(link_meta: dict, prediction: dict, session_id: str) -
     """Keep recent link predictions in memory so the map can update without a DB."""
     link_id = str(link_meta["link_id"])
     observed_at = datetime.fromtimestamp(prediction["timestamp"], tz=UTC)
+    prediction_id = prediction.get("prediction_id") or int(prediction["timestamp"] * 1000)
     entry = {
-        "prediction_id": int(prediction.get("prediction_id") or int(prediction["timestamp"] * 1000)),
+        "prediction_id": int(prediction_id),
         "session_id": session_id,
         "observed_at": observed_at,
         "density": float(prediction["density"]),
@@ -369,7 +370,9 @@ async def ingest(record: IngestRecord, request: Request) -> IngestResponse:
                                 session_id=record.session_id,
                                 link_id=(representative_link or {}).get("link_id"),
                                 road_name=(representative_link or {}).get("road_name"),
-                                geometry_geojson=(representative_link or {}).get("geometry_geojson"),
+                                geometry_geojson=(representative_link or {}).get(
+                                    "geometry_geojson"
+                                ),
                                 center_lat=(representative_link or {}).get("center_lat"),
                                 center_lon=(representative_link or {}).get("center_lon"),
                                 source=str((representative_link or {}).get("source", "unknown")),

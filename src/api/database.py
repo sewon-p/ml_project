@@ -5,9 +5,9 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncGenerator
 
+from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 

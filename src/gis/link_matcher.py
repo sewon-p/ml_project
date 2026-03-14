@@ -42,7 +42,9 @@ def _heading_delta_deg(a: float, b: float) -> float:
     return min(delta, 360.0 - delta)
 
 
-def _project_to_local_m(lat: float, lon: float, ref_lat: float, ref_lon: float) -> tuple[float, float]:
+def _project_to_local_m(
+    lat: float, lon: float, ref_lat: float, ref_lon: float
+) -> tuple[float, float]:
     dlat = math.radians(lat - ref_lat)
     dlon = math.radians(lon - ref_lon)
     x = dlon * _EARTH_RADIUS_M * math.cos(math.radians(ref_lat))
@@ -79,10 +81,7 @@ def _flatten_lines(geometry: dict[str, Any]) -> list[list[tuple[float, float]]]:
     if geometry_type == "LineString":
         return [[(float(lon), float(lat)) for lon, lat in coordinates]]
     if geometry_type == "MultiLineString":
-        return [
-            [(float(lon), float(lat)) for lon, lat in line]
-            for line in coordinates
-        ]
+        return [[(float(lon), float(lat)) for lon, lat in line] for line in coordinates]
     return []
 
 
@@ -201,7 +200,9 @@ class LinkMatcher:
 
             score = min_distance
             if heading is not None:
-                score += (_heading_delta_deg(heading, best_segment_heading) / 180.0) * self.heading_weight_m
+                score += (
+                    _heading_delta_deg(heading, best_segment_heading) / 180.0
+                ) * self.heading_weight_m
 
             if score < best_score:
                 best_score = score

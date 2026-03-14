@@ -9,7 +9,6 @@ from pathlib import Path
 
 import uvicorn
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = PROJECT_ROOT / "configs" / "local_demo.yaml"
 

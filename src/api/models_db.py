@@ -50,7 +50,9 @@ class Prediction(Base):
     fd_density: Mapped[float] = mapped_column(Float, nullable=False)
     fd_flow: Mapped[float] = mapped_column(Float, nullable=False)
     residual_density: Mapped[float] = mapped_column(Float, nullable=False)
-    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    observed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     scenario: Mapped[Scenario] = relationship(back_populates="predictions")
