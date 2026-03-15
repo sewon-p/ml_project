@@ -1,0 +1,8 @@
+# Local development config — overrides default.yaml for local console.
+_base_: default.yaml
+
+api:
+  model_path: outputs_xgboost/xgboost_best.pkl
+
+database:
+  url: null
