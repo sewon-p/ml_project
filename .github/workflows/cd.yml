@@ -44,15 +44,29 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p outputs_xgboost data/features data/gis
-          gh release download "${{ env.RELEASE_TAG }}" \
-            --pattern "xgboost_best.pkl" \
-            --dir outputs_xgboost
-          gh release download "${{ env.RELEASE_TAG }}" \
-            --pattern "dataset.parquet" \
-            --dir data/features
-          gh release download "${{ env.RELEASE_TAG }}" \
-            --pattern "seoul_links.geojson" \
-            --dir data/gis
+
+          # Try current release first, fallback to latest release with assets
+          download_asset() {
+            local pattern="$1" dir="$2"
+            if gh release download "${{ env.RELEASE_TAG }}" --pattern "$pattern" --dir "$dir" 2>/dev/null; then
+              echo "Downloaded $pattern from ${{ env.RELEASE_TAG }}"
+            else
+              echo "$pattern not in ${{ env.RELEASE_TAG }}, searching previous releases..."
+              FALLBACK_TAG=$(gh release list --limit 20 --json tagName,assets \
+                --jq "[.[] | select(.assets[].name == \"$pattern\")] | .[0].tagName // empty")
+              if [ -n "$FALLBACK_TAG" ]; then
+                gh release download "$FALLBACK_TAG" --pattern "$pattern" --dir "$dir"
+                echo "Downloaded $pattern from $FALLBACK_TAG (fallback)"
+              else
+                echo "::error::$pattern not found in any release"
+                exit 1
+              fi
+            fi
+          }
+
+          download_asset "xgboost_best.pkl" "outputs_xgboost"
+          download_asset "dataset.parquet" "data/features"
+          download_asset "seoul_links.geojson" "data/gis"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
