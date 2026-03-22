@@ -1,16 +1,36 @@
 # UrbanFlow — Real-Time Traffic Density Estimation from Probe Vehicle Data
 
-> An end-to-end data and ML platform that estimates road-level traffic density using only a single probe vehicle's mobile telemetry — no roadside sensors required.
+This project estimates road-level traffic density from a single probe vehicle's mobile telemetry and packages the result as a deployable data and ML system with real-time inference, spatial matching, SQL-backed storage, dashboards, and cloud deployment.
 
-**[Live Portfolio](https://traffic-estimator-gcbqhrztha-du.a.run.app/)** · **[Console](https://traffic-estimator-gcbqhrztha-du.a.run.app/dashboard)** · **[API Docs](https://traffic-estimator-gcbqhrztha-du.a.run.app/docs)** · **[Map](https://traffic-estimator-gcbqhrztha-du.a.run.app/map)**
+**[Live Portfolio](https://traffic-estimator-gcbqhrztha-du.a.run.app/)** · **[Console](https://traffic-estimator-gcbqhrztha-du.a.run.app/dashboard)** · **[API Docs](https://traffic-estimator-gcbqhrztha-du.a.run.app/docs)** · **[Map](https://traffic-estimator-gcbqhrztha-du.a.run.app/map)** · **[ML Pipeline](https://traffic-estimator-gcbqhrztha-du.a.run.app/ml-pipeline/)**
 
-![tests](https://img.shields.io/badge/tests-144%20passing-brightgreen) ![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue) ![deploy](https://img.shields.io/badge/deploy-Cloud%20Run-4285F4)
+The repository focuses on:
+
+- simulation-based traffic dataset generation
+- feature-engineered ML model comparison and serving
+- real-time mobile telemetry ingestion and spatial link matching
+- async backend APIs, SQL persistence, and streaming interfaces
+- portfolio-ready dashboards, containerization, CI/CD, and Cloud Run deployment
 
 ## Overview
 
-UrbanFlow is a system that takes GPS and accelerometer data from one moving vehicle, fuses the signals through a Kalman filter, extracts traffic-dynamics features from 300-second trajectory windows, runs ML inference, and matches predictions to the nearest road segment via spatial indexing. Results are served through REST APIs, persisted in PostgreSQL, streamed through message brokers, and displayed on real-time dashboards.
+Estimating traffic state from a single moving vehicle is noisy, information-limited, and difficult to operationalize. UrbanFlow addresses that by combining simulation-based labeling, feature-engineered ML, and deployment-oriented backend services in one system.
 
-The project covers the full scope of a production data/ML system: simulation-based data generation, feature engineering, model training and evaluation, async backend APIs, SQL persistence, real-time streaming, containerized deployment, and CI/CD.
+The end-to-end workflow is:
+
+1. Generate traffic scenarios in SUMO and collect floating-car trajectories.
+2. Build labels and engineered features grounded in traffic flow theory and car-following behavior.
+3. Compare multiple model families and select the best deployment model.
+4. Serve link-level predictions through FastAPI, GIS matching, SQL persistence, streaming, and dashboards.
+
+The key design choice is treating the project as a full system rather than a notebook-only benchmark:
+
+- Offline pipeline:
+  - simulation, labeling, feature extraction, training, and evaluation
+- Online serving layer:
+  - mobile telemetry ingestion, Kalman fusion, feature generation, inference, and link matching
+- Review and operations layer:
+  - PostgreSQL-backed history, live map inspection, dashboard views, containerization, and CI/CD
 
 Designed, implemented, and deployed as a solo end-to-end project.
 
