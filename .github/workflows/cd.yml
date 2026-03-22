@@ -9,10 +9,15 @@ on:
         description: Release tag to deploy, for example v0.2.0
         required: true
         type: string
+      asset_release_tag:
+        description: Optional asset bundle release tag override
+        required: false
+        type: string
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  GH_REPO: ${{ github.repository }}
   GCP_PROJECT: ml-traffic-project-489205
   GCP_REGION: asia-northeast3
   GCP_AR_REPO: traffic-estimator
@@ -39,34 +44,47 @@ jobs:
             echo "RELEASE_TAG=${{ github.event.release.tag_name }}" >> "$GITHUB_ENV"
           fi
 
-      - name: Download model artifacts from release
+      - name: Resolve asset bundle tag
+        run: |
+          set -a
+          source deploy/asset_bundle.env
+          set +a
+
+          if [ -n "${{ inputs.asset_release_tag }}" ]; then
+            ASSET_TAG="${{ inputs.asset_release_tag }}"
+          else
+            ASSET_TAG="$ASSET_RELEASE_TAG"
+          fi
+
+          echo "ASSET_RELEASE_TAG=${ASSET_TAG}" >> "$GITHUB_ENV"
+          echo "MODEL_ASSET=${MODEL_ASSET}" >> "$GITHUB_ENV"
+          echo "GIS_ASSET=${GIS_ASSET}" >> "$GITHUB_ENV"
+          echo "Using asset bundle tag: ${ASSET_TAG}"
+
+      - name: Download deployment assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p outputs_xgboost data/features data/gis
+          mkdir -p outputs_xgboost data/gis
 
-          # Try current release first, fallback to latest release with assets
-          download_asset() {
-            local pattern="$1" dir="$2"
-            if gh release download "${{ env.RELEASE_TAG }}" --pattern "$pattern" --dir "$dir" 2>/dev/null; then
-              echo "Downloaded $pattern from ${{ env.RELEASE_TAG }}"
-            else
-              echo "$pattern not in ${{ env.RELEASE_TAG }}, searching previous releases..."
-              FALLBACK_TAG=$(gh release list --limit 20 --json tagName,assets \
-                --jq "[.[] | select(.assets[].name == \"$pattern\")] | .[0].tagName // empty")
-              if [ -n "$FALLBACK_TAG" ]; then
-                gh release download "$FALLBACK_TAG" --pattern "$pattern" --dir "$dir"
-                echo "Downloaded $pattern from $FALLBACK_TAG (fallback)"
-              else
-                echo "::error::$pattern not found in any release"
-                exit 1
-              fi
-            fi
-          }
+          gh release view "${{ env.ASSET_RELEASE_TAG }}" \
+            --repo "${{ env.GH_REPO }}" \
+            --json assets \
+            --jq '.assets[].name'
 
-          download_asset "xgboost_best.pkl" "outputs_xgboost"
-          download_asset "dataset.parquet" "data/features"
-          download_asset "seoul_links.geojson" "data/gis"
+          gh release download "${{ env.ASSET_RELEASE_TAG }}" \
+            --repo "${{ env.GH_REPO }}" \
+            --pattern "${{ env.MODEL_ASSET }}" \
+            --dir outputs_xgboost \
+            --clobber
+
+          gh release download "${{ env.ASSET_RELEASE_TAG }}" \
+            --repo "${{ env.GH_REPO }}" \
+            --pattern "${{ env.GIS_ASSET }}" \
+            --dir data/gis \
+            --clobber
+
+          ls -lh outputs_xgboost/xgboost_best.pkl data/gis/seoul_links.geojson
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3

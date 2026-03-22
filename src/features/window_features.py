@@ -58,10 +58,10 @@ def extract_window_features(
     # Reshape to (N, 6, n_windows, window_size)
     reshaped = trimmed.reshape(N, 6, n_windows, window_size)
 
-    speed = reshaped[:, CH_SPEED]   # (N, n_windows, window_size)
-    ax = reshaped[:, CH_AX]         # (N, n_windows, window_size)
-    brake = reshaped[:, CH_BRAKE]   # (N, n_windows, window_size)
-    vy = reshaped[:, CH_VY]         # (N, n_windows, window_size)
+    speed = reshaped[:, CH_SPEED]  # (N, n_windows, window_size)
+    ax = reshaped[:, CH_AX]  # (N, n_windows, window_size)
+    brake = reshaped[:, CH_BRAKE]  # (N, n_windows, window_size)
+    vy = reshaped[:, CH_VY]  # (N, n_windows, window_size)
 
     ws = float(window_size)
 
@@ -81,7 +81,7 @@ def extract_window_features(
     threshold = (speed_limits * 0.5)[:, np.newaxis, np.newaxis]  # (N, 1, 1)
     slow_duration_ratio = (speed < threshold).sum(axis=2) / ws
     # 8. vy_energy (sum of VY^2 per window)
-    vy_energy = (vy ** 2).sum(axis=2)
+    vy_energy = (vy**2).sum(axis=2)
 
     # Build feature list, excluding any specified
     all_features = [
@@ -105,13 +105,23 @@ def extract_window_features(
 
     logger.info(
         "Window features: %s → %s (%d windows of %ds, %d features: %s)",
-        sequences.shape, features.shape, n_windows, window_size,
-        len(used_names), used_names,
+        sequences.shape,
+        features.shape,
+        n_windows,
+        window_size,
+        len(used_names),
+        used_names,
     )
     return features, used_names
 
 
 FEATURE_NAMES = [
-    "speed_mean", "speed_std", "speed_min", "ax_std",
-    "brake_time_ratio", "stop_time_ratio", "slow_duration_ratio", "vy_energy",
+    "speed_mean",
+    "speed_std",
+    "speed_min",
+    "ax_std",
+    "brake_time_ratio",
+    "stop_time_ratio",
+    "slow_duration_ratio",
+    "vy_energy",
 ]
