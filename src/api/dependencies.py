@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pyarrow.parquet as pq
 
 from src.models.tabular import XGBoostEstimator
@@ -26,6 +29,7 @@ class ModelRegistry:
 
     def __init__(self, config_path: str) -> None:
         cfg = load_config(config_path)
+        config_root = Path(config_path).resolve().parent.parent
 
         # --- model ---
         api_cfg = cfg.get("api", {})
@@ -35,10 +39,18 @@ class ModelRegistry:
         self.model = XGBoostEstimator.load(self.model_path)
 
         # --- feature column order (from training parquet schema) ---
-        tabular_path = cfg.get("data", {}).get("tabular_path", "data/features/dataset.parquet")
-        schema = pq.read_schema(tabular_path)
-        all_columns = [f.name for f in schema]
-        self.feature_columns: list[str] = [c for c in all_columns if c not in _EXCLUDE_COLUMNS]
+        feature_columns_path = api_cfg.get("feature_columns_path")
+        if feature_columns_path:
+            path = Path(feature_columns_path)
+            if not path.is_absolute():
+                path = (config_root / path).resolve()
+            with open(path, encoding="utf-8") as f:
+                self.feature_columns = json.load(f)
+        else:
+            tabular_path = cfg.get("data", {}).get("tabular_path", "data/features/dataset.parquet")
+            schema = pq.read_schema(tabular_path)
+            all_columns = [f.name for f in schema]
+            self.feature_columns = [c for c in all_columns if c not in _EXCLUDE_COLUMNS]
 
         # --- residual correction config ---
         rc = cfg.get("residual_correction", {})

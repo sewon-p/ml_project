@@ -71,14 +71,11 @@ jobs:
 
       - name: Create dummy model files for CI build check
         run: |
-          pip install pandas pyarrow
           mkdir -p outputs_xgboost data/features data/gis
           python3 -c "
           import pickle
           with open('outputs_xgboost/xgboost_best.pkl', 'wb') as f:
               pickle.dump({'model': None}, f)
-          import pandas as pd
-          pd.DataFrame({'col': [0]}).to_parquet('data/features/dataset.parquet')
           "
           python3 -c "
           import json

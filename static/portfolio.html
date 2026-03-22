@@ -167,12 +167,26 @@
       font-weight: 600;
     }
 
+    .snapshot-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .step-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
     @media (max-width: 1080px) {
       .hero-layout,
       .flow-grid.four,
       .flow-grid.two,
       .highlight-grid,
-      .skill-grid {
+      .skill-grid,
+      .snapshot-grid,
+      .step-grid {
         grid-template-columns: 1fr;
       }
 
@@ -240,6 +254,10 @@
             comparison, real-time inference, database integration, streaming interfaces, map-based review,
             and cloud-style deployment workflows in one coherent system.
           </div>
+          <div class="empty">
+            <strong>Ownership</strong><br>
+            Designed, implemented, and deployed as a solo end-to-end project.
+          </div>
         </div>
 
         <div class="stat-stack">
@@ -257,6 +275,126 @@
             <p class="kicker">System Coverage</p>
             <div class="metric-value" style="font-size:1.18rem;">ML + API + SQL + GIS + CI/CD</div>
             <p class="muted">The repository spans offline training, real-time serving, persistence, visualization, and deployment operations.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid two">
+        <div class="card stack">
+          <div>
+            <p class="kicker">Why This Matters</p>
+            <h2>Why single-probe estimation is worth building</h2>
+          </div>
+          <p class="summary-copy">
+            Most traffic monitoring systems depend on fixed infrastructure such as roadside detectors and cameras.
+            UrbanFlow explores whether road-level traffic conditions can be inferred from a moving probe vehicle
+            instead, using telemetry that is much easier to collect and deploy.
+          </p>
+          <p class="summary-copy">
+            That makes this more than a modeling exercise. The system has to turn noisy mobile signals into stable
+            features, serve predictions in real time, and provide enough tooling for the results to be inspected by
+            other people, not only by the model author.
+          </p>
+        </div>
+
+        <div class="card stack">
+          <div>
+            <p class="kicker">How To Explore</p>
+            <h2>Three steps for a quick review</h2>
+          </div>
+          <div class="step-grid">
+            <div class="empty">
+              <strong>1. Portfolio</strong><br>
+              Start here for the system overview, architecture, and deployment model.
+            </div>
+            <div class="empty">
+              <strong>2. Map</strong><br>
+              Open the map to inspect link-level predictions and the review workflow.
+            </div>
+            <div class="empty">
+              <strong>3. Mobile / API</strong><br>
+              Use the mobile page and docs to see how telemetry enters the backend.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card stack">
+        <div>
+          <p class="kicker">Operational Snapshot</p>
+          <h2>Lightweight latency measurements from the deployed service</h2>
+          <p class="summary-copy">
+            Warm-request median latencies measured against the public Cloud Run deployment on March 22, 2026.
+            These are operational snapshots, not formal load-test numbers.
+          </p>
+        </div>
+        <div class="snapshot-grid">
+          <div class="metric">
+            <span class="metric-label">Health</span>
+            <div class="metric-value">~66 ms</div>
+            <div class="muted">Warm median for <code>/health?format=json</code></div>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Map Page</span>
+            <div class="metric-value">~70 ms</div>
+            <div class="muted">Warm median for <code>/map</code></div>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Predict</span>
+            <div class="metric-value">~610 ms</div>
+            <div class="muted">Warm median for <code>/predict</code> with a 300-record payload</div>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Feature Ingest</span>
+            <div class="metric-value">~85 ms</div>
+            <div class="muted">Warm median for <code>/ingest-features</code></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <p class="kicker">Deployment Topology</p>
+        <h2>How the public demo is wired at runtime</h2>
+        <p class="summary-copy">
+          The deployed service keeps the serving runtime, persistent storage, and release assets separate so the
+          public demo behaves like a small production system instead of a single-script showcase.
+        </p>
+        <div class="flow-grid four">
+          <div class="flow-card arrow-right">
+            <div class="flow-tag">Entry Points</div>
+            <strong>Public surfaces</strong>
+            <ul>
+              <li>Portfolio landing page</li>
+              <li>Console, map, health, and docs</li>
+              <li>Mobile ingest and WebSocket clients</li>
+            </ul>
+          </div>
+          <div class="flow-card arrow-right">
+            <div class="flow-tag">Serving Runtime</div>
+            <strong>Cloud Run FastAPI service</strong>
+            <ul>
+              <li>XGBoost model registry</li>
+              <li>Kalman fusion and feature extraction</li>
+              <li>GIS matching and prediction APIs</li>
+            </ul>
+          </div>
+          <div class="flow-card arrow-right">
+            <div class="flow-tag">State Layer</div>
+            <strong>Storage and event delivery</strong>
+            <ul>
+              <li>PostgreSQL / TimescaleDB</li>
+              <li>WebSocket live updates</li>
+              <li>Kafka or Pub/Sub broker path</li>
+            </ul>
+          </div>
+          <div class="flow-card">
+            <div class="flow-tag">Release Assets</div>
+            <strong>Reproducible deployment inputs</strong>
+            <ul>
+              <li>GitHub Actions CI/CD</li>
+              <li>Artifact Registry image release</li>
+              <li>Versioned model and GIS asset bundle</li>
+            </ul>
           </div>
         </div>
       </section>
@@ -407,6 +545,57 @@
             <p class="kicker">Operations</p>
             <strong>Containerized CI/CD workflow</strong>
             <p class="muted">The repository includes Docker, test automation, image validation, and release-driven deployment steps.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid two">
+        <div class="card stack">
+          <div>
+            <p class="kicker">Spatial Benchmark</p>
+            <h2>Link matching remains sub-millisecond locally</h2>
+          </div>
+          <p class="summary-copy">
+            The matcher pre-indexes 414,791 Seoul road links into 43,564 grid cells and searches only the query
+            cell plus its 3×3 neighborhood. A local benchmark sampled 200 nearby points against the indexed layer.
+          </p>
+          <div class="snapshot-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+            <div class="metric">
+              <span class="metric-label">Indexed Links</span>
+              <div class="metric-value">414,791</div>
+              <div class="muted">Loaded from the normalized Seoul GIS layer</div>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Median Match</span>
+              <div class="metric-value">~0.19 ms</div>
+              <div class="muted">Warm local median from <code>scripts/benchmark_matcher.py</code></div>
+            </div>
+            <div class="metric">
+              <span class="metric-label">P95 Match</span>
+              <div class="metric-value">~0.36 ms</div>
+              <div class="muted">Local p95 over 200 randomized points</div>
+            </div>
+          </div>
+          <div class="emphasis">
+            A 30 m re-match skip threshold prevents repeated GIS work when the probe has not moved enough to justify
+            another spatial lookup.
+          </div>
+        </div>
+
+        <div class="card stack">
+          <div>
+            <p class="kicker">Reliability and Data Handling</p>
+            <h2>Runtime behavior when dependencies are partial</h2>
+          </div>
+          <ul class="signal-list">
+            <li>Pydantic request schemas validate inference and ingest payloads before they reach the serving path.</li>
+            <li>Prediction remains available when optional services such as the database or broker layer are unavailable.</li>
+            <li>Map endpoints fall back to demo payloads instead of hard-failing when database queries are unavailable.</li>
+            <li>Hosted environments disable mutating ML-pipeline actions and keep deployment assets versioned separately from code releases.</li>
+          </ul>
+          <div class="emphasis">
+            Mobile telemetry enters the system as session-scoped records, while downstream review surfaces focus on
+            link-level traffic state and system health rather than user-facing identity.
           </div>
         </div>
       </section>

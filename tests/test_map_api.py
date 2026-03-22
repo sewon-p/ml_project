@@ -101,6 +101,54 @@ def test_link_history_not_found(monkeypatch) -> None:
     assert resp.status_code == 404
 
 
+def test_latest_link_predictions_falls_back_to_demo_on_db_error(monkeypatch) -> None:
+    from src.api import map as map_api
+    from src.api.database import get_optional_session
+
+    async def _fake_get_session():
+        yield object()
+
+    async def _broken_latest(*, session, limit: int = 500):
+        del session, limit
+        raise RuntimeError("db unavailable")
+
+    demo_link = map_api.RoadLinkSummary(
+        link_id="demo-link-001",
+        road_name="Demo Road",
+        source="demo",
+        geometry_geojson='{"type":"LineString","coordinates":[[126.9,37.5],[127.0,37.5]]}',
+        center_lat=37.5,
+        center_lon=126.95,
+    )
+    demo_prediction = map_api.LinkPredictionSummary(
+        prediction_id=101,
+        session_id="demo-session",
+        observed_at=datetime(2026, 3, 14, 12, 0, tzinfo=UTC),
+        density=12.0,
+        flow=800.0,
+        fd_density=9.0,
+        fd_flow=600.0,
+        residual_density=3.0,
+    )
+
+    app = _create_test_app()
+    app.dependency_overrides[get_optional_session] = _fake_get_session
+    monkeypatch.setattr(map_api, "list_latest_link_predictions", _broken_latest)
+    monkeypatch.setattr(
+        map_api,
+        "_demo_payload",
+        lambda: ({"demo-link-001": demo_link}, {"demo-link-001": [demo_prediction]}),
+    )
+
+    with TestClient(app) as client:
+        resp = client.get("/map/links/latest")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data[0]["link"]["link_id"] == "demo-link-001"
+    assert data[0]["latest_prediction"]["prediction_id"] == 101
+
+
 def test_prediction_detail(monkeypatch) -> None:
     from src.api import map as map_api
     from src.api.database import get_optional_session

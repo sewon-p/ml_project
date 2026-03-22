@@ -98,6 +98,7 @@ api:
   host: 0.0.0.0
   port: 8000
   model_path: outputs_xgboost/xgboost_best.pkl
+  feature_columns_path: configs/runtime/feature_columns.json
 
 database:
   url: postgresql+asyncpg://traffic:traffic@localhost:5432/traffic

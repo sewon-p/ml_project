@@ -1,26 +1,22 @@
 #!/usr/bin/env bash
-# Download model artifacts from the latest GitHub release.
+# Download deployment assets from GitHub releases.
 # Usage: bash scripts/download_models.sh [TAG]
-#   TAG  - release tag (default: latest)
+#   TAG  - asset bundle release tag override (default: deploy/asset_bundle.env)
 #
 # Requires: gh CLI (https://cli.github.com/) authenticated.
 
 set -euo pipefail
 
 REPO="ParkSewon-PM/ml_project"
-TAG="${1:-latest}"
+source deploy/asset_bundle.env
+TAG="${1:-$ASSET_RELEASE_TAG}"
 
-echo "==> Downloading model artifacts from release: ${TAG}"
+echo "==> Downloading deployment assets from release: ${TAG}"
 
-mkdir -p outputs_xgboost data/features
+mkdir -p outputs_xgboost data/gis
 
-if [ "$TAG" = "latest" ]; then
-    gh release download --repo "$REPO" --pattern "xgboost_best.pkl" --dir outputs_xgboost --clobber
-    gh release download --repo "$REPO" --pattern "dataset.parquet"  --dir data/features    --clobber
-else
-    gh release download "$TAG" --repo "$REPO" --pattern "xgboost_best.pkl" --dir outputs_xgboost --clobber
-    gh release download "$TAG" --repo "$REPO" --pattern "dataset.parquet"  --dir data/features    --clobber
-fi
+gh release download "$TAG" --repo "$REPO" --pattern "$MODEL_ASSET" --dir outputs_xgboost --clobber
+gh release download "$TAG" --repo "$REPO" --pattern "$GIS_ASSET" --dir data/gis --clobber
 
 echo "==> Done. Files downloaded:"
-ls -lh outputs_xgboost/xgboost_best.pkl data/features/dataset.parquet
+ls -lh outputs_xgboost/xgboost_best.pkl data/gis/seoul_links.geojson

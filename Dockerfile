@@ -23,10 +23,12 @@ COPY static/ static/
 # GIS link layer for mobile GPS -> road link matching
 COPY data/gis/ data/gis/
 
-# Copy model weights + feature schema (required at runtime)
-# These files must exist at docker build time
+# Runtime metadata committed to the repo
+COPY deploy/ deploy/
+
+# Copy model weights (required at runtime)
+# This file must exist at docker build time
 COPY outputs_xgboost/xgboost_best.pkl outputs_xgboost/xgboost_best.pkl
-COPY data/features/dataset.parquet data/features/dataset.parquet
 
 ENV CONFIG_PATH=configs/default.yaml
 

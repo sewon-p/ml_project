@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
@@ -26,6 +27,7 @@ from src.api.schemas import (
 from src.utils.config import load_config
 
 router = APIRouter(prefix="/map", tags=["map"])
+logger = logging.getLogger(__name__)
 
 
 def _serialize_link(road_link: RoadLink) -> RoadLinkSummary:
@@ -176,15 +178,18 @@ async def latest_link_predictions(
         ]
 
     if session is not None:
-        rows = await list_latest_link_predictions(session=session, limit=limit)
-        if rows:
-            return [
-                LinkLatestResponse(
-                    link=_serialize_link(road_link),
-                    latest_prediction=_serialize_prediction(prediction),
-                )
-                for road_link, prediction in rows
-            ]
+        try:
+            rows = await list_latest_link_predictions(session=session, limit=limit)
+            if rows:
+                return [
+                    LinkLatestResponse(
+                        link=_serialize_link(road_link),
+                        latest_prediction=_serialize_prediction(prediction),
+                    )
+                    for road_link, prediction in rows
+                ]
+        except Exception:
+            logger.warning("Latest link query failed; falling back to demo payload", exc_info=True)
 
     links, history = _demo_payload()
     return [
@@ -205,13 +210,16 @@ async def link_history(
         return LinkHistoryResponse(link=live_links[link_id], history=live_history[link_id][:limit])
 
     if session is not None:
-        rows = await get_link_history(session=session, link_id=link_id, limit=limit)
-        if rows:
-            road_link = rows[0][0]
-            return LinkHistoryResponse(
-                link=_serialize_link(road_link),
-                history=[_serialize_prediction(prediction) for _, prediction in rows],
-            )
+        try:
+            rows = await get_link_history(session=session, link_id=link_id, limit=limit)
+            if rows:
+                road_link = rows[0][0]
+                return LinkHistoryResponse(
+                    link=_serialize_link(road_link),
+                    history=[_serialize_prediction(prediction) for _, prediction in rows],
+                )
+        except Exception:
+            logger.warning("Link history query failed; falling back to demo payload", exc_info=True)
 
     links, history = _demo_payload()
     if link_id not in links or link_id not in history:
@@ -257,29 +265,34 @@ async def prediction_detail(
         )
 
     if session is not None:
-        detail = await get_prediction_detail(session=session, prediction_id=prediction_id)
-        if detail is not None:
-            prediction, road_link, records = detail
-            return PredictionDetailResponse(
-                prediction_id=prediction.id,
-                link=_serialize_link(road_link) if road_link is not None else None,
-                session_id=prediction.session_id,
-                observed_at=prediction.observed_at,
-                density=prediction.density,
-                flow=prediction.flow,
-                fd_density=prediction.fd_density,
-                fd_flow=prediction.fd_flow,
-                residual_density=prediction.residual_density,
-                fcd_records=[
-                    FCDRecord(
-                        time=record.time,
-                        x=record.x,
-                        y=record.y,
-                        speed=record.speed,
-                        brake=record.brake,
-                    )
-                    for record in records
-                ],
+        try:
+            detail = await get_prediction_detail(session=session, prediction_id=prediction_id)
+            if detail is not None:
+                prediction, road_link, records = detail
+                return PredictionDetailResponse(
+                    prediction_id=prediction.id,
+                    link=_serialize_link(road_link) if road_link is not None else None,
+                    session_id=prediction.session_id,
+                    observed_at=prediction.observed_at,
+                    density=prediction.density,
+                    flow=prediction.flow,
+                    fd_density=prediction.fd_density,
+                    fd_flow=prediction.fd_flow,
+                    residual_density=prediction.residual_density,
+                    fcd_records=[
+                        FCDRecord(
+                            time=record.time,
+                            x=record.x,
+                            y=record.y,
+                            speed=record.speed,
+                            brake=record.brake,
+                        )
+                        for record in records
+                    ],
+                )
+        except Exception:
+            logger.warning(
+                "Prediction detail query failed; falling back to demo payload", exc_info=True
             )
 
     links, history = _demo_payload()

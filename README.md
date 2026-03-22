@@ -2,7 +2,7 @@
 
 > An end-to-end data and ML platform that estimates road-level traffic density using only a single probe vehicle's mobile telemetry — no roadside sensors required.
 
-**[Live Demo](https://traffic-estimator-gcbqhrztha-du.a.run.app/dashboard)** · **[API Docs](https://traffic-estimator-gcbqhrztha-du.a.run.app/docs)** · **[Map](https://traffic-estimator-gcbqhrztha-du.a.run.app/map)**
+**[Live Portfolio](https://traffic-estimator-gcbqhrztha-du.a.run.app/)** · **[Console](https://traffic-estimator-gcbqhrztha-du.a.run.app/dashboard)** · **[API Docs](https://traffic-estimator-gcbqhrztha-du.a.run.app/docs)** · **[Map](https://traffic-estimator-gcbqhrztha-du.a.run.app/map)**
 
 ![tests](https://img.shields.io/badge/tests-144%20passing-brightgreen) ![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue) ![deploy](https://img.shields.io/badge/deploy-Cloud%20Run-4285F4)
 
@@ -11,6 +11,8 @@
 UrbanFlow is a system that takes GPS and accelerometer data from one moving vehicle, fuses the signals through a Kalman filter, extracts traffic-dynamics features from 300-second trajectory windows, runs ML inference, and matches predictions to the nearest road segment via spatial indexing. Results are served through REST APIs, persisted in PostgreSQL, streamed through message brokers, and displayed on real-time dashboards.
 
 The project covers the full scope of a production data/ML system: simulation-based data generation, feature engineering, model training and evaluation, async backend APIs, SQL persistence, real-time streaming, containerized deployment, and CI/CD.
+
+Designed, implemented, and deployed as a solo end-to-end project.
 
 ## Engineering Scope
 
