@@ -40,6 +40,7 @@ class TabularTrainer:
         df: pd.DataFrame,
         feature_columns: list[str],
         target_column: str = "density",
+        sample_weight_column: str | None = None,
     ) -> dict[str, Any]:
         """Run GroupKFold CV training.
 
@@ -59,6 +60,8 @@ class TabularTrainer:
             X_val = val_df[feature_columns].values
             y_val = val_df[target_column].values
 
+            sw_train = train_df[sample_weight_column].values if sample_weight_column else None
+
             model = create_model(self.model_type, **self.model_params)
             model.fit(
                 X_train,
@@ -66,6 +69,7 @@ class TabularTrainer:
                 X_val,
                 y_val,
                 early_stopping_rounds=self.early_stopping_rounds,
+                sample_weight=sw_train,
             )
 
             preds = model.predict(X_val)

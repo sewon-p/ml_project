@@ -66,6 +66,10 @@ PIPELINE_STEPS = {
         "label": "Model Training",
         "cmd": [sys.executable, "-m", "scripts.train"],
     },
+    "train_window": {
+        "label": "Window Model Training",
+        "cmd": [sys.executable, "-m", "scripts.train_window"],
+    },
     "evaluate": {
         "label": "Evaluation",
         "cmd": [sys.executable, "-m", "scripts.evaluate"],
@@ -274,7 +278,8 @@ class RunManager:
                    scenario_config: dict | None = None,
                    fd_model: str = "underwood",
                    data_filters: dict | None = None,
-                   exclude_features: list[str] | None = None) -> tuple[str, Path]:
+                   exclude_features: list[str] | None = None,
+                   exclude_window_features: list[str] | None = None) -> tuple[str, Path]:
         """Create a new run directory with manifest and config overlay."""
         run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
         run_dir = self.runs_dir / run_id
@@ -303,6 +308,8 @@ class RunManager:
             manifest["data_filters"] = data_filters
         if exclude_features:
             manifest["exclude_features"] = exclude_features
+        if exclude_window_features:
+            manifest["exclude_window_features"] = exclude_window_features
         (run_dir / "manifest.json").write_text(
             json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
         )
@@ -312,7 +319,7 @@ class RunManager:
             run_dir, source_run_id, source_stage, max_workers, device,
             scenario_config=scenario_config, fd_model=fd_model,
             data_filters=data_filters, exclude_features=exclude_features,
-            steps=steps,
+            exclude_window_features=exclude_window_features, steps=steps,
         )
 
         # Apply data filters: copy filtered feature files to new run dir
@@ -385,6 +392,7 @@ class RunManager:
                           fd_model: str = "underwood",
                           data_filters: dict | None = None,
                           exclude_features: list[str] | None = None,
+                          exclude_window_features: list[str] | None = None,
                           steps: list[str] | None = None) -> None:
         """Generate run_config.yaml that inherits from default.yaml."""
         run_id = run_dir.name
@@ -419,6 +427,8 @@ class RunManager:
 
         if exclude_features:
             overlay.setdefault("training", {})["exclude_features"] = exclude_features
+        if exclude_window_features:
+            overlay.setdefault("window_features", {})["exclude"] = exclude_window_features
 
         # FD residual correction: only enable when 'residuals' step is selected
         if steps and "residuals" in steps:
@@ -715,6 +725,7 @@ class RunRequest(BaseModel):
     fd_model: str = "underwood"  # greenshields | greenberg | underwood | drake | multi_regime
     data_filters: dict | None = None  # {"lanes": [2,3], "speed_limits_kmh": [80,100]}
     exclude_features: list[str] | None = None  # features to exclude from training/eval
+    exclude_window_features: list[str] | None = None  # window features to exclude
 
 
 # ---------------------------------------------------------------------------
@@ -726,7 +737,12 @@ _MODEL_CONFIG_MAP = {
     "lstm": "configs/models/lstm.yaml",
     "xgboost": "configs/models/xgboost.yaml",
     "lightgbm": "configs/models/lightgbm.yaml",
+    "window_cnn1d": "configs/models/window_cnn1d.yaml",
+    "window_lstm": "configs/models/window_lstm.yaml",
+    "window_xgboost": "configs/models/window_xgboost.yaml",
 }
+
+WINDOW_MODELS = {"window_cnn1d", "window_lstm", "window_xgboost"}
 
 
 def _write_model_config(base_config_path: str, out_path: str, model_type: str) -> None:
@@ -812,6 +828,7 @@ async def _run_pipeline(req: RunRequest) -> None:
             fd_model=req.fd_model,
             data_filters=req.data_filters,
             exclude_features=req.exclude_features,
+            exclude_window_features=req.exclude_window_features,
         )
         state.current_run_id = run_id
         state.current_run_dir = run_dir
@@ -840,7 +857,11 @@ async def _run_pipeline(req: RunRequest) -> None:
         for s in req.steps:
             if s in ("train", "evaluate") and model_types:
                 for mt in model_types:
-                    expanded_steps.append((s, mt))
+                    # Window models use train_window step instead of train
+                    if s == "train" and mt in WINDOW_MODELS:
+                        expanded_steps.append(("train_window", mt))
+                    else:
+                        expanded_steps.append((s, mt))
             else:
                 expanded_steps.append((s, None))
 
@@ -861,14 +882,17 @@ async def _run_pipeline(req: RunRequest) -> None:
                 extra_args = ["--num", str(req.num_scenarios)]
                 extra_args += ["--output", str(run_dir / "scenarios.csv")]
 
-            # For train/evaluate: use model-specific config overlay
+            # For train/evaluate/train_window: use model-specific config overlay
             step_label: str | None = None
-            if step_key in ("train", "evaluate") and model_type:
+            if step_key in ("train", "train_window", "evaluate") and model_type:
                 model_cfg_path = run_dir / f"run_config_{model_type}.yaml"
                 if not model_cfg_path.exists():
                     _write_model_config(config_path, str(model_cfg_path), model_type)
                 cmd = list(step["cmd"]) + ["--config", str(model_cfg_path)]
-                base_label = "Model Training" if step_key == "train" else "Evaluation"
+                if step_key in ("train", "train_window"):
+                    base_label = "Model Training"
+                else:
+                    base_label = "Evaluation"
                 step_label = f"{base_label} ({model_type})"
 
             success = await _run_step(step_key, cmd, extra_args, label=step_label)

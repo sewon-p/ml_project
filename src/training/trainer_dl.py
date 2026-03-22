@@ -166,13 +166,14 @@ class DLTrainer:
         self.model.train()
         total_loss = 0.0
         n_batches = 0
+        nb = self.device.type != "cpu"  # non_blocking for GPU/MPS
         for batch in loader:
             X_batch, y_batch, cond = self._unpack_batch(batch)
-            X_batch = X_batch.to(self.device)
-            y_batch = y_batch.to(self.device)
+            X_batch = X_batch.to(self.device, non_blocking=nb)
+            y_batch = y_batch.to(self.device, non_blocking=nb)
             if cond is not None:
-                cond = cond.to(self.device)
-            self.optimizer.zero_grad()
+                cond = cond.to(self.device, non_blocking=nb)
+            self.optimizer.zero_grad(set_to_none=True)
             preds = self.model(X_batch, cond)
             loss = self.criterion(preds, y_batch)
             loss.backward()
@@ -187,13 +188,14 @@ class DLTrainer:
         all_targets = []
         total_loss = 0.0
         n_batches = 0
+        nb = self.device.type != "cpu"
         with torch.no_grad():
             for batch in loader:
                 X_batch, y_batch, cond = self._unpack_batch(batch)
-                X_batch = X_batch.to(self.device)
-                y_batch = y_batch.to(self.device)
+                X_batch = X_batch.to(self.device, non_blocking=nb)
+                y_batch = y_batch.to(self.device, non_blocking=nb)
                 if cond is not None:
-                    cond = cond.to(self.device)
+                    cond = cond.to(self.device, non_blocking=nb)
                 preds = self.model(X_batch, cond)
                 loss = self.criterion(preds, y_batch)
                 total_loss += loss.item()

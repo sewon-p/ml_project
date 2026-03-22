@@ -57,3 +57,13 @@ def mean_stop_duration(trajectory: pd.DataFrame, **kwargs: object) -> float:
     if len(segments) == 0:
         return 0.0
     return float(np.mean(segments))
+
+
+@register_feature("slow_duration_ratio")
+def slow_duration_ratio(trajectory: pd.DataFrame, **kwargs: object) -> float:
+    """Fraction of time spent below half the speed limit."""
+    speeds = trajectory["speed"].values
+    speed_limit = float(kwargs.get("speed_limit", 13.89))  # m/s default ~50km/h
+    if len(speeds) == 0:
+        return 0.0
+    return float(np.sum(speeds < speed_limit * 0.5) / len(speeds))

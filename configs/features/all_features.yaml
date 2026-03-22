@@ -25,6 +25,7 @@ features:
   - stop_count
   - stop_time_ratio
   - mean_stop_duration
+  - slow_duration_ratio
   # time-series
   - speed_autocorr_lag1
   - speed_fft_dominant_freq

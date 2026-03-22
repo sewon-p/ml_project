@@ -56,7 +56,6 @@ class LSTMModel(nn.Module):
     def forward(self, x: torch.Tensor, cond: torch.Tensor | None = None) -> torch.Tensor:
         # Input: (B, C, L) → permute to (B, L, C) for LSTM
         x = x.permute(0, 2, 1)
-        self.lstm.flatten_parameters()
         output, (h_n, _) = self.lstm(x)
         if self.lstm.bidirectional:
             last = torch.cat([h_n[-2], h_n[-1]], dim=-1)

@@ -240,7 +240,12 @@ def _static_page(name: str) -> FileResponse:
 
 @app.get("/", include_in_schema=False)
 async def root() -> RedirectResponse:
-    return RedirectResponse(url="/dashboard")
+    return RedirectResponse(url="/portfolio")
+
+
+@app.get("/portfolio", include_in_schema=False)
+async def portfolio_page() -> FileResponse:
+    return _static_page("portfolio.html")
 
 
 @app.get("/dashboard", include_in_schema=False)

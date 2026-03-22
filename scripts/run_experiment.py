@@ -235,6 +235,16 @@ def _run_tabular_experiment(cfg: dict, exp_name: str) -> dict:
         test_ratio=train_cfg.get("test_ratio", 0.2),
     )
 
+    # Density-weighted sample weights
+    sw_col: str | None = None
+    per_lane_target = f"{target}_per_lane"
+    if train_cfg.get("density_weighted", False) and per_lane_target in train_df.columns:
+        density_vals = train_df[per_lane_target].values
+        train_df = train_df.copy()
+        train_df["_sample_weight"] = 1.0 + (density_vals / density_vals.max()) * 2.0
+        sw_col = "_sample_weight"
+        logger.info("Density weighting enabled: weight range [1.0, 3.0]")
+
     model_params = {}
     model_config_path = cfg.get("model", {}).get("config")
     if model_config_path:
@@ -246,7 +256,7 @@ def _run_tabular_experiment(cfg: dict, exp_name: str) -> dict:
         n_splits=train_cfg.get("n_splits", 5),
         group_column=train_cfg.get("group_column", "scenario_id"),
     )
-    trainer.fit(train_df, feature_columns, train_target)
+    trainer.fit(train_df, feature_columns, train_target, sample_weight_column=sw_col)
 
     test_preds = trainer.predict(test_df[feature_columns].values)
     if residual_enabled:

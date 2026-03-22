@@ -335,8 +335,11 @@
         <div id="modelTypeSection">
           <h3>Model Selection</h3>
           <div class="checkbox-group" id="modelTypes">
-            <label><input type="checkbox" value="cnn1d" checked> CNN-1D</label>
+            <label><input type="checkbox" value="cnn1d"> CNN-1D</label>
             <label><input type="checkbox" value="lstm"> LSTM</label>
+            <label><input type="checkbox" value="window_cnn1d"> Window CNN-1D</label>
+            <label><input type="checkbox" value="window_lstm"> Window LSTM</label>
+            <label><input type="checkbox" value="window_xgboost"> Window XGBoost</label>
             <label><input type="checkbox" value="xgboost"> XGBoost</label>
             <label><input type="checkbox" value="lightgbm"> LightGBM</label>
           </div>
@@ -384,6 +387,7 @@
                 <label><input type="checkbox" class="feat-cb" value="stop_count" checked> stop_count</label>
                 <label><input type="checkbox" class="feat-cb" value="stop_time_ratio" checked> stop_time_ratio</label>
                 <label><input type="checkbox" class="feat-cb" value="mean_stop_duration" checked> mean_stop_duration</label>
+                <label><input type="checkbox" class="feat-cb" value="slow_duration_ratio" checked> slow_duration_ratio</label>
               </div>
               <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Time-Series</div>
               <div class="checkbox-group" style="margin-bottom:4px;">
@@ -407,6 +411,27 @@
                 <label><input type="checkbox" class="feat-cb" value="num_lanes" checked> num_lanes</label>
                 <label><input type="checkbox" class="feat-cb" value="speed_limit" checked> speed_limit</label>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="windowFeatureSection">
+          <h3 style="display:flex; align-items:center; justify-content:space-between;">
+            Window Features <span style="font-size:0.75rem; color:var(--muted); font-weight:400;">(Window CNN-1D / LSTM)</span>
+            <button class="btn btn-outline btn-sm" onclick="toggleAllFeatures('window')">Select All / Deselect All</button>
+          </h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 16px; font-size:0.82rem; margin-bottom:12px;">
+            <div class="checkbox-group" style="margin-bottom:4px;">
+              <label><input type="checkbox" class="winfeat-cb" value="speed_mean" checked> speed_mean</label>
+              <label><input type="checkbox" class="winfeat-cb" value="speed_std" checked> speed_std</label>
+              <label><input type="checkbox" class="winfeat-cb" value="speed_min" checked> speed_min</label>
+              <label><input type="checkbox" class="winfeat-cb" value="ax_std" checked> ax_std</label>
+            </div>
+            <div class="checkbox-group" style="margin-bottom:4px;">
+              <label><input type="checkbox" class="winfeat-cb" value="brake_time_ratio" checked> brake_time_ratio</label>
+              <label><input type="checkbox" class="winfeat-cb" value="stop_time_ratio" checked> stop_time_ratio</label>
+              <label><input type="checkbox" class="winfeat-cb" value="slow_duration_ratio" checked> slow_duration_ratio</label>
+              <label><input type="checkbox" class="winfeat-cb" value="vy_energy" checked> vy_energy</label>
             </div>
           </div>
         </div>
@@ -455,8 +480,11 @@
           <div id="resumeModelTypeSection" style="display:none;">
             <h3>Model Selection</h3>
             <div class="checkbox-group" id="resumeModelTypes">
-              <label><input type="checkbox" value="cnn1d" checked> CNN-1D</label>
+              <label><input type="checkbox" value="cnn1d"> CNN-1D</label>
               <label><input type="checkbox" value="lstm"> LSTM</label>
+              <label><input type="checkbox" value="window_cnn1d"> Window CNN-1D</label>
+              <label><input type="checkbox" value="window_lstm"> Window LSTM</label>
+              <label><input type="checkbox" value="window_xgboost"> Window XGBoost</label>
               <label><input type="checkbox" value="xgboost"> XGBoost</label>
               <label><input type="checkbox" value="lightgbm"> LightGBM</label>
             </div>
@@ -503,6 +531,7 @@
                   <label><input type="checkbox" class="resume-feat-cb" value="stop_count" checked> stop_count</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="stop_time_ratio" checked> stop_time_ratio</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="mean_stop_duration" checked> mean_stop_duration</label>
+                  <label><input type="checkbox" class="resume-feat-cb" value="slow_duration_ratio" checked> slow_duration_ratio</label>
                 </div>
                 <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Time-Series</div>
                 <div class="checkbox-group" style="margin-bottom:4px;">
@@ -526,6 +555,26 @@
                   <label><input type="checkbox" class="resume-feat-cb" value="num_lanes" checked> num_lanes</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="speed_limit" checked> speed_limit</label>
                 </div>
+              </div>
+            </div>
+          </div>
+          <div id="resumeWindowFeatureSection" style="display:none;">
+            <h3 style="display:flex; align-items:center; justify-content:space-between;">
+              Window Features <span style="font-size:0.75rem; color:var(--muted); font-weight:400;">(Window CNN-1D / LSTM)</span>
+              <button class="btn btn-outline btn-sm" onclick="toggleAllFeatures('resume-window')">Select All / Deselect All</button>
+            </h3>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 16px; font-size:0.82rem; margin-bottom:12px;">
+              <div class="checkbox-group" style="margin-bottom:4px;">
+                <label><input type="checkbox" class="resume-winfeat-cb" value="speed_mean" checked> speed_mean</label>
+                <label><input type="checkbox" class="resume-winfeat-cb" value="speed_std" checked> speed_std</label>
+                <label><input type="checkbox" class="resume-winfeat-cb" value="speed_min" checked> speed_min</label>
+                <label><input type="checkbox" class="resume-winfeat-cb" value="ax_std" checked> ax_std</label>
+              </div>
+              <div class="checkbox-group" style="margin-bottom:4px;">
+                <label><input type="checkbox" class="resume-winfeat-cb" value="brake_time_ratio" checked> brake_time_ratio</label>
+                <label><input type="checkbox" class="resume-winfeat-cb" value="stop_time_ratio" checked> stop_time_ratio</label>
+                <label><input type="checkbox" class="resume-winfeat-cb" value="slow_duration_ratio" checked> slow_duration_ratio</label>
+                <label><input type="checkbox" class="resume-winfeat-cb" value="vy_energy" checked> vy_energy</label>
               </div>
             </div>
           </div>
@@ -857,11 +906,50 @@ function collectExcludeFeatures(mode) {
   return unchecked.length > 0 ? unchecked : null;
 }
 
+function collectExcludeWindowFeatures(mode) {
+  const cls = mode === 'resume' ? '.resume-winfeat-cb' : '.winfeat-cb';
+  const all = [...document.querySelectorAll(cls)];
+  const unchecked = all.filter(c => !c.checked).map(c => c.value);
+  return unchecked.length > 0 ? unchecked : null;
+}
+
 function toggleAllFeatures(mode) {
-  const cls = mode === 'resume' ? '.resume-feat-cb' : '.feat-cb';
+  const clsMap = {
+    'scratch': '.feat-cb', 'resume': '.resume-feat-cb',
+    'window': '.winfeat-cb', 'resume-window': '.resume-winfeat-cb',
+  };
+  const cls = clsMap[mode] || '.feat-cb';
   const all = [...document.querySelectorAll(cls)];
   const allChecked = all.every(c => c.checked);
   all.forEach(c => c.checked = !allChecked);
+}
+
+function hasWindowModel(selector) {
+  const checked = [...document.querySelectorAll(selector + ' input:checked')].map(c => c.value);
+  return checked.some(v => v.startsWith('window_'));
+}
+
+function hasTabularModel(selector) {
+  const checked = [...document.querySelectorAll(selector + ' input:checked')].map(c => c.value);
+  return checked.some(v => ['xgboost','lightgbm'].includes(v));
+}
+
+function updateFeatureSections() {
+  // Scratch tab
+  const scratchTabular = hasTabularModel('#modelTypes');
+  const scratchWindow = hasWindowModel('#modelTypes');
+  const fss = document.getElementById('featureSelectionSection');
+  const wfs = document.getElementById('windowFeatureSection');
+  if (fss) fss.style.display = scratchTabular ? 'block' : 'none';
+  if (wfs) wfs.style.display = scratchWindow ? 'block' : 'none';
+
+  // Resume tab
+  const resumeTabular = hasTabularModel('#resumeModelTypes');
+  const resumeWindow = hasWindowModel('#resumeModelTypes');
+  const rfs = document.getElementById('resumeFeatureSection');
+  const rwfs = document.getElementById('resumeWindowFeatureSection');
+  if (rfs) rfs.style.display = resumeTabular ? 'block' : 'none';
+  if (rwfs) rwfs.style.display = resumeWindow ? 'block' : 'none';
 }
 
 // --- Model types ---
@@ -888,6 +976,7 @@ async function runFromScratch() {
     model_types: getModelTypes(),
     fd_model: fdModelEl ? fdModelEl.value : 'underwood',
     exclude_features: collectExcludeFeatures('scratch'),
+    exclude_window_features: collectExcludeWindowFeatures('scratch'),
   };
 
   // Include scenario config when generating scenarios
@@ -922,6 +1011,7 @@ async function runResume() {
     fd_model: resumeFdEl ? resumeFdEl.value : 'underwood',
     data_filters: collectDataFilters(),
     exclude_features: collectExcludeFeatures('resume'),
+    exclude_window_features: collectExcludeWindowFeatures('resume'),
   };
 
   await startPipeline(body);
@@ -1479,6 +1569,12 @@ populateScenarioFields(SCENARIO_FALLBACK);  // Render all param rows immediately
 refreshRuns();
 updateTotal();
 pollStatus();
+
+// Toggle feature sections based on selected models
+document.querySelectorAll('#modelTypes input, #resumeModelTypes input').forEach(cb => {
+  cb.addEventListener('change', updateFeatureSections);
+});
+updateFeatureSections();
 </script>
 </body>
 </html>

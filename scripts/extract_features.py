@@ -103,7 +103,10 @@ def _process_scenario(
             continue
 
         # Tabular features
-        feats = extract_features(trajectory, feature_names=feature_names)
+        feats = extract_features(
+            trajectory, feature_names=feature_names,
+            speed_limit=row_dict.get("speed_limit", 33.33),
+        )
         # Drop VX-related features
         for vx_key in FEATURES_DROP:
             feats.pop(vx_key, None)

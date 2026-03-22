@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UrbanFlow Portfolio</title>
+  <link rel="stylesheet" href="/static/site.css">
+  <style>
+    .portfolio-grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero-layout {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .cta-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .summary-copy {
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: 0.98rem;
+    }
+
+    .flow-grid {
+      display: grid;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .flow-grid.four {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .flow-grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .flow-card {
+      position: relative;
+      padding: 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.74);
+      min-height: 170px;
+    }
+
+    .flow-card.arrow-right::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -12px;
+      transform: translateY(-50%);
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--accent-2);
+    }
+
+    .flow-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.10);
+      color: var(--accent);
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .flow-card ul,
+    .signal-list {
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .flow-card li + li,
+    .signal-list li + li {
+      margin-top: 5px;
+    }
+
+    .signal-panel {
+      padding: 18px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .signal-panel.client {
+      background: linear-gradient(180deg, rgba(15, 118, 110, 0.08), rgba(255, 255, 255, 0.72));
+    }
+
+    .signal-panel.server {
+      background: linear-gradient(180deg, rgba(180, 83, 9, 0.10), rgba(255, 255, 255, 0.72));
+    }
+
+    .signal-bridge {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .bridge-item {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid var(--border);
+      font-size: 0.92rem;
+      color: var(--text);
+    }
+
+    .stat-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .emphasis {
+      padding: 16px 18px;
+      border-radius: var(--radius-md);
+      background: rgba(15, 118, 110, 0.09);
+      border: 1px solid rgba(15, 118, 110, 0.18);
+      line-height: 1.7;
+    }
+
+    .highlight-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .highlight-item {
+      padding: 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .skill-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .skill-chip {
+      display: inline-flex;
+      margin: 0 8px 8px 0;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.78);
+      color: var(--text);
+      font-size: 0.84rem;
+      font-weight: 600;
+    }
+
+    @media (max-width: 1080px) {
+      .hero-layout,
+      .flow-grid.four,
+      .flow-grid.two,
+      .highlight-grid,
+      .skill-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-card.arrow-right::after {
+        content: "↓";
+        top: auto;
+        right: 50%;
+        bottom: -18px;
+        transform: translateX(50%);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">UF</div>
+        <div class="brand-copy">
+          <div class="brand-title">UrbanFlow Portfolio</div>
+          <div class="brand-subtitle">Project overview and system walkthrough</div>
+        </div>
+        <a class="brand-shortcut" href="/dashboard">Open Console</a>
+      </div>
+      <nav class="nav">
+        <a class="nav-link active" href="/portfolio">Portfolio</a>
+        <a class="nav-link" href="/dashboard">Console</a>
+        <a class="nav-link" href="/map">Map</a>
+        <a class="nav-link" href="/mobile">Mobile</a>
+        <a class="nav-link" href="/health">Health</a>
+        <a class="nav-link" href="/docs">Docs</a>
+      </nav>
+    </header>
+
+    <main class="page portfolio-grid">
+      <section class="hero">
+        <span class="eyebrow">Project Overview</span>
+        <h1>From mobile telemetry to road-level traffic estimates.</h1>
+        <p class="summary-copy">
+          UrbanFlow is an end-to-end traffic density estimation platform built from mobile probe telemetry,
+          feature-engineered machine learning, spatial link matching, backend APIs, SQL-backed storage,
+          and deployment-ready operational tooling.
+        </p>
+        <div class="cta-row">
+          <a class="btn" href="/dashboard">Open Project Console</a>
+          <a class="btn secondary" href="/map">View Link Map</a>
+          <a class="btn secondary" href="/ml-pipeline/">Open ML Pipeline</a>
+        </div>
+      </section>
+
+      <section class="hero-layout">
+        <div class="card stack">
+          <div>
+            <p class="kicker">What This Project Does</p>
+            <h2>System-first, not notebook-first</h2>
+          </div>
+          <p class="summary-copy">
+            The system estimates road-level traffic density using only a single moving probe vehicle. Rather than
+            depending on loop detectors or fixed roadside infrastructure, UrbanFlow turns noisy GPS, speed, and
+            motion signals into structured traffic features, produces link-level predictions, stores the outputs,
+            and exposes the results through APIs and interactive dashboards.
+          </p>
+          <div class="emphasis">
+            The goal was to build more than a model benchmark. This project covers dataset generation, model
+            comparison, real-time inference, database integration, streaming interfaces, map-based review,
+            and cloud-style deployment workflows in one coherent system.
+          </div>
+        </div>
+
+        <div class="stat-stack">
+          <div class="card">
+            <p class="kicker">Best Deployment Model</p>
+            <div class="metric-value">XGBoost</div>
+            <p class="muted">Compared against LSTM, CNN-1D, LightGBM, GPR, and traffic-flow baselines before selecting the serving model.</p>
+          </div>
+          <div class="card">
+            <p class="kicker">Feature Design</p>
+            <div class="metric-value" style="font-size:1.18rem;">Traffic Theory + Vehicle Dynamics</div>
+            <p class="muted">Feature engineering draws on traffic engineering, fluid-dynamics intuition, and car-following behavior.</p>
+          </div>
+          <div class="card">
+            <p class="kicker">System Coverage</p>
+            <div class="metric-value" style="font-size:1.18rem;">ML + API + SQL + GIS + CI/CD</div>
+            <p class="muted">The repository spans offline training, real-time serving, persistence, visualization, and deployment operations.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <p class="kicker">System Architecture</p>
+        <h2>Offline model development connected to online serving</h2>
+        <p class="summary-copy">
+          The project has two main layers: an offline pipeline for simulation, labeling, feature engineering,
+          training, and evaluation, and an online pipeline for ingesting mobile telemetry and serving road-link
+          predictions in real time.
+        </p>
+        <div class="flow-grid four">
+          <div class="flow-card arrow-right">
+            <div class="flow-tag">Offline Data</div>
+            <strong>Simulation and labeling</strong>
+            <ul>
+              <li>Scenario generation</li>
+              <li>SUMO execution</li>
+              <li>FCD trajectory collection</li>
+              <li>Density and flow targets</li>
+            </ul>
+          </div>
+          <div class="flow-card arrow-right">
+            <div class="flow-tag">Feature Layer</div>
+            <strong>Feature engineering and training</strong>
+            <ul>
+              <li>Tabular feature extraction</li>
+              <li>Windowed sequence features</li>
+              <li>LSTM, CNN-1D, XGBoost, LightGBM</li>
+              <li>Evaluation and model selection</li>
+            </ul>
+          </div>
+          <div class="flow-card arrow-right">
+            <div class="flow-tag">Serving</div>
+            <strong>Real-time inference backend</strong>
+            <ul>
+              <li>FastAPI ingest and predict routes</li>
+              <li>Kalman fusion and buffering</li>
+              <li>XGBoost inference</li>
+              <li>GIS link matching</li>
+            </ul>
+          </div>
+          <div class="flow-card">
+            <div class="flow-tag">Outputs</div>
+            <strong>Storage and review surfaces</strong>
+            <ul>
+              <li>PostgreSQL / TimescaleDB</li>
+              <li>Kafka or Pub/Sub</li>
+              <li>Map dashboard and history</li>
+              <li>Health and ops views</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <p class="kicker">Client and Server Boundary</p>
+        <h2>Where mobile processing stops and backend processing begins</h2>
+        <div class="flow-grid two">
+          <div class="signal-panel client">
+            <p class="kicker">Mobile Client</p>
+            <h3>On-device collection</h3>
+            <ul class="signal-list">
+              <li>GPS, speed, heading, and accelerometer capture</li>
+              <li>Optional client-side fusion and window preparation</li>
+              <li>Supports a lighter `POST /ingest-features` path</li>
+            </ul>
+          </div>
+          <div class="signal-panel server">
+            <p class="kicker">Backend Server</p>
+            <h3>Inference and delivery</h3>
+            <ul class="signal-list">
+              <li>`POST /ingest` for server-side fusion, buffering, and extraction</li>
+              <li>`POST /ingest-features` for lightweight feature payload inference</li>
+              <li>Prediction, link matching, persistence, streaming, and dashboards</li>
+            </ul>
+          </div>
+        </div>
+        <div class="signal-bridge">
+          <div class="bridge-item"><strong>Server-centric path:</strong> raw mobile telemetry is fused, buffered, and transformed on the backend before inference.</div>
+          <div class="bridge-item"><strong>Client-assisted path:</strong> the mobile side prepares a feature window first, reducing server-side preprocessing work.</div>
+        </div>
+      </section>
+
+      <section class="grid two">
+        <div class="card stack">
+          <div>
+            <p class="kicker">Modeling Results</p>
+            <h2>Model comparison before deployment</h2>
+          </div>
+          <p class="summary-copy">
+            The system compares tree-based models, sequence models, Gaussian processes, and traffic-flow baselines
+            under the same workflow instead of assuming one model family would dominate. XGBoost delivered the
+            strongest overall balance of accuracy, stability, and serving practicality for this task.
+          </p>
+          <div class="empty">
+            <strong>Compared models</strong><br>
+            Underwood FD baseline, LSTM, CNN-1D, LightGBM, GPR, and XGBoost.
+          </div>
+        </div>
+
+        <div class="card stack">
+          <div>
+            <p class="kicker">Feature Design</p>
+            <h2>From traffic theory to usable features</h2>
+          </div>
+          <ul class="signal-list">
+            <li>Speed-density and traffic-flow relationships</li>
+            <li>Car-following proxies such as jerk, acceleration variance, and autocorrelation</li>
+            <li>Stop-go, braking, and slow-duration indicators</li>
+            <li>Lateral motion and temporal regularity features</li>
+            <li>K-means-based exploratory analysis for operating regimes</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card">
+        <p class="kicker">Engineering Highlights</p>
+        <h2>What matters in the implementation</h2>
+        <div class="highlight-grid">
+          <div class="highlight-item">
+            <p class="kicker">Spatial Optimization</p>
+            <strong>Grid-indexed link matching</strong>
+            <p class="muted">Road links are indexed by grid cell so repeated GPS updates do not trigger full-network scans.</p>
+          </div>
+          <div class="highlight-item">
+            <p class="kicker">Runtime Efficiency</p>
+            <strong>Re-match skip threshold</strong>
+            <p class="muted">Link matching is recomputed only after meaningful movement, reducing repeated GIS work during live ingest.</p>
+          </div>
+          <div class="highlight-item">
+            <p class="kicker">Signal Processing</p>
+            <strong>Kalman fusion for noisy telemetry</strong>
+            <p class="muted">GPS and accelerometer signals are fused into a cleaner vehicle state before feature extraction and inference.</p>
+          </div>
+          <div class="highlight-item">
+            <p class="kicker">Serving Design</p>
+            <strong>Physics baseline plus ML residual</strong>
+            <p class="muted">The final estimate combines a traffic-theory baseline with an ML residual correction for a more interpretable serving path.</p>
+          </div>
+          <div class="highlight-item">
+            <p class="kicker">Database Layer</p>
+            <strong>Async SQL persistence</strong>
+            <p class="muted">Predictions, scenarios, FCD rows, and road-link metadata are stored through async SQLAlchemy and PostgreSQL.</p>
+          </div>
+          <div class="highlight-item">
+            <p class="kicker">Operations</p>
+            <strong>Containerized CI/CD workflow</strong>
+            <p class="muted">The repository includes Docker, test automation, image validation, and release-driven deployment steps.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <p class="kicker">System Coverage</p>
+        <h2>Capabilities demonstrated through the project</h2>
+        <div class="skill-grid">
+          <div class="metric">
+            <span class="metric-label">Data Pipelines</span>
+            <div class="muted">Scenario generation, simulation, extraction, feature preparation, training, evaluation, and serving.</div>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Backend APIs</span>
+            <div class="muted">FastAPI routes for ingest, prediction, map history, WebSocket updates, and runtime health.</div>
+          </div>
+          <div class="metric">
+            <span class="metric-label">SQL and Storage</span>
+            <div class="muted">PostgreSQL, async SQLAlchemy, and time-series friendly storage for telemetry and prediction outputs.</div>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Streaming</span>
+            <div class="muted">Live mobile ingest, session buffering, WebSocket delivery, and broker abstraction for Kafka or Pub/Sub.</div>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Visualization</span>
+            <div class="muted">Console, map, health, and mobile interfaces to make the system inspectable and demo-ready.</div>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Deployment</span>
+            <div class="muted">Docker packaging, CI validation, and Cloud Run-style release workflows.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card stack">
+        <div>
+          <p class="kicker">Explore the Project</p>
+          <h2>Move from explanation to proof</h2>
+        </div>
+        <section class="grid three">
+          <a class="card" href="/dashboard">
+            <p class="kicker">Overview</p>
+            <h3>Project Console</h3>
+            <p class="muted">Operational hub for the console, health readout, and demo entry points.</p>
+          </a>
+          <a class="card" href="/map">
+            <p class="kicker">Visualization</p>
+            <h3>Link Map</h3>
+            <p class="muted">Inspect link-level density snapshots and open prediction history by road segment.</p>
+          </a>
+          <a class="card" href="/mobile">
+            <p class="kicker">Collection</p>
+            <h3>Mobile Probe</h3>
+            <p class="muted">Review the real-time capture flow for GPS, speed, heading, and motion signals.</p>
+          </a>
+        </section>
+      </section>
+
+      <section class="card">
+        <p class="kicker">Technologies</p>
+        <h2>Stack used in the project</h2>
+        <div>
+          <span class="skill-chip">Python</span>
+          <span class="skill-chip">FastAPI</span>
+          <span class="skill-chip">SQLAlchemy</span>
+          <span class="skill-chip">asyncpg</span>
+          <span class="skill-chip">PostgreSQL</span>
+          <span class="skill-chip">TimescaleDB</span>
+          <span class="skill-chip">XGBoost</span>
+          <span class="skill-chip">LightGBM</span>
+          <span class="skill-chip">PyTorch</span>
+          <span class="skill-chip">LSTM</span>
+          <span class="skill-chip">CNN-1D</span>
+          <span class="skill-chip">SHAP</span>
+          <span class="skill-chip">SUMO</span>
+          <span class="skill-chip">Kafka</span>
+          <span class="skill-chip">Google Pub/Sub</span>
+          <span class="skill-chip">Docker</span>
+          <span class="skill-chip">GitHub Actions</span>
+          <span class="skill-chip">Google Cloud Run</span>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      UrbanFlow Portfolio · Explanation first, demo second
+    </footer>
+  </div>
+</body>
+</html>

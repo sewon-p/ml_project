@@ -32,7 +32,10 @@ from src.visualization.prediction_plots import (
 logger = logging.getLogger(__name__)
 
 DL_MODELS = {"cnn1d", "lstm"}
-SHAP_MODELS = {"xgboost", "lightgbm"}
+WINDOW_DL_MODELS = {"window_cnn1d", "window_lstm"}
+WINDOW_TABULAR_MODELS = {"window_xgboost"}
+WINDOW_MODELS = WINDOW_DL_MODELS | WINDOW_TABULAR_MODELS
+SHAP_MODELS = {"xgboost", "lightgbm", "window_xgboost"}
 
 _LOADERS = {
     "xgboost": XGBoostEstimator,
@@ -40,6 +43,9 @@ _LOADERS = {
     "fd_baseline": FDBaselineEstimator,
     "cnn1d": CNN1DEstimator,
     "lstm": LSTMEstimator,
+    "window_cnn1d": CNN1DEstimator,
+    "window_lstm": LSTMEstimator,
+    "window_xgboost": XGBoostEstimator,
 }
 
 
@@ -176,6 +182,289 @@ def _evaluate_dl(
 
     # Save metrics + predictions JSON for dashboard
     _save_eval_results(output_dir, model_type, target, metrics, y_test, y_pred)
+
+
+def _evaluate_window(
+    cfg: dict,
+    model_type: str,
+    model_path: str,
+    target: str,
+) -> None:
+    """Evaluate a window-feature DL model on test split."""
+    from src.features.window_features import extract_window_features
+
+    data_cfg = cfg.get("data", {})
+    train_cfg = cfg.get("training", {})
+
+    ts_path = data_cfg.get("timeseries_path", "data/features/timeseries.npz")
+    data = np.load(ts_path)
+    sequences = data["sequences"]
+    scenario_ids = data["scenario_ids"]
+
+    meta_path = data_cfg.get("metadata_path", "data/features/metadata.parquet")
+    meta_df = read_parquet(meta_path)
+    speed_limits = meta_df["speed_limit"].values
+
+    per_lane_target = f"{target}_per_lane"
+    if per_lane_target in data.files:
+        actual_targets = data[per_lane_target]
+    else:
+        actual_targets = data[target].astype(np.float32) / meta_df["num_lanes"].values
+
+    rc_cfg = cfg.get("residual_correction", {})
+    residual_enabled = rc_cfg.get("enabled", False)
+    if residual_enabled:
+        delta_key = "delta_density" if target == "density" else "delta_flow"
+        fd_key = "k_fd" if target == "density" else "q_fd"
+        num_lanes = meta_df["num_lanes"].values
+        if per_lane_target in data.files:
+            train_targets = data[delta_key]
+            fd_estimates = data[fd_key]
+        else:
+            train_targets = data[delta_key].astype(np.float32) / num_lanes
+            fd_estimates = data[fd_key].astype(np.float32) / num_lanes
+    else:
+        train_targets = actual_targets
+        fd_estimates = None
+
+    # Apply data filters
+    mask = load_data_filter_mask(cfg, meta_df)
+    if not mask.all():
+        sequences = sequences[mask]
+        actual_targets = actual_targets[mask]
+        scenario_ids = scenario_ids[mask]
+        speed_limits = speed_limits[mask]
+        train_targets = train_targets[mask]
+        if fd_estimates is not None:
+            fd_estimates = fd_estimates[mask]
+        meta_df = meta_df[mask].reset_index(drop=True)
+
+    # Reproduce test split
+    rng = np.random.RandomState(cfg.get("seed", 42))
+    unique_ids = np.unique(scenario_ids)
+    rng.shuffle(unique_ids)
+    n = len(unique_ids)
+    n_test = max(1, int(n * train_cfg.get("test_ratio", 0.2)))
+    n_val = max(1, int(n * train_cfg.get("val_ratio", 0.1)))
+    test_ids = set(unique_ids[:n_test])
+    train_ids = set(unique_ids[n_test + n_val:])
+    test_idx = np.where(np.isin(scenario_ids, list(test_ids)))[0]
+    train_idx = np.where(np.isin(scenario_ids, list(train_ids)))[0]
+
+    # Extract window features
+    window_cfg = cfg.get("window_features", {})
+    window_size = window_cfg.get("window_size", 30)
+    exclude_wf = window_cfg.get("exclude", [])
+    win_features, used_names = extract_window_features(
+        sequences, speed_limits, window_size, exclude=exclude_wf,
+    )
+    n_win_features = win_features.shape[1]
+
+    conditions = meta_df[["num_lanes", "speed_limit"]].values.astype(np.float32)
+
+    # Normalize using train statistics
+    N_tr, C, W = win_features[train_idx].shape
+    flat_tr = win_features[train_idx].transpose(1, 0, 2).reshape(C, -1)
+    mean_f = flat_tr.mean(axis=1, keepdims=True)
+    std_f = flat_tr.std(axis=1, keepdims=True) + 1e-8
+
+    def norm_seq(arr: np.ndarray) -> np.ndarray:
+        return ((arr.transpose(1, 0, 2).reshape(C, -1) - mean_f) / std_f
+                ).reshape(C, arr.shape[0], W).transpose(1, 0, 2).astype(np.float32)
+
+    wf_test = norm_seq(win_features[test_idx])
+
+    cond_mean = conditions[train_idx].mean(axis=0, keepdims=True)
+    cond_std = conditions[train_idx].std(axis=0, keepdims=True) + 1e-8
+    cond_test = ((conditions[test_idx] - cond_mean) / cond_std).astype(np.float32)
+
+    # Load model
+    model_params = {}
+    model_config_path = cfg.get("model", {}).get("config")
+    if model_config_path:
+        model_params = load_config(model_config_path)
+    model_params["n_conditions"] = conditions.shape[1]
+
+    base_type = model_type.replace("window_", "")
+
+    # Override input dimensions for window features
+    if base_type == "cnn1d":
+        model_params["in_channels"] = n_win_features
+        model_params["seq_len"] = win_features.shape[2]
+    elif base_type == "lstm":
+        model_params["input_size"] = n_win_features
+
+    loader_cls = _LOADERS[model_type]
+    model = loader_cls.load(model_path, **model_params)
+
+    device = train_cfg.get("device", "auto")
+    if device == "auto":
+        if torch.cuda.is_available():
+            device = "cuda"
+        elif torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
+    elif device == "cuda" and not torch.cuda.is_available():
+        device = "cpu"
+    elif device == "mps" and not torch.backends.mps.is_available():
+        device = "cpu"
+
+    test_ds = TimeSeriesDataset(wf_test, train_targets[test_idx], cond_test)
+    test_loader = DataLoader(
+        test_ds, batch_size=train_cfg.get("batch_size", 128),
+        shuffle=False, num_workers=0,
+    )
+
+    model.model.to(torch.device(device))
+    model.model.eval()
+    all_preds = []
+    with torch.no_grad():
+        for batch in test_loader:
+            X_batch = batch[0].to(device)
+            cond = batch[2].to(device) if len(batch) == 3 else None
+            preds = model.model(X_batch, cond)
+            all_preds.append(preds.cpu().numpy())
+
+    y_pred = np.concatenate(all_preds)
+
+    if residual_enabled and fd_estimates is not None:
+        y_pred = fd_estimates[test_idx] + y_pred
+    y_test = actual_targets[test_idx]
+
+    metrics = compute_all_metrics(y_test, y_pred)
+    logger.info("Test metrics (%s): %s", model_type, metrics)
+
+    output_dir = Path(cfg.get("output_dir", "outputs"))
+    plots_dir = output_dir / "plots"
+    plot_predicted_vs_actual(
+        y_test, y_pred,
+        title=f"{model_type} — Predicted vs Actual ({target}, per-lane)",
+        save_path=plots_dir / f"{model_type}_predicted_vs_actual.png",
+    )
+    plot_residuals(
+        y_test, y_pred,
+        title=f"{model_type} — Residuals ({target}, per-lane)",
+        save_path=plots_dir / f"{model_type}_residuals.png",
+    )
+    _save_eval_results(output_dir, model_type, target, metrics, y_test, y_pred)
+
+
+def _evaluate_window_tabular(
+    cfg: dict,
+    model_type: str,
+    model_path: str,
+    target: str,
+) -> None:
+    """Evaluate a window-feature tabular model (e.g. window_xgboost)."""
+    from src.features.window_features import extract_window_features
+
+    data_cfg = cfg.get("data", {})
+    train_cfg = cfg.get("training", {})
+
+    ts_path = data_cfg.get("timeseries_path", "data/features/timeseries.npz")
+    data = np.load(ts_path)
+    sequences = data["sequences"]
+    scenario_ids = data["scenario_ids"]
+
+    meta_path = data_cfg.get("metadata_path", "data/features/metadata.parquet")
+    meta_df = read_parquet(meta_path)
+    speed_limits = meta_df["speed_limit"].values
+
+    per_lane_target = f"{target}_per_lane"
+    if per_lane_target in data.files:
+        actual_targets = data[per_lane_target]
+    else:
+        actual_targets = data[target].astype(np.float32) / meta_df["num_lanes"].values
+
+    rc_cfg = cfg.get("residual_correction", {})
+    residual_enabled = rc_cfg.get("enabled", False)
+    fd_estimates = None
+    if residual_enabled:
+        delta_key = "delta_density" if target == "density" else "delta_flow"
+        fd_key = "k_fd" if target == "density" else "q_fd"
+        num_lanes = meta_df["num_lanes"].values
+        if per_lane_target in data.files:
+            train_targets = data[delta_key]
+            fd_estimates = data[fd_key]
+        else:
+            train_targets = data[delta_key].astype(np.float32) / num_lanes
+            fd_estimates = data[fd_key].astype(np.float32) / num_lanes
+    else:
+        train_targets = actual_targets
+
+    mask = load_data_filter_mask(cfg, meta_df)
+    if not mask.all():
+        sequences = sequences[mask]
+        actual_targets = actual_targets[mask]
+        scenario_ids = scenario_ids[mask]
+        speed_limits = speed_limits[mask]
+        train_targets = train_targets[mask]
+        if fd_estimates is not None:
+            fd_estimates = fd_estimates[mask]
+        meta_df = meta_df[mask].reset_index(drop=True)
+
+    # Reproduce test split
+    rng = np.random.RandomState(cfg.get("seed", 42))
+    unique_ids = np.unique(scenario_ids)
+    rng.shuffle(unique_ids)
+    n = len(unique_ids)
+    n_test = max(1, int(n * train_cfg.get("test_ratio", 0.2)))
+    test_ids = set(unique_ids[:n_test])
+    test_idx = np.where(np.isin(scenario_ids, list(test_ids)))[0]
+
+    # Extract and flatten window features
+    window_cfg = cfg.get("window_features", {})
+    window_size = window_cfg.get("window_size", 30)
+    exclude_wf = window_cfg.get("exclude", [])
+    win_features, used_names = extract_window_features(
+        sequences, speed_limits, window_size, exclude=exclude_wf,
+    )
+    _N, C, W = win_features.shape
+    columns = [f"w{w}_{name}" for w in range(W) for name in used_names]
+    flat = win_features.transpose(0, 2, 1).reshape(_N, -1)
+
+    conditions = meta_df[["num_lanes", "speed_limit"]].values.astype(np.float32)
+    feature_columns = columns + ["num_lanes", "speed_limit"]
+
+    # Build test feature matrix
+    X_test = np.column_stack([flat[test_idx], conditions[test_idx]])
+
+    # Load model
+    loader_cls = _LOADERS[model_type]
+    model = loader_cls.load(model_path)
+
+    y_pred = model.predict(X_test)
+
+    if residual_enabled and fd_estimates is not None:
+        y_pred = fd_estimates[test_idx] + y_pred
+    y_test = actual_targets[test_idx]
+
+    metrics = compute_all_metrics(y_test, y_pred)
+    logger.info("Test metrics (%s): %s", model_type, metrics)
+
+    output_dir = Path(cfg.get("output_dir", "outputs"))
+    plots_dir = output_dir / "plots"
+    plot_predicted_vs_actual(
+        y_test, y_pred,
+        title=f"{model_type} — Predicted vs Actual ({target}, per-lane)",
+        save_path=plots_dir / f"{model_type}_predicted_vs_actual.png",
+    )
+    plot_residuals(
+        y_test, y_pred,
+        title=f"{model_type} — Residuals ({target}, per-lane)",
+        save_path=plots_dir / f"{model_type}_residuals.png",
+    )
+
+    # SHAP
+    feature_importance = _compute_shap_importance(
+        cfg, model, X_test, feature_columns, model_type, plots_dir,
+    )
+
+    _save_eval_results(
+        output_dir, model_type, target, metrics, y_test, y_pred,
+        feature_importance=feature_importance,
+    )
 
 
 def _evaluate_tabular(
@@ -388,7 +677,19 @@ def main() -> None:
 
     output_dir = cfg.get("output_dir", "outputs")
 
-    if model_type in DL_MODELS:
+    if model_type in WINDOW_TABULAR_MODELS:
+        model_path = (
+            args.model_path
+            or f"{output_dir}/{model_type}_best.pkl"
+        )
+        _evaluate_window_tabular(cfg, model_type, model_path, target)
+    elif model_type in WINDOW_DL_MODELS:
+        model_path = (
+            args.model_path
+            or f"{output_dir}/{model_type}_best.pt"
+        )
+        _evaluate_window(cfg, model_type, model_path, target)
+    elif model_type in DL_MODELS:
         model_path = (
             args.model_path
             or f"{output_dir}/{model_type}_best.pt"

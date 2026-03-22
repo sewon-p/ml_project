@@ -57,6 +57,7 @@ training:
   test_ratio: 0.2
   val_ratio: 0.1
   batch_size: 128
+  density_weighted: true  # upweight high-density samples
   num_workers: 4  # DataLoader workers
   max_epochs: 200
   early_stopping_patience: 20
@@ -71,6 +72,9 @@ data:
   metadata_path: data/features/metadata.parquet
   tabular_path: data/features/dataset.parquet
   seq_len: 300  # pad/truncate sequences to this length
+
+window_features:
+  window_size: 30  # seconds per window (300s / 30 = 10 windows)
 
 residual_correction:
   enabled: true           # true → ML predicts Δk/Δq residuals; false → direct prediction

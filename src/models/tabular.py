@@ -58,6 +58,9 @@ class XGBoostEstimator(BaseEstimator):
             fit_params["eval_set"] = [(X_val, y_val)]
             early_stopping = kwargs.get("early_stopping_rounds", 50)
             self.model.set_params(early_stopping_rounds=early_stopping)
+        sample_weight = kwargs.get("sample_weight")
+        if sample_weight is not None:
+            fit_params["sample_weight"] = sample_weight
         self.model.fit(X_train, y_train, verbose=kwargs.get("verbose", False), **fit_params)
         best_iter = getattr(self.model.get_booster(), "best_iteration", None)
         n_used = best_iter if best_iter is not None else self.params["n_estimators"]
@@ -123,6 +126,9 @@ class LightGBMEstimator(BaseEstimator):
                 lgb.early_stopping(stopping_rounds=early_stopping),
                 lgb.log_evaluation(period=0),
             ]
+        sample_weight = kwargs.get("sample_weight")
+        if sample_weight is not None:
+            fit_params["sample_weight"] = sample_weight
         self.model.fit(X_train, y_train, **fit_params)
         return {"n_estimators_used": self.model.best_iteration_ or self.params["n_estimators"]}
 

@@ -24,6 +24,9 @@ def _register_models() -> None:
             "lightgbm": LightGBMEstimator,
             "cnn1d": CNN1DEstimator,
             "lstm": LSTMEstimator,
+            "window_cnn1d": CNN1DEstimator,
+            "window_lstm": LSTMEstimator,
+            "window_xgboost": XGBoostEstimator,
             "fd_baseline": FDBaselineEstimator,
         }
     )

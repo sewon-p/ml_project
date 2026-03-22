@@ -64,10 +64,19 @@ def train_dl(cfg: dict, args: argparse.Namespace) -> None:
     data_cfg = cfg.get("data", {})
     model_type = model_cfg.get("type", "cnn1d")
 
-    device = train_cfg.get("device", "cuda")
-    if device == "cuda" and not torch.cuda.is_available():
-        logger.warning("CUDA not available, falling back to CPU.")
+    device = train_cfg.get("device", "auto")
+    if device == "auto":
+        if torch.cuda.is_available():
+            device = "cuda"
+        elif torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
+    elif device == "cuda" and not torch.cuda.is_available():
         device = "cpu"
+    elif device == "mps" and not torch.backends.mps.is_available():
+        device = "cpu"
+    logger.info("Using device: %s", device)
 
     # Load time series data
     ts_path = args.data or data_cfg.get(
@@ -150,19 +159,21 @@ def train_dl(cfg: dict, args: argparse.Namespace) -> None:
     test_ds = TimeSeriesDataset(sequences[test_idx], targets[test_idx], conditions[test_idx])
 
     batch_size = train_cfg.get("batch_size", 128)
-    num_workers = train_cfg.get("num_workers", 4)
+    # MPS: multiprocessing DataLoader is slower due to IPC overhead
+    num_workers = 0 if device == "mps" else train_cfg.get("num_workers", 4)
+    pin_memory = device == "cuda"
 
     train_loader = DataLoader(
         train_ds, batch_size=batch_size, shuffle=True,
-        num_workers=num_workers, pin_memory=(device == "cuda"),
+        num_workers=num_workers, pin_memory=pin_memory,
     )
     val_loader = DataLoader(
         val_ds, batch_size=batch_size, shuffle=False,
-        num_workers=num_workers, pin_memory=(device == "cuda"),
+        num_workers=num_workers, pin_memory=pin_memory,
     )
     test_loader = DataLoader(
         test_ds, batch_size=batch_size, shuffle=False,
-        num_workers=num_workers, pin_memory=(device == "cuda"),
+        num_workers=num_workers, pin_memory=pin_memory,
     )
 
     # Create model
@@ -285,6 +296,15 @@ def train_tabular(cfg: dict, args: argparse.Namespace) -> None:
     )
     logger.info("Train: %d, Test: %d", len(train_df), len(test_df))
 
+    # Density-weighted sample weights: upweight high-density samples
+    sw_col: str | None = None
+    if train_cfg.get("density_weighted", False):
+        density_vals = train_df[per_lane_target].values
+        train_df = train_df.copy()
+        train_df["_sample_weight"] = 1.0 + (density_vals / density_vals.max()) * 2.0
+        sw_col = "_sample_weight"
+        logger.info("Density weighting enabled: weight range [1.0, 3.0]")
+
     model_params = {}
     model_config_path = model_cfg.get("config")
     if model_config_path:
@@ -296,7 +316,7 @@ def train_tabular(cfg: dict, args: argparse.Namespace) -> None:
         n_splits=train_cfg.get("n_splits", 5),
         group_column=train_cfg.get("group_column", "scenario_id"),
     )
-    results = trainer.fit(train_df, feature_columns, target)
+    results = trainer.fit(train_df, feature_columns, target, sample_weight_column=sw_col)
     logger.info("CV Results: %s", results["mean_metrics"])
 
     test_preds = trainer.predict(test_df[feature_columns])
