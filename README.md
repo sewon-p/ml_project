@@ -2,7 +2,7 @@
 
 Predict how congested a road is using only smartphone sensor data from vehicles driving on it.
 
-UrbanFlow is an end-to-end traffic density estimation system that turns GPS + accelerometer trajectories from probe vehicles into per-link density estimates. It combines simulation-trained ML (XGBoost on 31 car-following features), multi-probe Bayesian ensemble, and a real-time serving pipeline deployed on Seoul's arterial road network (2.2K MOCT standard links).
+UrbanFlow is an end-to-end traffic density estimation system that turns GPS + accelerometer trajectories from probe vehicles into per-link density estimates. It combines simulation-trained ML (XGBoost on 31 car-following features) with multi-probe Bayesian ensemble, and serves predictions through a real-time pipeline deployed on Seoul's arterial road network (2.2K MOCT standard links).
 
 **[Live Demo](https://traffic-estimator-gcbqhrztha-du.a.run.app/)** · **[API Docs](https://traffic-estimator-gcbqhrztha-du.a.run.app/docs)** · **[Map](https://traffic-estimator-gcbqhrztha-du.a.run.app/map)** · **[ML Pipeline](https://traffic-estimator-gcbqhrztha-du.a.run.app/ml-pipeline/)**
 
@@ -250,10 +250,11 @@ Car-following intensity determines how much to trust each probe. Probes in activ
 
 ## Lessons Learned
 
-- **The single-probe ceiling is real**: R²≈0.45–0.50 for one vehicle. Car-following theory explains why — multi-probe fusion is necessary, not optional.
-- **Feature-level > prediction-level ensemble**: Combining features across probes (R²=0.67) outperforms combining predictions (R²=0.62), but requires same road segment. Prediction-level Bayesian ensemble is the deployment compromise.
-- **Observation length matters**: 250m→1km improves R² by +0.05. The system chains short urban links (~80–120m) to reach 1km before predicting.
-- **Graceful degradation over hard dependencies**: Every external service (DB, Kafka, GIS) is optional. Prediction always works.
+- **Domain-engineered features outperform deep learning on tabular traffic data.** XGBoost with 31 hand-crafted features (R²=0.50) consistently beat LSTM and CNN-1D on raw 6-channel timeseries (R²=0.45). Feature design grounded in car-following theory mattered more than model complexity.
+- **Single-probe density estimation has a structural ceiling around R²≈0.50.** Tested across XGBoost, LightGBM, LSTM, CNN-1D, GPR (4 kernels), window features, and density weighting — all converged to the same limit. The FD free-flow branch is degenerate: speed carries no density signal when all vehicles travel at free-flow speed.
+- **Multi-probe feature-level ensemble breaks the ceiling, but route alignment is required.** N=5 probes on the same segment: R²=0.67 (feature ensemble) vs R²=0.62 (prediction ensemble). In production, probes take different routes, making feature ensemble impractical. The Bayesian prediction ensemble recovers 93% of the theoretical gain without route constraints.
+- **Observation distance matters more than observation time.** Switching from fixed 300-second windows to distance-based 1 km link traversals improved feature quality and aligned the system with real road network geometry (MOCT standard node-link). Seoul arterial links average 189 m, requiring LinkBuffer accumulation across multiple links.
+- **Simulation produces almost no congestion without bottlenecks.** Only 48 of 176K samples showed v_ratio < 0.4. The single straight-link SUMO setup cannot generate realistic stop-and-go waves. Future work requires multi-link networks with lane drops, signals, and merge sections.
 
 ---
 

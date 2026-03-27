@@ -142,8 +142,10 @@ def _evaluate_dl(
 
     test_ds = TimeSeriesDataset(sequences[test_idx], train_targets[test_idx], conditions[test_idx])
     test_loader = DataLoader(
-        test_ds, batch_size=train_cfg.get("batch_size", 128),
-        shuffle=False, num_workers=0,
+        test_ds,
+        batch_size=train_cfg.get("batch_size", 128),
+        shuffle=False,
+        num_workers=0,
     )
 
     model.model.to(torch.device(device))
@@ -169,12 +171,14 @@ def _evaluate_dl(
     output_dir = Path(cfg.get("output_dir", "outputs"))
     plots_dir = output_dir / "plots"
     plot_predicted_vs_actual(
-        y_test, y_pred,
+        y_test,
+        y_pred,
         title=f"{model_type} — Predicted vs Actual ({target}, per-lane)",
         save_path=plots_dir / f"{model_type}_predicted_vs_actual.png",
     )
     plot_residuals(
-        y_test, y_pred,
+        y_test,
+        y_pred,
         title=f"{model_type} — Residuals ({target}, per-lane)",
         save_path=plots_dir / f"{model_type}_residuals.png",
     )
@@ -247,7 +251,7 @@ def _evaluate_window(
     n_test = max(1, int(n * train_cfg.get("test_ratio", 0.2)))
     n_val = max(1, int(n * train_cfg.get("val_ratio", 0.1)))
     test_ids = set(unique_ids[:n_test])
-    train_ids = set(unique_ids[n_test + n_val:])
+    train_ids = set(unique_ids[n_test + n_val :])
     test_idx = np.where(np.isin(scenario_ids, list(test_ids)))[0]
     train_idx = np.where(np.isin(scenario_ids, list(train_ids)))[0]
 
@@ -256,7 +260,10 @@ def _evaluate_window(
     window_size = window_cfg.get("window_size", 30)
     exclude_wf = window_cfg.get("exclude", [])
     win_features, used_names = extract_window_features(
-        sequences, speed_limits, window_size, exclude=exclude_wf,
+        sequences,
+        speed_limits,
+        window_size,
+        exclude=exclude_wf,
     )
     n_win_features = win_features.shape[1]
 
@@ -269,8 +276,12 @@ def _evaluate_window(
     std_f = flat_tr.std(axis=1, keepdims=True) + 1e-8
 
     def norm_seq(arr: np.ndarray) -> np.ndarray:
-        return ((arr.transpose(1, 0, 2).reshape(C, -1) - mean_f) / std_f
-                ).reshape(C, arr.shape[0], W).transpose(1, 0, 2).astype(np.float32)
+        return (
+            ((arr.transpose(1, 0, 2).reshape(C, -1) - mean_f) / std_f)
+            .reshape(C, arr.shape[0], W)
+            .transpose(1, 0, 2)
+            .astype(np.float32)
+        )
 
     wf_test = norm_seq(win_features[test_idx])
 
@@ -312,8 +323,10 @@ def _evaluate_window(
 
     test_ds = TimeSeriesDataset(wf_test, train_targets[test_idx], cond_test)
     test_loader = DataLoader(
-        test_ds, batch_size=train_cfg.get("batch_size", 128),
-        shuffle=False, num_workers=0,
+        test_ds,
+        batch_size=train_cfg.get("batch_size", 128),
+        shuffle=False,
+        num_workers=0,
     )
 
     model.model.to(torch.device(device))
@@ -338,12 +351,14 @@ def _evaluate_window(
     output_dir = Path(cfg.get("output_dir", "outputs"))
     plots_dir = output_dir / "plots"
     plot_predicted_vs_actual(
-        y_test, y_pred,
+        y_test,
+        y_pred,
         title=f"{model_type} — Predicted vs Actual ({target}, per-lane)",
         save_path=plots_dir / f"{model_type}_predicted_vs_actual.png",
     )
     plot_residuals(
-        y_test, y_pred,
+        y_test,
+        y_pred,
         title=f"{model_type} — Residuals ({target}, per-lane)",
         save_path=plots_dir / f"{model_type}_residuals.png",
     )
@@ -418,7 +433,10 @@ def _evaluate_window_tabular(
     window_size = window_cfg.get("window_size", 30)
     exclude_wf = window_cfg.get("exclude", [])
     win_features, used_names = extract_window_features(
-        sequences, speed_limits, window_size, exclude=exclude_wf,
+        sequences,
+        speed_limits,
+        window_size,
+        exclude=exclude_wf,
     )
     _N, C, W = win_features.shape
     columns = [f"w{w}_{name}" for w in range(W) for name in used_names]
@@ -446,23 +464,35 @@ def _evaluate_window_tabular(
     output_dir = Path(cfg.get("output_dir", "outputs"))
     plots_dir = output_dir / "plots"
     plot_predicted_vs_actual(
-        y_test, y_pred,
+        y_test,
+        y_pred,
         title=f"{model_type} — Predicted vs Actual ({target}, per-lane)",
         save_path=plots_dir / f"{model_type}_predicted_vs_actual.png",
     )
     plot_residuals(
-        y_test, y_pred,
+        y_test,
+        y_pred,
         title=f"{model_type} — Residuals ({target}, per-lane)",
         save_path=plots_dir / f"{model_type}_residuals.png",
     )
 
     # SHAP
     feature_importance = _compute_shap_importance(
-        cfg, model, X_test, feature_columns, model_type, plots_dir,
+        cfg,
+        model,
+        X_test,
+        feature_columns,
+        model_type,
+        plots_dir,
     )
 
     _save_eval_results(
-        output_dir, model_type, target, metrics, y_test, y_pred,
+        output_dir,
+        model_type,
+        target,
+        metrics,
+        y_test,
+        y_pred,
         feature_importance=feature_importance,
     )
 
@@ -485,10 +515,17 @@ def _evaluate_tabular(
         df = df[mask].reset_index(drop=True)
 
     exclude = {
-        "scenario_id", "probe_idx",
-        "density", "flow", "demand_vehph",
-        "density_per_lane", "flow_per_lane",
-        "k_fd", "q_fd", "delta_density", "delta_flow",
+        "scenario_id",
+        "probe_idx",
+        "density",
+        "flow",
+        "demand_vehph",
+        "density_per_lane",
+        "flow_per_lane",
+        "k_fd",
+        "q_fd",
+        "delta_density",
+        "delta_flow",
     }
     # Apply user-selected feature exclusions from dashboard
     user_exclude = train_cfg.get("exclude_features") or []
@@ -542,12 +579,14 @@ def _evaluate_tabular(
     output_dir = Path(cfg.get("output_dir", "outputs"))
     plots_dir = output_dir / "plots"
     plot_predicted_vs_actual(
-        y_test, y_pred,
+        y_test,
+        y_pred,
         title=f"{model_type} — Predicted vs Actual ({target}, per-lane)",
         save_path=plots_dir / f"{model_type}_predicted_vs_actual.png",
     )
     plot_residuals(
-        y_test, y_pred,
+        y_test,
+        y_pred,
         title=f"{model_type} — Residuals ({target}, per-lane)",
         save_path=plots_dir / f"{model_type}_residuals.png",
     )
@@ -555,12 +594,22 @@ def _evaluate_tabular(
 
     # SHAP feature importance (tree-based models only)
     feature_importance = _compute_shap_importance(
-        cfg, model, X_test, feature_columns, model_type, plots_dir,
+        cfg,
+        model,
+        X_test,
+        feature_columns,
+        model_type,
+        plots_dir,
     )
 
     # Save metrics + predictions JSON for dashboard
     _save_eval_results(
-        output_dir, model_type, target, metrics, y_test, y_pred,
+        output_dir,
+        model_type,
+        target,
+        metrics,
+        y_test,
+        y_pred,
         feature_importance=feature_importance,
     )
 
@@ -605,6 +654,7 @@ def _compute_shap_importance(
         # Plot
         plots_dir.mkdir(parents=True, exist_ok=True)
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
@@ -625,8 +675,12 @@ def _compute_shap_importance(
 
 
 def _save_eval_results(
-    output_dir: Path, model_type: str, target: str,
-    metrics: dict, y_test: np.ndarray, y_pred: np.ndarray,
+    output_dir: Path,
+    model_type: str,
+    target: str,
+    metrics: dict,
+    y_test: np.ndarray,
+    y_pred: np.ndarray,
     feature_importance: dict[str, float] | None = None,
 ) -> None:
     """Save evaluation metrics and scatter data as JSON."""
@@ -678,36 +732,25 @@ def main() -> None:
     output_dir = cfg.get("output_dir", "outputs")
 
     if model_type in WINDOW_TABULAR_MODELS:
-        model_path = (
-            args.model_path
-            or f"{output_dir}/{model_type}_best.pkl"
-        )
+        model_path = args.model_path or f"{output_dir}/{model_type}_best.pkl"
         _evaluate_window_tabular(cfg, model_type, model_path, target)
     elif model_type in WINDOW_DL_MODELS:
-        model_path = (
-            args.model_path
-            or f"{output_dir}/{model_type}_best.pt"
-        )
+        model_path = args.model_path or f"{output_dir}/{model_type}_best.pt"
         _evaluate_window(cfg, model_type, model_path, target)
     elif model_type in DL_MODELS:
-        model_path = (
-            args.model_path
-            or f"{output_dir}/{model_type}_best.pt"
-        )
+        model_path = args.model_path or f"{output_dir}/{model_type}_best.pt"
         _evaluate_dl(cfg, model_type, model_path, target)
     else:
-        data_path = (
-            args.data
-            or cfg.get("data", {}).get(
-                "tabular_path", "data/features/dataset.parquet"
-            )
+        data_path = args.data or cfg.get("data", {}).get(
+            "tabular_path", "data/features/dataset.parquet"
         )
-        model_path = (
-            args.model_path
-            or f"{output_dir}/{model_type}_best.pkl"
-        )
+        model_path = args.model_path or f"{output_dir}/{model_type}_best.pkl"
         _evaluate_tabular(
-            cfg, model_type, model_path, target, data_path,
+            cfg,
+            model_type,
+            model_path,
+            target,
+            data_path,
         )
 
 

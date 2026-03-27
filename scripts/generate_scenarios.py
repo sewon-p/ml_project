@@ -14,27 +14,30 @@ from src.utils.config import load_config
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Generate scenario matrix."
-    )
-    parser.add_argument(
-        "--config", default="configs/simulation/scenarios.yaml"
-    )
+    parser = argparse.ArgumentParser(description="Generate scenario matrix.")
+    parser.add_argument("--config", default="configs/simulation/scenarios.yaml")
     parser.add_argument("--output", default=None)
     parser.add_argument(
-        "--num", type=int, default=None,
+        "--num",
+        type=int,
+        default=None,
         help="Number of scenarios to generate (overrides config)",
     )
     parser.add_argument(
-        "--start-id", type=int, default=0,
+        "--start-id",
+        type=int,
+        default=0,
         help="Starting scenario_id (use to append new scenarios)",
     )
     parser.add_argument(
-        "--base-seed", type=int, default=42,
+        "--base-seed",
+        type=int,
+        default=42,
         help="Base seed for RNG (default: 42)",
     )
     parser.add_argument(
-        "--append", action="store_true",
+        "--append",
+        action="store_true",
         help="Append to existing scenarios CSV instead of overwriting",
     )
     args = parser.parse_args()
@@ -52,9 +55,7 @@ def main() -> None:
         start_id=args.start_id,
     )
 
-    output = args.output or cfg.get("output", {}).get(
-        "scenarios_csv", "data/scenarios.csv"
-    )
+    output = args.output or cfg.get("output", {}).get("scenarios_csv", "data/scenarios.csv")
 
     if args.append:
         existing = pd.read_csv(output)

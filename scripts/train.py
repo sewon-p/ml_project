@@ -79,9 +79,7 @@ def train_dl(cfg: dict, args: argparse.Namespace) -> None:
     logger.info("Using device: %s", device)
 
     # Load time series data
-    ts_path = args.data or data_cfg.get(
-        "timeseries_path", "data/features/timeseries.npz"
-    )
+    ts_path = args.data or data_cfg.get("timeseries_path", "data/features/timeseries.npz")
     logger.info("Loading time series from %s", ts_path)
     data = np.load(ts_path)
     sequences = data["sequences"]  # (N, 6, seq_len)
@@ -138,7 +136,11 @@ def train_dl(cfg: dict, args: argparse.Namespace) -> None:
 
     logger.info(
         "Loaded %d samples, shape %s, target=%s (residual=%s), conditions=%d",
-        len(sequences), sequences.shape, target_name, residual_enabled, n_conditions,
+        len(sequences),
+        sequences.shape,
+        target_name,
+        residual_enabled,
+        n_conditions,
     )
 
     # Split by scenario_id
@@ -150,7 +152,9 @@ def train_dl(cfg: dict, args: argparse.Namespace) -> None:
     )
     logger.info(
         "Split: train=%d, val=%d, test=%d",
-        len(train_idx), len(val_idx), len(test_idx),
+        len(train_idx),
+        len(val_idx),
+        len(test_idx),
     )
 
     # Create datasets and loaders
@@ -164,16 +168,25 @@ def train_dl(cfg: dict, args: argparse.Namespace) -> None:
     pin_memory = device == "cuda"
 
     train_loader = DataLoader(
-        train_ds, batch_size=batch_size, shuffle=True,
-        num_workers=num_workers, pin_memory=pin_memory,
+        train_ds,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
     )
     val_loader = DataLoader(
-        val_ds, batch_size=batch_size, shuffle=False,
-        num_workers=num_workers, pin_memory=pin_memory,
+        val_ds,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
     )
     test_loader = DataLoader(
-        test_ds, batch_size=batch_size, shuffle=False,
-        num_workers=num_workers, pin_memory=pin_memory,
+        test_ds,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
     )
 
     # Create model
@@ -197,9 +210,7 @@ def train_dl(cfg: dict, args: argparse.Namespace) -> None:
         max_epochs=train_cfg.get("max_epochs", 200),
         patience=train_cfg.get("early_stopping_patience", 20),
         checkpoint_dir=output_dir / model_type,
-        tensorboard_dir=cfg.get("logging", {}).get(
-            "tensorboard_dir", "runs/"
-        ),
+        tensorboard_dir=cfg.get("logging", {}).get("tensorboard_dir", "runs/"),
     )
 
     # Train
@@ -216,12 +227,14 @@ def train_dl(cfg: dict, args: argparse.Namespace) -> None:
         # Restore: k_pred = k_fd + Δk_pred
         restored_preds = fd_estimates[test_idx] + test_preds
         test_metrics = compute_all_metrics(
-            actual_targets[test_idx], restored_preds,
+            actual_targets[test_idx],
+            restored_preds,
         )
         logger.info("Test metrics (restored from residual): %s", test_metrics)
     else:
         test_metrics = compute_all_metrics(
-            targets[test_idx], test_preds,
+            targets[test_idx],
+            test_preds,
         )
         logger.info("Test metrics: %s", test_metrics)
 
@@ -238,9 +251,7 @@ def train_tabular(cfg: dict, args: argparse.Namespace) -> None:
     data_cfg = cfg.get("data", {})
     model_type = model_cfg.get("type", "xgboost")
 
-    data_path = args.data or data_cfg.get(
-        "tabular_path", "data/features/dataset.parquet"
-    )
+    data_path = args.data or data_cfg.get("tabular_path", "data/features/dataset.parquet")
     df = read_parquet(data_path)
 
     # Apply config-driven data filters
@@ -249,14 +260,23 @@ def train_tabular(cfg: dict, args: argparse.Namespace) -> None:
         df = df[mask].reset_index(drop=True)
 
     logger.info(
-        "Loaded dataset: %d rows, %d columns", len(df), len(df.columns),
+        "Loaded dataset: %d rows, %d columns",
+        len(df),
+        len(df.columns),
     )
 
     exclude = {
-        "scenario_id", "probe_idx",
-        "density", "flow", "demand_vehph",
-        "density_per_lane", "flow_per_lane",
-        "k_fd", "q_fd", "delta_density", "delta_flow",
+        "scenario_id",
+        "probe_idx",
+        "density",
+        "flow",
+        "demand_vehph",
+        "density_per_lane",
+        "flow_per_lane",
+        "k_fd",
+        "q_fd",
+        "delta_density",
+        "delta_flow",
     }
     # Apply user-selected feature exclusions from dashboard
     user_exclude = train_cfg.get("exclude_features") or []
@@ -323,12 +343,14 @@ def train_tabular(cfg: dict, args: argparse.Namespace) -> None:
     if residual_enabled:
         restored_preds = test_df[fd_col].values + test_preds
         test_metrics = compute_all_metrics(
-            test_df[per_lane_target].values, restored_preds,
+            test_df[per_lane_target].values,
+            restored_preds,
         )
         logger.info("Test metrics (restored from residual): %s", test_metrics)
     else:
         test_metrics = compute_all_metrics(
-            test_df[target].values, test_preds,
+            test_df[target].values,
+            test_preds,
         )
         logger.info("Test metrics: %s", test_metrics)
 
@@ -356,8 +378,7 @@ def main() -> None:
         train_tabular(cfg, args)
     else:
         raise ValueError(
-            f"Unknown model type '{model_type}'. "
-            f"Available: {DL_MODELS | TABULAR_MODELS}"
+            f"Unknown model type '{model_type}'. Available: {DL_MODELS | TABULAR_MODELS}"
         )
 
 

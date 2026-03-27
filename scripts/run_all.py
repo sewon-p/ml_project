@@ -10,25 +10,18 @@ from src.utils.config import load_config
 
 
 def run_step(description: str, cmd: list[str]) -> None:
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  {description}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
     result = subprocess.run(cmd, check=False)
     if result.returncode != 0:
-        print(
-            f"FAILED: {description} "
-            f"(exit code {result.returncode})"
-        )
+        print(f"FAILED: {description} (exit code {result.returncode})")
         sys.exit(result.returncode)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Run full pipeline."
-    )
-    parser.add_argument(
-        "--config", default="configs/default.yaml"
-    )
+    parser = argparse.ArgumentParser(description="Run full pipeline.")
+    parser.add_argument("--config", default="configs/default.yaml")
     parser.add_argument(
         "--skip-simulation",
         action="store_true",

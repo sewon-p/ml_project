@@ -70,8 +70,12 @@ def main() -> None:
 
     speed_mean = tab_df["speed_mean"].values
     fd = compute_fd_density(
-        fd_model, speed_mean, v_free, num_lanes=1,
-        vehicle_length=vehicle_length, min_gap=min_gap,
+        fd_model,
+        speed_mean,
+        v_free,
+        num_lanes=1,
+        vehicle_length=vehicle_length,
+        min_gap=min_gap,
     )
     k_fd = fd["k_fd"].astype(np.float32)
     q_fd = fd["q_fd"].astype(np.float32)
@@ -86,16 +90,22 @@ def main() -> None:
 
     logger.info(
         "Per-lane conversion: density_per_lane mean=%.2f, flow_per_lane mean=%.2f",
-        density_per_lane.mean(), flow_per_lane.mean(),
+        density_per_lane.mean(),
+        flow_per_lane.mean(),
     )
     logger.info(
         "FD stats (per-lane) — k_fd: mean=%.2f, std=%.2f | q_fd: mean=%.2f, std=%.2f",
-        k_fd.mean(), k_fd.std(), q_fd.mean(), q_fd.std(),
+        k_fd.mean(),
+        k_fd.std(),
+        q_fd.mean(),
+        q_fd.std(),
     )
     logger.info(
         "Residual stats — Δk: mean=%.2f, std=%.2f | Δq: mean=%.2f, std=%.2f",
-        delta_density.mean(), delta_density.std(),
-        delta_flow.mean(), delta_flow.std(),
+        delta_density.mean(),
+        delta_density.std(),
+        delta_flow.mean(),
+        delta_flow.std(),
     )
 
     # --- Update tabular dataset ---

@@ -88,6 +88,7 @@ STAGE_ASSET_MAP = {
 # RunManager
 # ---------------------------------------------------------------------------
 
+
 class RunManager:
     """Manage versioned pipeline runs under data/runs/."""
 
@@ -115,10 +116,12 @@ class RunManager:
         return runs
 
     @staticmethod
-    def _scan_assets(base_dir: Path, info: dict[str, Any],
-                     model_dirs: list[Path] | None = None) -> bool:
+    def _scan_assets(
+        base_dir: Path, info: dict[str, Any], model_dirs: list[Path] | None = None
+    ) -> bool:
         """Scan assets under base_dir and populate info['assets']. Returns True if any found."""
         import pandas as pd
+
         has_assets = False
 
         csv_path = base_dir / "scenarios.csv"
@@ -145,8 +148,7 @@ class RunManager:
                 feat_info: dict[str, Any] = {
                     "samples": len(df),
                     "scenarios": (
-                        int(df["scenario_id"].nunique())
-                        if "scenario_id" in df.columns else 0
+                        int(df["scenario_id"].nunique()) if "scenario_id" in df.columns else 0
                     ),
                 }
                 # Scan available lanes / speed_limits for data filtering
@@ -165,7 +167,7 @@ class RunManager:
             except Exception:
                 info["assets"]["features"] = {"samples": "?"}
 
-        for mdir in (model_dirs or [base_dir / "outputs"]):
+        for mdir in model_dirs or [base_dir / "outputs"]:
             if mdir.exists():
                 models = list(mdir.glob("*.pt")) + list(mdir.glob("*.pkl"))
                 if models:
@@ -239,9 +241,9 @@ class RunManager:
         # Set created time from scenarios.csv
         csv_path = data_dir / "scenarios.csv"
         if csv_path.exists():
-            info["created"] = datetime.fromtimestamp(
-                csv_path.stat().st_mtime
-            ).strftime("%Y-%m-%d %H:%M")
+            info["created"] = datetime.fromtimestamp(csv_path.stat().st_mtime).strftime(
+                "%Y-%m-%d %H:%M"
+            )
 
         # Infer completed steps
         if info["assets"].get("scenarios"):
@@ -260,26 +262,33 @@ class RunManager:
         for run_info in self.list_runs():
             if stage in run_info.get("assets", {}):
                 asset = run_info["assets"][stage]
-                results.append({
-                    "run_id": run_info["run_id"],
-                    "created": run_info["created"],
-                    "dir": run_info["dir"],
-                    **asset,
-                })
+                results.append(
+                    {
+                        "run_id": run_info["run_id"],
+                        "created": run_info["created"],
+                        "dir": run_info["dir"],
+                        **asset,
+                    }
+                )
 
         return results
 
-    def create_run(self, mode: str, num_scenarios: int = 1000,
-                   num_probes: int = 5, max_workers: int = 0,
-                   device: str = "auto",
-                   source_run_id: str | None = None,
-                   source_stage: str | None = None,
-                   steps: list[str] | None = None,
-                   scenario_config: dict | None = None,
-                   fd_model: str = "underwood",
-                   data_filters: dict | None = None,
-                   exclude_features: list[str] | None = None,
-                   exclude_window_features: list[str] | None = None) -> tuple[str, Path]:
+    def create_run(
+        self,
+        mode: str,
+        num_scenarios: int = 1000,
+        num_probes: int = 5,
+        max_workers: int = 0,
+        device: str = "auto",
+        source_run_id: str | None = None,
+        source_stage: str | None = None,
+        steps: list[str] | None = None,
+        scenario_config: dict | None = None,
+        fd_model: str = "underwood",
+        data_filters: dict | None = None,
+        exclude_features: list[str] | None = None,
+        exclude_window_features: list[str] | None = None,
+    ) -> tuple[str, Path]:
         """Create a new run directory with manifest and config overlay."""
         run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
         run_dir = self.runs_dir / run_id
@@ -316,10 +325,17 @@ class RunManager:
 
         # Write per-run config overlay
         self._write_run_config(
-            run_dir, source_run_id, source_stage, max_workers, device,
-            scenario_config=scenario_config, fd_model=fd_model,
-            data_filters=data_filters, exclude_features=exclude_features,
-            exclude_window_features=exclude_window_features, steps=steps,
+            run_dir,
+            source_run_id,
+            source_stage,
+            max_workers,
+            device,
+            scenario_config=scenario_config,
+            fd_model=fd_model,
+            data_filters=data_filters,
+            exclude_features=exclude_features,
+            exclude_window_features=exclude_window_features,
+            steps=steps,
         )
 
         # Apply data filters: copy filtered feature files to new run dir
@@ -328,8 +344,7 @@ class RunManager:
 
         return run_id, run_dir
 
-    def _apply_data_filters(self, run_dir: Path, source_run_id: str,
-                            data_filters: dict) -> None:
+    def _apply_data_filters(self, run_dir: Path, source_run_id: str, data_filters: dict) -> None:
         """Filter source feature files by lanes/speed_limit and copy to run_dir/features/."""
         import numpy as np
         import pandas as pd
@@ -385,21 +400,26 @@ class RunManager:
             filtered = {key: ts_data[key][idx] for key in ts_data.files}
             np.savez(out_dir / "timeseries.npz", **filtered)
 
-    def _write_run_config(self, run_dir: Path, source_run_id: str | None,
-                          source_stage: str | None,
-                          max_workers: int = 0, device: str = "auto",
-                          scenario_config: dict | None = None,
-                          fd_model: str = "underwood",
-                          data_filters: dict | None = None,
-                          exclude_features: list[str] | None = None,
-                          exclude_window_features: list[str] | None = None,
-                          steps: list[str] | None = None) -> None:
+    def _write_run_config(
+        self,
+        run_dir: Path,
+        source_run_id: str | None,
+        source_stage: str | None,
+        max_workers: int = 0,
+        device: str = "auto",
+        scenario_config: dict | None = None,
+        fd_model: str = "underwood",
+        data_filters: dict | None = None,
+        exclude_features: list[str] | None = None,
+        exclude_window_features: list[str] | None = None,
+        steps: list[str] | None = None,
+    ) -> None:
         """Generate run_config.yaml that inherits from default.yaml."""
         run_id = run_dir.name
         # Compute relative path from run_dir to configs/default.yaml
-        rel_base = os.path.relpath(
-            PROJECT_ROOT / "configs" / "default.yaml", run_dir
-        ).replace("\\", "/")
+        rel_base = os.path.relpath(PROJECT_ROOT / "configs" / "default.yaml", run_dir).replace(
+            "\\", "/"
+        )
 
         # Resolve device: "auto" means let the scripts decide
         resolved_device = device if device != "auto" else None
@@ -593,15 +613,19 @@ class RunManager:
             elif key == "truck_ratio":
                 vtypes["truck_ratio"] = val
             elif key.startswith("passenger_"):
-                param = key[len("passenger_"):]
+                param = key[len("passenger_") :]
                 vtypes.setdefault("passenger", {})[param] = val
             elif key.startswith("truck_"):
-                param = key[len("truck_"):]
+                param = key[len("truck_") :]
                 vtypes.setdefault("truck", {})[param] = val
 
-    def update_manifest(self, run_dir: Path, step: str | None = None,
-                        status: str | None = None,
-                        extra: dict[str, Any] | None = None) -> None:
+    def update_manifest(
+        self,
+        run_dir: Path,
+        step: str | None = None,
+        status: str | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
         """Update manifest.json after step completion or status change."""
         manifest_path = run_dir / "manifest.json"
         if not manifest_path.exists():
@@ -636,15 +660,14 @@ class RunManager:
             net_d, demand_d = {}, {}
 
         # Speed limits
-        sl = sc.get("speed_limit_kmh") or net_d.get(
-            "speed_limit_kmh", [50, 60, 80, 100]
-        )
+        sl = sc.get("speed_limit_kmh") or net_d.get("speed_limit_kmh", [50, 60, 80, 100])
 
         # Num lanes
         nl = sc.get("num_lanes") or net_d.get("num_lanes", {"min": 1, "max": 3})
         if isinstance(nl, dict):
             nl_str = (
-                str(nl["min"]) if nl.get("min") == nl.get("max")
+                str(nl["min"])
+                if nl.get("min") == nl.get("max")
                 else f"{nl.get('min', 1)}\u2013{nl.get('max', 3)}"
             )
         else:
@@ -683,6 +706,7 @@ run_manager = RunManager()
 # State
 # ---------------------------------------------------------------------------
 
+
 class PipelineState:
     """Global mutable state for the running pipeline."""
 
@@ -710,6 +734,7 @@ state = PipelineState()
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
+
 
 class RunRequest(BaseModel):
     steps: list[str]
@@ -762,9 +787,9 @@ def _write_model_config(base_config_path: str, out_path: str, model_type: str) -
     )
 
 
-async def _run_step(step_key: str, cmd: list[str],
-                    extra_args: list[str] | None = None,
-                    label: str | None = None) -> bool:
+async def _run_step(
+    step_key: str, cmd: list[str], extra_args: list[str] | None = None, label: str | None = None
+) -> bool:
     """Run a single pipeline step as subprocess. Returns True on success."""
     full_cmd = cmd + (extra_args or [])
     step_label: str = label or str(PIPELINE_STEPS[step_key]["label"])
@@ -905,8 +930,9 @@ async def _run_pipeline(req: RunRequest) -> None:
 
         state.elapsed = time.time() - state.start_time
         if not state.error and not state.cancelled:
-            run_manager.update_manifest(run_dir, status="completed",
-                                        extra={"elapsed_seconds": round(state.elapsed, 1)})
+            run_manager.update_manifest(
+                run_dir, status="completed", extra={"elapsed_seconds": round(state.elapsed, 1)}
+            )
             state.log_lines.append(f"\n=== Run {run_id} Done ({state.elapsed:.1f}s) ===")
     except Exception as e:
         state.error = str(e)
@@ -921,6 +947,7 @@ async def _run_pipeline(req: RunRequest) -> None:
 # ---------------------------------------------------------------------------
 # API Endpoints
 # ---------------------------------------------------------------------------
+
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
@@ -1062,7 +1089,8 @@ def _kill_process_tree() -> None:
             # taskkill /T kills the entire process tree on Windows
             subprocess.run(
                 ["taskkill", "/F", "/T", "/PID", str(pid)],
-                capture_output=True, timeout=10,
+                capture_output=True,
+                timeout=10,
             )
         else:
             os.killpg(os.getpgid(pid), signal.SIGKILL)
@@ -1076,6 +1104,7 @@ def _kill_process_tree() -> None:
 @app.get("/api/logs")
 async def stream_logs():
     """SSE endpoint for real-time log streaming."""
+
     async def event_generator():
         last_idx = 0
         while True:
@@ -1152,8 +1181,12 @@ async def clean_data():
 
     deleted = []
     dirs = [
-        "data/fcd", "data/features", "data/sumo_networks",
-        "outputs", "outputs_xgboost", "data/runs",
+        "data/fcd",
+        "data/features",
+        "data/sumo_networks",
+        "outputs",
+        "outputs_xgboost",
+        "data/runs",
     ]
     for d in dirs:
         p = PROJECT_ROOT / d

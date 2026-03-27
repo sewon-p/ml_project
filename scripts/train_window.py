@@ -52,8 +52,8 @@ def _split_indices_by_group(
     n_val = max(1, int(n * val_ratio))
 
     test_ids = set(unique_ids[:n_test])
-    val_ids = set(unique_ids[n_test: n_test + n_val])
-    train_ids = set(unique_ids[n_test + n_val:])
+    val_ids = set(unique_ids[n_test : n_test + n_val])
+    train_ids = set(unique_ids[n_test + n_val :])
 
     train_idx = np.where(np.isin(scenario_ids, list(train_ids)))[0]
     val_idx = np.where(np.isin(scenario_ids, list(val_ids)))[0]
@@ -69,19 +69,21 @@ def _normalize_features(
     conditions_train: np.ndarray,
     conditions_val: np.ndarray,
     conditions_test: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray,
-           np.ndarray, np.ndarray, np.ndarray,
-           dict]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict]:
     """StandardScaler on window features (per channel) and conditions."""
     # Window features: (N, 8, 10) — normalize per channel (axis 0, 2)
     N_tr, C, W = train.shape
     flat_tr = train.transpose(1, 0, 2).reshape(C, -1)  # (C, N*W)
-    mean_f = flat_tr.mean(axis=1, keepdims=True)        # (C, 1)
+    mean_f = flat_tr.mean(axis=1, keepdims=True)  # (C, 1)
     std_f = flat_tr.std(axis=1, keepdims=True) + 1e-8
 
     def norm_seq(arr: np.ndarray) -> np.ndarray:
-        return ((arr.transpose(1, 0, 2).reshape(C, -1) - mean_f) / std_f
-                ).reshape(C, arr.shape[0], W).transpose(1, 0, 2).astype(np.float32)
+        return (
+            ((arr.transpose(1, 0, 2).reshape(C, -1) - mean_f) / std_f)
+            .reshape(C, arr.shape[0], W)
+            .transpose(1, 0, 2)
+            .astype(np.float32)
+        )
 
     train_n = norm_seq(train)
     val_n = norm_seq(val)
@@ -130,9 +132,7 @@ def train_window(cfg: dict, args: argparse.Namespace) -> None:
     logger.info("Using device: %s", device)
 
     # Load raw timeseries
-    ts_path = args.data or data_cfg.get(
-        "timeseries_path", "data/features/timeseries.npz"
-    )
+    ts_path = args.data or data_cfg.get("timeseries_path", "data/features/timeseries.npz")
     logger.info("Loading time series from %s", ts_path)
     data = np.load(ts_path)
     sequences = data["sequences"]  # (N, 6, 300)
@@ -188,7 +188,10 @@ def train_window(cfg: dict, args: argparse.Namespace) -> None:
     window_size = window_cfg.get("window_size", 30)
     exclude_wf = window_cfg.get("exclude", [])
     win_features, used_names = extract_window_features(
-        sequences, speed_limits, window_size, exclude=exclude_wf,
+        sequences,
+        speed_limits,
+        window_size,
+        exclude=exclude_wf,
     )
     n_win_features = win_features.shape[1]
 
@@ -196,7 +199,10 @@ def train_window(cfg: dict, args: argparse.Namespace) -> None:
 
     logger.info(
         "Loaded %d samples, window shape %s, target=%s (residual=%s)",
-        len(win_features), win_features.shape, target_name, residual_enabled,
+        len(win_features),
+        win_features.shape,
+        target_name,
+        residual_enabled,
     )
 
     # Split by scenario_id
@@ -206,35 +212,67 @@ def train_window(cfg: dict, args: argparse.Namespace) -> None:
         val_ratio=train_cfg.get("val_ratio", 0.1),
         seed=cfg.get("seed", 42),
     )
-    logger.info("Split: train=%d, val=%d, test=%d",
-                len(train_idx), len(val_idx), len(test_idx))
+    logger.info("Split: train=%d, val=%d, test=%d", len(train_idx), len(val_idx), len(test_idx))
 
     output_dir = Path(cfg.get("output_dir", "outputs"))
 
     # ---- Branch: tabular (window_xgboost) vs DL (window_cnn1d, window_lstm) ----
     if model_type in WINDOW_TABULAR_MODELS:
         _train_window_tabular(
-            cfg, model_type, base_model_type,
-            win_features, used_names, conditions, targets, actual_targets,
-            fd_estimates, scenario_ids, train_idx, val_idx, test_idx,
-            residual_enabled, per_lane_target, output_dir,
+            cfg,
+            model_type,
+            base_model_type,
+            win_features,
+            used_names,
+            conditions,
+            targets,
+            actual_targets,
+            fd_estimates,
+            scenario_ids,
+            train_idx,
+            val_idx,
+            test_idx,
+            residual_enabled,
+            per_lane_target,
+            output_dir,
         )
     else:
         _train_window_dl(
-            cfg, model_type, base_model_type, device,
-            win_features, n_win_features, conditions, targets, actual_targets,
-            fd_estimates, train_idx, val_idx, test_idx,
-            residual_enabled, output_dir,
+            cfg,
+            model_type,
+            base_model_type,
+            device,
+            win_features,
+            n_win_features,
+            conditions,
+            targets,
+            actual_targets,
+            fd_estimates,
+            train_idx,
+            val_idx,
+            test_idx,
+            residual_enabled,
+            output_dir,
         )
 
 
 def _train_window_tabular(
-    cfg: dict, model_type: str, base_model_type: str,
-    win_features: np.ndarray, used_names: list[str],
-    conditions: np.ndarray, targets: np.ndarray, actual_targets: np.ndarray,
-    fd_estimates: np.ndarray | None, scenario_ids: np.ndarray,
-    train_idx: np.ndarray, val_idx: np.ndarray, test_idx: np.ndarray,
-    residual_enabled: bool, per_lane_target: str, output_dir: Path,
+    cfg: dict,
+    model_type: str,
+    base_model_type: str,
+    win_features: np.ndarray,
+    used_names: list[str],
+    conditions: np.ndarray,
+    targets: np.ndarray,
+    actual_targets: np.ndarray,
+    fd_estimates: np.ndarray | None,
+    scenario_ids: np.ndarray,
+    train_idx: np.ndarray,
+    val_idx: np.ndarray,
+    test_idx: np.ndarray,
+    residual_enabled: bool,
+    per_lane_target: str,
+    output_dir: Path,
 ) -> None:
     """Train window-feature tabular model (XGBoost) with flattened features."""
     import pandas as pd
@@ -308,12 +346,21 @@ def _train_window_tabular(
 
 
 def _train_window_dl(
-    cfg: dict, model_type: str, base_model_type: str, device: str,
-    win_features: np.ndarray, n_win_features: int,
-    conditions: np.ndarray, targets: np.ndarray, actual_targets: np.ndarray,
+    cfg: dict,
+    model_type: str,
+    base_model_type: str,
+    device: str,
+    win_features: np.ndarray,
+    n_win_features: int,
+    conditions: np.ndarray,
+    targets: np.ndarray,
+    actual_targets: np.ndarray,
     fd_estimates: np.ndarray | None,
-    train_idx: np.ndarray, val_idx: np.ndarray, test_idx: np.ndarray,
-    residual_enabled: bool, output_dir: Path,
+    train_idx: np.ndarray,
+    val_idx: np.ndarray,
+    test_idx: np.ndarray,
+    residual_enabled: bool,
+    output_dir: Path,
 ) -> None:
     """Train window-feature DL model (CNN1D, LSTM)."""
     train_cfg = cfg.get("training", {})
@@ -322,8 +369,12 @@ def _train_window_dl(
 
     # Normalize window features and conditions
     wf_train, wf_val, wf_test, c_train, c_val, c_test, scaler = _normalize_features(
-        win_features[train_idx], win_features[val_idx], win_features[test_idx],
-        conditions[train_idx], conditions[val_idx], conditions[test_idx],
+        win_features[train_idx],
+        win_features[val_idx],
+        win_features[test_idx],
+        conditions[train_idx],
+        conditions[val_idx],
+        conditions[test_idx],
     )
     logger.info("Scaler: feature_mean=%s", scaler["feature_mean"])
 
@@ -337,16 +388,25 @@ def _train_window_dl(
     pin_memory = device == "cuda"
 
     train_loader = DataLoader(
-        train_ds, batch_size=batch_size, shuffle=True,
-        num_workers=num_workers, pin_memory=pin_memory,
+        train_ds,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
     )
     val_loader = DataLoader(
-        val_ds, batch_size=batch_size, shuffle=False,
-        num_workers=num_workers, pin_memory=pin_memory,
+        val_ds,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
     )
     test_loader = DataLoader(
-        test_ds, batch_size=batch_size, shuffle=False,
-        num_workers=num_workers, pin_memory=pin_memory,
+        test_ds,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
     )
 
     # Create model
@@ -363,7 +423,10 @@ def _train_window_dl(
         model_params["input_size"] = n_win_features
 
     estimator = create_model(
-        base_model_type, device=device, n_conditions=n_conditions, **model_params,
+        base_model_type,
+        device=device,
+        n_conditions=n_conditions,
+        **model_params,
     )
     model = estimator.model
 
@@ -396,6 +459,7 @@ def _train_window_dl(
     estimator.save(output_dir / f"{model_type}_best")
 
     import json
+
     scaler_path = output_dir / f"{model_type}_scaler.json"
     scaler_path.write_text(json.dumps(scaler, indent=2))
     logger.info("Model saved to %s, scaler to %s", output_dir, scaler_path)

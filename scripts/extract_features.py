@@ -32,9 +32,15 @@ logger = logging.getLogger(__name__)
 
 # Features to drop from tabular output (redundant or count-based)
 FEATURES_DROP = {
-    "vx_mean", "vx_std", "vx_min", "vx_max",
-    "vx_autocorr_lag1", "vx_fft_dominant_freq",
-    "harsh_accel_count", "harsh_decel_count", "lane_change_count",
+    "vx_mean",
+    "vx_std",
+    "vx_min",
+    "vx_max",
+    "vx_autocorr_lag1",
+    "vx_fft_dominant_freq",
+    "harsh_accel_count",
+    "harsh_decel_count",
+    "lane_change_count",
 }
 
 
@@ -43,8 +49,13 @@ def _process_scenario(
 ) -> tuple[list[dict], list[np.ndarray], list[dict]] | None:
     """Process a single scenario: parse FCD → select 5 probes → extract."""
     (
-        row_dict, fcd_dir, num_probes, warmup, collect,
-        seq_len, feature_names,
+        row_dict,
+        fcd_dir,
+        num_probes,
+        warmup,
+        collect,
+        seq_len,
+        feature_names,
     ) = args
 
     sid = int(row_dict["scenario_id"])
@@ -61,18 +72,16 @@ def _process_scenario(
 
     # Time boundaries
     traj_start = warmup + collect - seq_len  # 200 + 400 - 300 = 300
-    traj_end = warmup + collect              # 600
-    probe_start = warmup                     # 200
-    probe_end = traj_start                   # 300
+    traj_end = warmup + collect  # 600
+    probe_start = warmup  # 200
+    probe_end = traj_start  # 300
 
     # --- Ground truth: Edie density/flow from ALL vehicles in 300-600 ---
     gt_df = fcd_df[(fcd_df["time"] >= traj_start) & (fcd_df["time"] < traj_end)]
     density, flow = _fast_edie(gt_df, link_length, traj_end - traj_start)
 
     # --- Probe selection: vehicles present during 200 <= time < 300 ---
-    probe_df = fcd_df[
-        (fcd_df["time"] >= probe_start) & (fcd_df["time"] < probe_end)
-    ]
+    probe_df = fcd_df[(fcd_df["time"] >= probe_start) & (fcd_df["time"] < probe_end)]
     if probe_df.empty:
         return None
 
@@ -104,7 +113,8 @@ def _process_scenario(
 
         # Tabular features
         feats = extract_features(
-            trajectory, feature_names=feature_names,
+            trajectory,
+            feature_names=feature_names,
             speed_limit=row_dict.get("speed_limit", 33.33),
         )
         # Drop VX-related features
@@ -277,7 +287,9 @@ def main() -> None:
 
     if args.incremental:
         old_df, old_seqs, old_meta, existing_ids = _backup_and_load_existing(
-            tabular_path, timeseries_path, metadata_path,
+            tabular_path,
+            timeseries_path,
+            metadata_path,
         )
         before = len(scenarios)
         scenarios = scenarios[~scenarios["scenario_id"].isin(existing_ids)]
@@ -294,8 +306,13 @@ def main() -> None:
     # Build work items (link_length comes from each scenario row)
     work_items = [
         (
-            row.to_dict(), fcd_dir, num_probes, warmup, collect,
-            seq_len, feature_names,
+            row.to_dict(),
+            fcd_dir,
+            num_probes,
+            warmup,
+            collect,
+            seq_len,
+            feature_names,
         )
         for _, row in scenarios.iterrows()
     ]
@@ -344,7 +361,10 @@ def main() -> None:
 
     logger.info(
         "Done: %d/%d scenarios, %d extracted, %d new samples.",
-        done, total, extracted, len(raw_sequences),
+        done,
+        total,
+        extracted,
+        len(raw_sequences),
     )
 
     if not tabular_records and old_df is None:
@@ -354,23 +374,15 @@ def main() -> None:
     # Build new DataFrames
     new_df = pd.DataFrame(tabular_records) if tabular_records else None
     new_meta = pd.DataFrame(meta_records) if meta_records else None
-    new_seqs = (
-        np.array(raw_sequences, dtype=np.float32) if raw_sequences else None
-    )
+    new_seqs = np.array(raw_sequences, dtype=np.float32) if raw_sequences else None
 
     # Merge with existing data if incremental
     if args.incremental and old_df is not None:
         df = pd.concat([old_df, new_df], ignore_index=True) if new_df is not None else old_df
         meta_df = (
-            pd.concat([old_meta, new_meta], ignore_index=True)
-            if new_meta is not None
-            else old_meta
+            pd.concat([old_meta, new_meta], ignore_index=True) if new_meta is not None else old_meta
         )
-        stacked = (
-            np.concatenate([old_seqs, new_seqs], axis=0)
-            if new_seqs is not None
-            else old_seqs
-        )
+        stacked = np.concatenate([old_seqs, new_seqs], axis=0) if new_seqs is not None else old_seqs
         logger.info(
             "Merged: %d old + %d new = %d total samples",
             len(old_df),

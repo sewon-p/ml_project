@@ -109,11 +109,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="UrbanFlow API",
     description=(
-        "Estimate traffic density and flow from a single mobile probe trajectory.\n\n"
-        "Inference flow: raw FCD -> 6-channel trajectory -> feature extraction -> "
-        "XGBoost residual model -> Underwood FD baseline restoration."
+        "Real-time traffic density estimation from probe vehicle trajectories.\n\n"
+        "## Pipeline\n"
+        "1. **Ingest** — Smartphone GPS + accelerometer → `/ingest` (30s bulk batches)\n"
+        "2. **Buffer** — LinkBuffer accumulates FCD across road links until ≥ 1 km traversal\n"
+        "3. **Feature extraction** — 31 car-following features from 6-channel trajectory\n"
+        "4. **Prediction** — XGBoost → per-link density (veh/km/lane)\n"
+        "5. **Ensemble** — CF-weighted Bayesian aggregation across multiple probes per link\n\n"
+        "## Data Model\n"
+        "- **RoadLink**: 2.2K Seoul arterial links (MOCT standard node-link, rank 101–103)\n"
+        "- **Prediction**: individual probe result with CF weight and traversal metadata\n"
+        "- **EnsembleResult**: multi-probe aggregation per link (15-min rolling window)\n"
+        "- **FCDRecordRow**: raw GPS + accelerometer records at 1 Hz\n"
     ),
-    version="0.1.0",
+    version="0.4.0",
     lifespan=lifespan,
 )
 

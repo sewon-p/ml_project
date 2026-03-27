@@ -1,301 +1,660 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UrbanFlow — Traffic Density Estimation from Probe Vehicles</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
-  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
-<script type="module">
-  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: 'base',
-    securityLevel: 'loose',
-    themeVariables: {
-      background: '#EDF2F4',
-      primaryColor: '#ffffff',
-      primaryTextColor: '#2B2D42',
-      primaryBorderColor: '#8D99AE',
-      lineColor: '#8D99AE',
-      secondaryColor: '#ffffff',
-      tertiaryColor: '#ffffff',
-      fontFamily: 'SF Mono, Fira Code, monospace',
-      fontSize: '13px',
-      edgeLabelBackground: '#EDF2F4',
-      nodeTextColor: '#2B2D42',
-      clusterBkg: '#ffffff',
-      clusterBorder: '#8D99AE'
-    },
-    flowchart: { curve: 'basis', htmlLabels: true, nodeSpacing: 30, rankSpacing: 40 },
-    sequence: { mirrorActors: false, messageMargin: 30 }
-  });
-  await mermaid.run();
-</script>
-<style>
-  :root {
-    --dark: #2B2D42;
-    --muted: #8D99AE;
-    --surface: #EDF2F4;
-    --accent: #EF233C;
-    --surface-border: rgba(141, 153, 174, 0.25);
-    --ink-soft: rgba(43, 45, 66, 0.72);
-    --hero-max: 1180px;
-    --sans: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-    --mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-  }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UrbanFlow — Traffic Density Estimation from Probe Vehicles</title>
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'base',
+      securityLevel: 'loose',
+      themeVariables: {
+        background: '#EDF2F4',
+        primaryColor: '#ffffff',
+        primaryTextColor: '#2B2D42',
+        primaryBorderColor: '#8D99AE',
+        lineColor: '#8D99AE',
+        secondaryColor: '#ffffff',
+        tertiaryColor: '#ffffff',
+        fontFamily: 'SF Mono, Fira Code, monospace',
+        fontSize: '13px',
+        edgeLabelBackground: '#EDF2F4',
+        nodeTextColor: '#2B2D42',
+        clusterBkg: '#ffffff',
+        clusterBorder: '#8D99AE'
+      },
+      flowchart: { curve: 'basis', htmlLabels: true, nodeSpacing: 30, rankSpacing: 40 },
+      sequence: { mirrorActors: false, messageMargin: 30 }
+    });
+    await mermaid.run();
+  </script>
+  <style>
+    :root {
+      --dark: #2B2D42;
+      --muted: #8D99AE;
+      --surface: #EDF2F4;
+      --accent: #EF233C;
+      --surface-border: rgba(141, 153, 174, 0.25);
+      --ink-soft: rgba(43, 45, 66, 0.72);
+      --hero-max: 1180px;
+      --sans: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
-  body { min-height: 100vh; background: var(--surface); color: var(--dark); font: 500 1.06rem/1.68 var(--sans); -webkit-font-smoothing: antialiased; }
-  a { color: inherit; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-  nav { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 18px 28px; backdrop-filter: blur(14px); background: rgba(255,255,255,0.88); border-bottom: 1px solid var(--surface-border); }
-  .brand { font: 700 14px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
-  .brand span { color: var(--accent); }
-  .nav-links { display: flex; gap: 18px; list-style: none; flex-wrap: wrap; }
-  .nav-links a { font: 500 12px/1 var(--mono); text-decoration: none; color: var(--muted); transition: color 0.18s; }
-  .nav-links a:hover { color: var(--accent); }
-  .nav-actions { display: flex; gap: 10px; align-items: center; }
+    html {
+      scroll-behavior: smooth;
+    }
 
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 18px; border-radius: 14px; border: 1px solid var(--surface-border); text-decoration: none; font: 700 12px/1 var(--mono); letter-spacing: 0.02em; transition: transform 0.18s, border-color 0.18s, background 0.18s; }
-  .btn:hover { transform: translateY(-1px); border-color: rgba(239,35,60,0.38); }
-  .btn-primary { background: var(--accent); color: #fff; border-color: transparent; box-shadow: 0 8px 24px rgba(239,35,60,0.16); }
-  .btn-primary:visited, .btn-primary:hover { color: #fff; }
-  .btn-secondary { background: transparent; color: var(--dark); }
+    body {
+      min-height: 100vh;
+      background: var(--surface);
+      color: var(--dark);
+      font: 500 1.06rem/1.68 var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
 
-  main { max-width: var(--hero-max); margin: 0 auto; padding: 0 28px 96px; }
-  section { padding: 88px 0 0; }
-  .eyebrow { margin-bottom: 14px; color: var(--accent); font: 700 0.78rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
-  .section-title { font: 800 clamp(28px,4vw,46px)/1.1 var(--sans); letter-spacing: -0.04em; margin-bottom: 16px; max-width: 760px; }
-  .section-copy { max-width: 760px; color: var(--ink-soft); font-size: 1.06rem; }
-  .section-copy + .section-copy { margin-top: 14px; }
+    a {
+      color: inherit;
+    }
 
-  #hero { min-height: calc(100vh - 78px); display: grid; align-items: center; }
-  .hero-layout { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 32px; align-items: end; }
-  .hero-chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; margin-bottom: 26px; background: rgba(239,35,60,0.06); border: 1px solid rgba(239,35,60,0.18); color: var(--accent); font: 700 11px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
-  .hero-title { font: 900 clamp(40px,7vw,72px)/0.98 var(--sans); letter-spacing: -0.04em; max-width: 760px; margin-bottom: 20px; }
-  .hero-title em { color: var(--accent); font-style: normal; }
-  .hero-sub { max-width: 690px; color: var(--ink-soft); font-size: 1.06rem; margin-bottom: 24px; }
-  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 30px; }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 18px 28px;
+      backdrop-filter: blur(14px);
+      background: rgba(255, 255, 255, 0.88);
+      border-bottom: 1px solid var(--surface-border);
+    }
 
-  .hero-panel { background: rgba(255,255,255,0.92); border: 1px solid var(--surface-border); border-radius: 22px; padding: 24px; box-shadow: 0 8px 24px rgba(43,45,66,0.06); }
-  .hero-metrics { display: grid; gap: 12px; }
-  .metric { padding: 14px 16px; border-radius: 16px; background: rgba(255,255,255,0.92); border: 1px solid var(--surface-border); }
-  .metric-label { color: var(--muted); font: 700 11px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
-  .metric-value { font: 800 18px/1.2 var(--sans); margin-bottom: 6px; }
-  .metric-copy { color: var(--ink-soft); font-size: 0.82rem; }
+    .brand {
+      font: 700 14px/1 var(--mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
 
-  .highlights { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
-  .highlight-pill { padding: 10px 14px; border-radius: 999px; border: 1px solid var(--surface-border); background: rgba(255,255,255,0.92); color: var(--ink-soft); font: 500 12px/1 var(--mono); }
+    .brand span {
+      color: var(--accent);
+    }
 
-  .overview-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 22px; margin-top: 28px; }
-  .panel { background: rgba(255,255,255,0.92); border: 1px solid var(--surface-border); border-radius: 22px; padding: 24px; box-shadow: 0 8px 24px rgba(43,45,66,0.06); }
-  .panel p + p { margin-top: 14px; }
-  .mini-list { display: grid; gap: 12px; }
-  .mini-item { padding: 14px 16px; border-radius: 16px; background: rgba(255,255,255,0.92); border: 1px solid var(--surface-border); box-shadow: 0 8px 24px rgba(43,45,66,0.06); }
-  .mini-item strong { display: block; margin-bottom: 4px; font: 700 13px/1.3 var(--sans); }
-  .mini-item span { color: var(--muted); font-size: 0.82rem; }
+    .nav-links {
+      display: flex;
+      gap: 18px;
+      list-style: none;
+      flex-wrap: wrap;
+    }
 
-  .cards { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; margin-top: 28px; }
-  .card { background: rgba(255,255,255,0.92); border: 1px solid var(--surface-border); border-radius: 22px; padding: 22px; box-shadow: 0 8px 24px rgba(43,45,66,0.06); text-decoration: none; }
-  .card:hover { border-color: rgba(239,35,60,0.3); }
+    .nav-links a {
+      font: 500 12px/1 var(--mono);
+      text-decoration: none;
+      color: var(--muted);
+      transition: color 0.18s;
+    }
 
-  .mermaid-wrap { margin-top: 28px; background: rgba(255,255,255,0.6); border: 1px solid var(--surface-border); border-radius: 22px; padding: 28px; overflow-x: auto; }
-  .mermaid-wrap pre { background: transparent; margin: 0; }
+    .nav-links a:hover {
+      color: var(--accent);
+    }
 
-  .tech-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
-  .tech-pill { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--surface-border); background: white; font: 600 0.82rem/1 var(--mono); }
+    .nav-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
 
-  footer { padding: 28px; text-align: center; color: var(--muted); font: 500 0.82rem/1 var(--mono); border-top: 1px solid var(--surface-border); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 0 18px;
+      border-radius: 14px;
+      border: 1px solid var(--surface-border);
+      text-decoration: none;
+      font: 700 12px/1 var(--mono);
+      letter-spacing: 0.02em;
+      transition: transform 0.18s, border-color 0.18s, background 0.18s;
+    }
 
-  @media (max-width: 900px) {
-    .hero-layout, .overview-grid, .cards { grid-template-columns: 1fr; }
-  }
-</style>
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(239, 35, 60, 0.38);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 8px 24px rgba(239, 35, 60, 0.16);
+    }
+
+    .btn-primary:visited,
+    .btn-primary:hover {
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--dark);
+    }
+
+    main {
+      max-width: var(--hero-max);
+      margin: 0 auto;
+      padding: 0 28px 96px;
+    }
+
+    section {
+      padding: 88px 0 0;
+    }
+
+    .eyebrow {
+      margin-bottom: 14px;
+      color: var(--accent);
+      font: 700 0.78rem/1 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .section-title {
+      font: 800 clamp(28px, 4vw, 46px)/1.1 var(--sans);
+      letter-spacing: -0.04em;
+      margin-bottom: 16px;
+      max-width: 760px;
+    }
+
+    .section-copy {
+      max-width: 760px;
+      color: var(--ink-soft);
+      font-size: 1.06rem;
+    }
+
+    .section-copy+.section-copy {
+      margin-top: 14px;
+    }
+
+    #hero {
+      min-height: calc(100vh - 78px);
+      display: grid;
+      align-items: center;
+    }
+
+    .hero-layout {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 32px;
+      align-items: end;
+    }
+
+    .hero-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      margin-bottom: 26px;
+      background: rgba(239, 35, 60, 0.06);
+      border: 1px solid rgba(239, 35, 60, 0.18);
+      color: var(--accent);
+      font: 700 11px/1 var(--mono);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .hero-title {
+      font: 900 clamp(40px, 7vw, 72px)/0.98 var(--sans);
+      letter-spacing: -0.04em;
+      max-width: 760px;
+      margin-bottom: 20px;
+    }
+
+    .hero-title em {
+      color: var(--accent);
+      font-style: normal;
+    }
+
+    .hero-sub {
+      max-width: 690px;
+      color: var(--ink-soft);
+      font-size: 1.06rem;
+      margin-bottom: 24px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 30px;
+    }
+
+    .hero-panel {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--surface-border);
+      border-radius: 22px;
+      padding: 24px;
+      box-shadow: 0 8px 24px rgba(43, 45, 66, 0.06);
+    }
+
+    .hero-metrics {
+      display: grid;
+      gap: 12px;
+    }
+
+    .metric {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--surface-border);
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font: 700 11px/1 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    .metric-value {
+      font: 800 18px/1.2 var(--sans);
+      margin-bottom: 6px;
+    }
+
+    .metric-copy {
+      color: var(--ink-soft);
+      font-size: 0.82rem;
+    }
+
+    .highlights {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 28px;
+    }
+
+    .highlight-pill {
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--surface-border);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink-soft);
+      font: 500 12px/1 var(--mono);
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 22px;
+      margin-top: 28px;
+    }
+
+    .panel {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--surface-border);
+      border-radius: 22px;
+      padding: 24px;
+      box-shadow: 0 8px 24px rgba(43, 45, 66, 0.06);
+    }
+
+    .panel p+p {
+      margin-top: 14px;
+    }
+
+    .mini-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .mini-item {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--surface-border);
+      box-shadow: 0 8px 24px rgba(43, 45, 66, 0.06);
+    }
+
+    .mini-item strong {
+      display: block;
+      margin-bottom: 4px;
+      font: 700 13px/1.3 var(--sans);
+    }
+
+    .mini-item span {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 28px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--surface-border);
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: 0 8px 24px rgba(43, 45, 66, 0.06);
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(239, 35, 60, 0.38);
+      box-shadow: 0 24px 44px rgba(43, 45, 66, 0.09);
+    }
+
+    .mermaid-wrap {
+      margin-top: 28px;
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid var(--surface-border);
+      border-radius: 22px;
+      padding: 28px;
+      overflow-x: auto;
+    }
+
+    .mermaid-wrap pre {
+      background: transparent;
+      margin: 0;
+    }
+
+    .tech-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .tech-pill {
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--surface-border);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink-soft);
+      font: 500 12px/1 var(--mono);
+    }
+
+    footer {
+      max-width: var(--hero-max);
+      margin: 0 auto;
+      padding: 0 28px 48px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    footer a {
+      text-decoration: none;
+      color: var(--muted);
+    }
+
+    footer a:hover {
+      color: var(--accent);
+    }
+
+    @media (max-width: 980px) {
+
+      .hero-layout,
+      .overview-grid,
+      .cards {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      nav {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 16px 20px;
+      }
+
+      .nav-links {
+        gap: 12px;
+      }
+
+      .nav-actions {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+
+      main {
+        padding: 0 20px 84px;
+      }
+
+      section {
+        padding-top: 76px;
+      }
+
+      .hero-title {
+        font-size: clamp(34px, 12vw, 54px);
+      }
+
+      .section-title {
+        font-size: 30px;
+      }
+
+      .hero-sub {
+        font-size: 15px;
+      }
+
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
+
 <body>
-<div class="shell">
+  <div class="shell">
 
-<nav>
-  <div class="brand">Urban<span>Flow</span></div>
-  <ul class="nav-links">
-    <li><a href="/portfolio">About</a></li>
-    <li><a href="/map">Map</a></li>
-    <li><a href="/mobile">Mobile</a></li>
-    <li><a href="/dashboard">Console</a></li>
-    <li><a href="/docs">API Docs</a></li>
-  </ul>
-  <div class="nav-actions">
-    <a class="btn btn-secondary" href="https://github.com/park/ml-project">GitHub</a>
-  </div>
-</nav>
-
-<main>
-
-<!-- ─── HERO ─── -->
-<section id="hero">
-  <div class="hero-layout">
-    <div>
-      <div class="hero-chip">Graduation Project · Traffic Engineering × ML</div>
-      <h1 class="hero-title">Estimating traffic density from <em>probe vehicles</em></h1>
-      <p class="hero-sub">
-        Fixed sensors cover a fraction of the road network. UrbanFlow explores whether
-        smartphones carried by drivers — capturing speed, acceleration, and braking —
-        can estimate how congested a road is, without any roadside infrastructure.
-      </p>
-      <p class="hero-sub" style="color:var(--muted); font-size:0.92rem;">
-        This is a traffic engineering research project implemented as a full data/ML system:
-        simulation → feature engineering → model training → real-time serving → live map.
-        Solo end-to-end.
-      </p>
-      <div class="hero-actions">
-        <a class="btn btn-primary" href="/map">Open Live Map</a>
-        <a class="btn btn-secondary" href="/mobile">Try Mobile Probe</a>
-        <a class="btn btn-secondary" href="/docs">API Reference</a>
+    <nav>
+      <div class="brand">Urban<span>Flow</span></div>
+      <ul class="nav-links">
+        <li><a href="/portfolio">About</a></li>
+        <li><a href="/map">Map</a></li>
+        <li><a href="/mobile">Mobile</a></li>
+        <li><a href="/dashboard">Console</a></li>
+        <li><a href="/docs">API Docs</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a class="btn btn-secondary" href="https://github.com/sewon-p/ml_project" target="_blank">GitHub</a>
+        <a class="btn btn-primary" href="/map">View Live Demo</a>
       </div>
-    </div>
-    <div class="hero-panel">
-      <div style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:16px;">Key Numbers</div>
-      <div class="hero-metrics">
-        <div class="metric">
-          <div class="metric-label">Best Accuracy (5 probes)</div>
-          <div class="metric-value">R² = 0.67</div>
-          <div class="metric-copy">MAE = 1.80 veh/km/lane — approaching fixed-sensor accuracy</div>
+    </nav>
+
+    <main>
+
+      <!-- ─── HERO ─── -->
+      <section id="hero">
+        <div class="hero-layout">
+          <div>
+            <div class="hero-chip">End-to-End Data & ML Pipeline · Traffic Domain</div>
+            <h1 class="hero-title">Data pipeline for <em>traffic density estimation</em></h1>
+            <p class="hero-sub">
+              An end-to-end data and ML system that ingests raw mobile telemetry (GPS + accelerometer),
+              engineers domain-specific features from car-following theory, trains and serves density
+              predictions, and aggregates multi-probe results via streaming ensemble — deployed on
+              real Seoul road geometry with async APIs, SQL persistence, and cloud infrastructure.
+            </p>
+            <p class="hero-sub" style="color:var(--muted); font-size:0.92rem;">
+              Covers the full data lifecycle: simulation-based dataset generation → feature engineering
+              → model comparison (6 families) → real-time ingestion → spatial matching → ensemble
+              aggregation → storage and visualization. Solo end-to-end.
+            </p>
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="/map">View Live Demo</a>
+              <a class="btn btn-secondary" href="https://github.com/sewon-p/ml_project" target="_blank">GitHub</a>
+              <a class="btn btn-secondary" href="/docs">API Docs</a>
+            </div>
+          </div>
+          <div class="hero-panel">
+            <div
+              style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:16px;">
+              What stands out in this project</div>
+            <div class="hero-metrics">
+              <div class="metric">
+                <div class="metric-label">Data Pipeline</div>
+                <div class="metric-value">Simulation → Features → Serving</div>
+                <div class="metric-copy">176K trajectories from 35K SUMO scenarios, 31 domain-engineered features,
+                  config-driven versioned runs.</div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">Multi-Probe Ensemble</div>
+                <div class="metric-value">CF-Weighted Bayesian</div>
+                <div class="metric-copy">Car-following intensity determines probe trustworthiness. 15-min rolling window
+                  per link.</div>
+              </div>
+              <div class="metric">
+                <div class="metric-label">Deployment Architecture</div>
+                <div class="metric-value">Ingest → Match → Buffer → Predict → Store</div>
+                <div class="metric-copy">Async FastAPI, grid-indexed GIS (2.2K links), Kafka/Pub-Sub fan-out, graceful
+                  degradation.</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="metric">
-          <div class="metric-label">Seoul Road Coverage</div>
-          <div class="metric-value">2,248 links</div>
-          <div class="metric-copy">MOCT standard links, arterial roads and above</div>
+        <div class="highlights">
+          <span class="highlight-pill">Data Pipeline</span>
+          <span class="highlight-pill">Feature Engineering</span>
+          <span class="highlight-pill">XGBoost / PyTorch</span>
+          <span class="highlight-pill">FastAPI Async</span>
+          <span class="highlight-pill">PostgreSQL + TimescaleDB</span>
+          <span class="highlight-pill">Kafka / Pub-Sub</span>
+          <span class="highlight-pill">Spatial Indexing</span>
+          <span class="highlight-pill">Docker + Cloud Run</span>
+          <span class="highlight-pill">CI/CD (GitHub Actions)</span>
         </div>
-        <div class="metric">
-          <div class="metric-label">Training Data</div>
-          <div class="metric-value">176K trajectories</div>
-          <div class="metric-copy">35,000 SUMO scenarios × 5 probes, 6-channel @ 1Hz</div>
+      </section>
+
+      <!-- ─── PROBLEM ─── -->
+      <section>
+        <div class="eyebrow">The Problem</div>
+        <h2 class="section-title">Why is this hard?</h2>
+        <div class="overview-grid">
+          <div class="panel">
+            <p class="section-copy">
+              Traffic density — vehicles per kilometer — is the fundamental measure of road congestion.
+              But measuring it traditionally requires <strong>loop detectors, cameras, or radar</strong> embedded in the
+              road,
+              which are expensive and cover only major corridors.
+            </p>
+            <p class="section-copy">
+              Probe vehicles (taxis, ride-hails, smartphones) are everywhere, but each probe only sees
+              <strong>its own trajectory</strong>. A car driving at 50 km/h could be in light traffic or moderate
+              traffic —
+              the speed alone doesn't tell you. The FD (Fundamental Diagram) speed-density relationship is
+              <strong>degenerate in the free-flow regime</strong>: many densities map to nearly the same speed.
+            </p>
+            <p class="section-copy">
+              This project asks: can <strong>car-following behavioral patterns</strong> — acceleration variance,
+              braking frequency, speed oscillations — break through that degeneracy?
+            </p>
+          </div>
+          <div class="mini-list">
+            <div class="mini-item">
+              <strong>Single probe = partial observation</strong>
+              <span>One trajectory is a noisy sample of the traffic stream. Systematic tests across 6 model families
+                confirmed single-probe accuracy plateaus.</span>
+            </div>
+            <div class="mini-item">
+              <strong>Multi-probe → +47% improvement</strong>
+              <span>Combining 5 probes via CF-weighted ensemble breaks through the single-probe ceiling (R² 0.46 →
+                0.67).</span>
+            </div>
+            <div class="mini-item">
+              <strong>Route mismatch in real deployment</strong>
+              <span>Probes take different paths. Feature-level fusion requires same segment → prediction-level Bayesian
+                ensemble as practical compromise.</span>
+            </div>
+            <div class="mini-item">
+              <strong>Observation length matters</strong>
+              <span>250m→1km improves accuracy. System chains consecutive links to reach 1km before predicting.</span>
+            </div>
+          </div>
         </div>
-        <div class="metric">
-          <div class="metric-label">Ensemble Window</div>
-          <div class="metric-value">15 min / CF-weighted</div>
-          <div class="metric-copy">Car-following intensity determines probe trustworthiness</div>
+      </section>
+
+      <!-- ─── APPROACH ─── -->
+      <section>
+        <div class="eyebrow">Approach</div>
+        <h2 class="section-title">Car-following theory meets gradient boosting</h2>
+        <p class="section-copy">
+          Car-following models (IDM, Newell) tell us that a vehicle's acceleration depends on
+          its spacing and relative speed to the leader. Higher density means more frequent interactions,
+          which leave measurable fingerprints in the trajectory: more braking events, higher acceleration
+          variance, speed oscillations. We engineer 31 features that capture these patterns and train
+          XGBoost to map them to density.
+        </p>
+        <div class="overview-grid">
+          <div class="panel">
+            <p class="section-copy">
+              31 features engineered from car-following theory: speed statistics, acceleration patterns,
+              braking frequency, stop duration, lateral dynamics, FFT, and sample entropy.
+              Features are registered via decorator pattern and selected through YAML config — experiments
+              can toggle features without code changes.
+            </p>
+            <p class="section-copy">
+              Multiple probes on the same road are combined via <strong>CF-weighted Bayesian ensemble</strong>
+              within a 15-minute rolling window. Probes exhibiting car-following behavior receive higher
+              ensemble weight because their trajectories carry more density information.
+            </p>
+          </div>
+          <div class="mini-list">
+            <div class="mini-item">
+              <strong>Link-based accumulation</strong>
+              <span>Chain consecutive road links until 1km, then extract features and predict</span>
+            </div>
+            <div class="mini-item">
+              <strong>Multi-probe ensemble</strong>
+              <span>CF-weighted Bayesian — car-following probes trusted more than free-driving</span>
+            </div>
+            <div class="mini-item">
+              <strong>6 model families compared</strong>
+              <span>XGBoost, LightGBM, LSTM, CNN-1D, GPR, FD baselines under same pipeline</span>
+            </div>
+            <div class="mini-item">
+              <strong>SHAP feature analysis</strong>
+              <span>Interpretable importance ranking → speed_mean, ax_std, brake_ratio dominate</span>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
-  <div class="highlights">
-    <span class="highlight-pill">XGBoost</span>
-    <span class="highlight-pill">31 Engineered Features</span>
-    <span class="highlight-pill">Car-Following Theory</span>
-    <span class="highlight-pill">FastAPI</span>
-    <span class="highlight-pill">PostgreSQL</span>
-    <span class="highlight-pill">GIS Link Matching</span>
-    <span class="highlight-pill">Bayesian Ensemble</span>
-    <span class="highlight-pill">Cloud Run</span>
-    <span class="highlight-pill">CI/CD</span>
-  </div>
-</section>
+      </section>
 
-<!-- ─── PROBLEM ─── -->
-<section>
-  <div class="eyebrow">The Problem</div>
-  <h2 class="section-title">Why is this hard?</h2>
-  <div class="overview-grid">
-    <div class="panel">
-      <p class="section-copy">
-        Traffic density — vehicles per kilometer — is the fundamental measure of road congestion.
-        But measuring it traditionally requires <strong>loop detectors, cameras, or radar</strong> embedded in the road,
-        which are expensive and cover only major corridors.
-      </p>
-      <p class="section-copy">
-        Probe vehicles (taxis, ride-hails, smartphones) are everywhere, but each probe only sees
-        <strong>its own trajectory</strong>. A car driving at 50 km/h could be in light traffic or moderate traffic —
-        the speed alone doesn't tell you. The FD (Fundamental Diagram) speed-density relationship is
-        <strong>degenerate in the free-flow regime</strong>: many densities map to nearly the same speed.
-      </p>
-      <p class="section-copy">
-        This project asks: can <strong>car-following behavioral patterns</strong> — acceleration variance,
-        braking frequency, speed oscillations — break through that degeneracy?
-      </p>
-    </div>
-    <div class="mini-list">
-      <div class="mini-item">
-        <strong>Single probe = partial observation</strong>
-        <span>One trajectory is a noisy sample of the traffic stream. Systematic tests across 6 model families confirmed single-probe accuracy plateaus.</span>
-      </div>
-      <div class="mini-item">
-        <strong>Multi-probe → +47% improvement</strong>
-        <span>Combining 5 probes via CF-weighted ensemble breaks through the single-probe ceiling (R² 0.46 → 0.67).</span>
-      </div>
-      <div class="mini-item">
-        <strong>Route mismatch in real deployment</strong>
-        <span>Probes take different paths. Feature-level fusion requires same segment → prediction-level Bayesian ensemble as practical compromise.</span>
-      </div>
-      <div class="mini-item">
-        <strong>Observation length matters</strong>
-        <span>250m→1km improves accuracy. System chains consecutive links to reach 1km before predicting.</span>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ─── APPROACH ─── -->
-<section>
-  <div class="eyebrow">Approach</div>
-  <h2 class="section-title">Car-following theory meets gradient boosting</h2>
-  <p class="section-copy">
-    Car-following models (IDM, Newell) tell us that a vehicle's acceleration depends on
-    its spacing and relative speed to the leader. Higher density means more frequent interactions,
-    which leave measurable fingerprints in the trajectory: more braking events, higher acceleration
-    variance, speed oscillations. We engineer 31 features that capture these patterns and train
-    XGBoost to map them to density.
-  </p>
-  <div class="overview-grid">
-    <div class="panel">
-      <p class="section-copy">
-        31 features engineered from car-following theory: speed statistics, acceleration patterns,
-        braking frequency, stop duration, lateral dynamics, FFT, and sample entropy.
-        Features are registered via decorator pattern and selected through YAML config — experiments
-        can toggle features without code changes.
-      </p>
-      <p class="section-copy">
-        Multiple probes on the same road are combined via <strong>CF-weighted Bayesian ensemble</strong>
-        within a 15-minute rolling window. Probes exhibiting car-following behavior receive higher
-        ensemble weight because their trajectories carry more density information.
-      </p>
-    </div>
-    <div class="mini-list">
-      <div class="mini-item">
-        <strong>Link-based accumulation</strong>
-        <span>Chain consecutive road links until 1km, then extract features and predict</span>
-      </div>
-      <div class="mini-item">
-        <strong>Multi-probe ensemble</strong>
-        <span>CF-weighted Bayesian — car-following probes trusted more than free-driving</span>
-      </div>
-      <div class="mini-item">
-        <strong>6 model families compared</strong>
-        <span>XGBoost, LightGBM, LSTM, CNN-1D, GPR, FD baselines under same pipeline</span>
-      </div>
-      <div class="mini-item">
-        <strong>SHAP feature analysis</strong>
-        <span>Interpretable importance ranking → speed_mean, ax_std, brake_ratio dominate</span>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ─── ARCHITECTURE ─── -->
-<section>
-  <div class="eyebrow">System Architecture</div>
-  <h2 class="section-title">Smartphone to density map, end to end</h2>
-  <p class="section-copy">
-    The system has two halves: an offline ML pipeline that trains on SUMO simulation data,
-    and an online serving pipeline that processes live smartphone telemetry into link-level density estimates.
-  </p>
-  <div class="mermaid-wrap">
-    <pre class="mermaid">
+      <!-- ─── ARCHITECTURE ─── -->
+      <section>
+        <div class="eyebrow">System Architecture</div>
+        <h2 class="section-title">Smartphone to density map, end to end</h2>
+        <p class="section-copy">
+          The system has two halves: an offline ML pipeline that trains on SUMO simulation data,
+          and an online serving pipeline that processes live smartphone telemetry into link-level density estimates.
+        </p>
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
 graph TB
     subgraph Offline["Offline ML Pipeline"]
         A[SUMO Scenario Gen] --> B[FCD Trajectory Collection]
@@ -328,15 +687,15 @@ graph TB
     F -.->|trained model| N
     K -.->|auto lanes, speed_limit| L
     </pre>
-  </div>
-</section>
+        </div>
+      </section>
 
-<!-- ─── REAL-TIME SEQUENCE ─── -->
-<section>
-  <div class="eyebrow">Real-Time Flow</div>
-  <h2 class="section-title">What happens when a phone sends data</h2>
-  <div class="mermaid-wrap">
-    <pre class="mermaid">
+      <!-- ─── REAL-TIME SEQUENCE ─── -->
+      <section>
+        <div class="eyebrow">Real-Time Flow</div>
+        <h2 class="section-title">What happens when a phone sends data</h2>
+        <div class="mermaid-wrap">
+          <pre class="mermaid">
 sequenceDiagram
     participant Phone as Smartphone
     participant Server as Backend
@@ -369,309 +728,393 @@ sequenceDiagram
         Server-->>Phone: Status
     end
     </pre>
-  </div>
-</section>
-
-<!-- ─── RESULTS ─── -->
-<section>
-  <div class="eyebrow">Results</div>
-  <h2 class="section-title">More probes, better estimates — with diminishing returns</h2>
-  <div class="overview-grid">
-    <div class="panel">
-      <table style="width:100%; border-collapse:collapse; font-size:0.92rem;">
-        <thead>
-          <tr style="border-bottom:2px solid var(--surface-border);">
-            <th style="text-align:left; padding:10px 8px; font:700 11px/1 var(--mono); color:var(--muted); text-transform:uppercase;">Probes</th>
-            <th style="text-align:right; padding:10px 8px;">R²</th>
-            <th style="text-align:right; padding:10px 8px;">MAE</th>
-            <th style="text-align:right; padding:10px 8px;">Improvement</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr style="border-bottom:1px solid var(--surface-border);"><td style="padding:10px 8px;">1 probe</td><td style="text-align:right; padding:10px 8px;">0.457</td><td style="text-align:right;">2.57</td><td style="text-align:right; color:var(--muted);">baseline</td></tr>
-          <tr style="border-bottom:1px solid var(--surface-border);"><td style="padding:10px 8px;">2 probes</td><td style="text-align:right; padding:10px 8px;">0.531</td><td style="text-align:right;">2.20</td><td style="text-align:right; color:var(--accent);">+16%</td></tr>
-          <tr style="border-bottom:1px solid var(--surface-border);"><td style="padding:10px 8px;">3 probes</td><td style="text-align:right; padding:10px 8px;">0.604</td><td style="text-align:right;">2.00</td><td style="text-align:right; color:var(--accent);">+32%</td></tr>
-          <tr><td style="padding:10px 8px; font-weight:800;">5 probes</td><td style="text-align:right; padding:10px 8px; font-weight:800;">0.671</td><td style="text-align:right; font-weight:800;">1.80</td><td style="text-align:right; color:var(--accent); font-weight:800;">+47%</td></tr>
-        </tbody>
-      </table>
-      <p style="margin-top:14px; color:var(--muted); font-size:0.85rem;">
-        MAE = 1.80 veh/km/lane ≈ 1–2 vehicles per km per lane error.
-        Typical loop-detector noise is ±1–3. Probe-based estimates approach fixed-sensor accuracy at 5+ probes.
-      </p>
-    </div>
-    <div class="mini-list">
-      <div class="mini-item">
-        <strong>Single-probe ceiling → multi-probe necessary</strong>
-        <span>R²≈0.45 alone. Car-following theory explains why: low-density trajectories carry no signal.</span>
-      </div>
-      <div class="mini-item">
-        <strong>1km observation length</strong>
-        <span>System chains short urban links (~80–120m arterial average) to reach 1km for stable features.</span>
-      </div>
-      <div class="mini-item">
-        <strong>CF-weighted Bayesian ensemble</strong>
-        <span>Outperforms naive averaging by +3.5% — car-following probes weighted higher.</span>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ─── ENGINEERING DETAIL ─── -->
-<section>
-  <div class="eyebrow">Engineering Detail</div>
-  <h2 class="section-title">How each subsystem actually works</h2>
-
-  <!-- Data Pipeline -->
-  <div class="overview-grid" style="margin-top:28px;">
-    <div class="panel">
-      <div style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">Data Pipeline</div>
-      <p class="section-copy">
-        35,000 SUMO scenarios generate 176K floating-car trajectories (6 channels × 1Hz).
-        Each scenario parameterizes demand (200–6000 veh/h), speed limit (30–100 km/h), and lane count (1–3).
-        Ground truth density is computed via <strong>Edie's generalized definition</strong> over the full time-space region.
-      </p>
-      <p class="section-copy">
-        Feature extraction runs through a <strong>registry pattern</strong> — each of 31 features is a decorated function
-        selected by YAML config. This lets experiments toggle features without code changes.
-        Training uses <strong>GroupKFold by scenario_id</strong> to prevent data leakage between probes from the same road.
-      </p>
-      <p class="section-copy">
-        All stages write to <strong>versioned run directories</strong> with manifest tracking.
-        The ML pipeline dashboard supports resuming from any stage — retrain on existing features,
-        re-evaluate a saved model, or filter by road conditions.
-      </p>
-    </div>
-    <div class="panel">
-      <div style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">ML Dataset Structuring</div>
-      <table style="width:100%; border-collapse:collapse; font-size:0.88rem; color:var(--ink-soft);">
-        <tr style="border-bottom:1px solid var(--surface-border);">
-          <td style="padding:8px 0; font-weight:700;">Samples</td><td style="text-align:right; padding:8px 0;">176,845</td>
-        </tr>
-        <tr style="border-bottom:1px solid var(--surface-border);">
-          <td style="padding:8px 0; font-weight:700;">Scenarios</td><td style="text-align:right;">35,000 × 5 probes</td>
-        </tr>
-        <tr style="border-bottom:1px solid var(--surface-border);">
-          <td style="padding:8px 0; font-weight:700;">Channels</td><td style="text-align:right;">VX, VY, AX, AY, speed, brake</td>
-        </tr>
-        <tr style="border-bottom:1px solid var(--surface-border);">
-          <td style="padding:8px 0; font-weight:700;">Features</td><td style="text-align:right;">31 (car-following theory)</td>
-        </tr>
-        <tr style="border-bottom:1px solid var(--surface-border);">
-          <td style="padding:8px 0; font-weight:700;">Validation</td><td style="text-align:right;">GroupKFold by scenario_id</td>
-        </tr>
-        <tr>
-          <td style="padding:8px 0; font-weight:700;">Storage format</td><td style="text-align:right;">Parquet (tabular) + NPZ (timeseries)</td>
-        </tr>
-      </table>
-    </div>
-  </div>
-
-  <!-- Real-Time Streaming -->
-  <div class="overview-grid" style="margin-top:22px;">
-    <div class="panel">
-      <div style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">Real-Time Streaming & Ingestion</div>
-      <p class="section-copy">
-        The smartphone buffers 30 seconds of GPS+accelerometer at 1Hz locally, then sends a <strong>bulk POST</strong>
-        to reduce network calls by 30×. The server processes each sample through:
-      </p>
-      <div style="margin-top:14px; display:grid; gap:8px;">
-        <div style="padding:10px 14px; border-radius:12px; background:rgba(239,35,60,0.04); border:1px solid rgba(239,35,60,0.12); font-size:0.88rem;">
-          <strong>1. Server-side Kalman Filter</strong> — Raw GPS (σ=5m) + accelerometer fused into clean 2D state [x, vx, y, vy]. Heading-rotated equirectangular projection. All fusion happens server-side.
         </div>
-        <div style="padding:10px 14px; border-radius:12px; background:rgba(239,35,60,0.04); border:1px solid rgba(239,35,60,0.12); font-size:0.88rem;">
-          <strong>2. GIS link matching</strong> — Grid-indexed spatial lookup (<1ms) against 2.2K MOCT arterial links. Re-match only when moved >30m. Auto-detects speed_limit and lanes.
+      </section>
+
+      <!-- ─── RESULTS ─── -->
+      <section>
+        <div class="eyebrow">Results</div>
+        <h2 class="section-title">More probes, better estimates — with diminishing returns</h2>
+        <div class="overview-grid">
+          <div class="panel">
+            <table style="width:100%; border-collapse:collapse; font-size:0.92rem;">
+              <thead>
+                <tr style="border-bottom:2px solid var(--surface-border);">
+                  <th
+                    style="text-align:left; padding:10px 8px; font:700 11px/1 var(--mono); color:var(--muted); text-transform:uppercase;">
+                    Probes</th>
+                  <th style="text-align:right; padding:10px 8px;">R²</th>
+                  <th style="text-align:right; padding:10px 8px;">MAE</th>
+                  <th style="text-align:right; padding:10px 8px;">Improvement</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom:1px solid var(--surface-border);">
+                  <td style="padding:10px 8px;">1 probe</td>
+                  <td style="text-align:right; padding:10px 8px;">0.457</td>
+                  <td style="text-align:right;">2.57</td>
+                  <td style="text-align:right; color:var(--muted);">baseline</td>
+                </tr>
+                <tr style="border-bottom:1px solid var(--surface-border);">
+                  <td style="padding:10px 8px;">2 probes</td>
+                  <td style="text-align:right; padding:10px 8px;">0.531</td>
+                  <td style="text-align:right;">2.20</td>
+                  <td style="text-align:right; color:var(--accent);">+16%</td>
+                </tr>
+                <tr style="border-bottom:1px solid var(--surface-border);">
+                  <td style="padding:10px 8px;">3 probes</td>
+                  <td style="text-align:right; padding:10px 8px;">0.604</td>
+                  <td style="text-align:right;">2.00</td>
+                  <td style="text-align:right; color:var(--accent);">+32%</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 8px; font-weight:800;">5 probes</td>
+                  <td style="text-align:right; padding:10px 8px; font-weight:800;">0.671</td>
+                  <td style="text-align:right; font-weight:800;">1.80</td>
+                  <td style="text-align:right; color:var(--accent); font-weight:800;">+47%</td>
+                </tr>
+              </tbody>
+            </table>
+            <p style="margin-top:14px; color:var(--muted); font-size:0.85rem;">
+              MAE = 1.80 veh/km/lane ≈ 1–2 vehicles per km per lane error.
+              Typical loop-detector noise is ±1–3. Probe-based estimates approach fixed-sensor accuracy at 5+ probes.
+            </p>
+          </div>
+          <div class="mini-list">
+            <div class="mini-item">
+              <strong>Single-probe ceiling → multi-probe necessary</strong>
+              <span>R²≈0.45 alone. Car-following theory explains why: low-density trajectories carry no signal.</span>
+            </div>
+            <div class="mini-item">
+              <strong>1km observation length</strong>
+              <span>System chains short urban links (~80–120m arterial average) to reach 1km for stable features.</span>
+            </div>
+            <div class="mini-item">
+              <strong>CF-weighted Bayesian ensemble</strong>
+              <span>Outperforms naive averaging by +3.5% — car-following probes weighted higher.</span>
+            </div>
+          </div>
         </div>
-        <div style="padding:10px 14px; border-radius:12px; background:rgba(239,35,60,0.04); border:1px solid rgba(239,35,60,0.12); font-size:0.88rem;">
-          <strong>3. LinkBuffer accumulation</strong> — FCD records chain across consecutive links. Prediction triggers at 1km accumulated distance. "Sticky link" prevents GPS jitter from causing false link transitions.
+      </section>
+
+      <!-- ─── ENGINEERING DETAIL ─── -->
+      <section>
+        <div class="eyebrow">Engineering Detail</div>
+        <h2 class="section-title">How each subsystem actually works</h2>
+
+        <!-- Data Pipeline -->
+        <div class="overview-grid" style="margin-top:28px;">
+          <div class="panel">
+            <div
+              style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">
+              Data Pipeline</div>
+            <p class="section-copy">
+              35,000 SUMO scenarios generate 176K floating-car trajectories (6 channels × 1Hz).
+              Each scenario parameterizes demand (200–6000 veh/h), speed limit (30–100 km/h), and lane count (1–3).
+              Ground truth density is computed via <strong>Edie's generalized definition</strong> over the full
+              time-space region.
+            </p>
+            <p class="section-copy">
+              Feature extraction runs through a <strong>registry pattern</strong> — each of 31 features is a decorated
+              function
+              selected by YAML config. This lets experiments toggle features without code changes.
+              Training uses <strong>GroupKFold by scenario_id</strong> to prevent data leakage between probes from the
+              same road.
+            </p>
+            <p class="section-copy">
+              All stages write to <strong>versioned run directories</strong> with manifest tracking.
+              The ML pipeline dashboard supports resuming from any stage — retrain on existing features,
+              re-evaluate a saved model, or filter by road conditions.
+            </p>
+          </div>
+          <div class="panel">
+            <div
+              style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">
+              ML Dataset Structuring</div>
+            <table style="width:100%; border-collapse:collapse; font-size:0.88rem; color:var(--ink-soft);">
+              <tr style="border-bottom:1px solid var(--surface-border);">
+                <td style="padding:8px 0; font-weight:700;">Samples</td>
+                <td style="text-align:right; padding:8px 0;">176,845</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--surface-border);">
+                <td style="padding:8px 0; font-weight:700;">Scenarios</td>
+                <td style="text-align:right;">35,000 × 5 probes</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--surface-border);">
+                <td style="padding:8px 0; font-weight:700;">Channels</td>
+                <td style="text-align:right;">VX, VY, AX, AY, speed, brake</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--surface-border);">
+                <td style="padding:8px 0; font-weight:700;">Features</td>
+                <td style="text-align:right;">31 (car-following theory)</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--surface-border);">
+                <td style="padding:8px 0; font-weight:700;">Validation</td>
+                <td style="text-align:right;">GroupKFold by scenario_id</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0; font-weight:700;">Storage format</td>
+                <td style="text-align:right;">Parquet (tabular) + NPZ (timeseries)</td>
+              </tr>
+            </table>
+          </div>
         </div>
-        <div style="padding:10px 14px; border-radius:12px; background:rgba(239,35,60,0.04); border:1px solid rgba(239,35,60,0.12); font-size:0.88rem;">
-          <strong>4. Fan-out</strong> — Result stored to PostgreSQL, pushed via WebSocket, published to Kafka/Pub-Sub. Each channel fails independently without blocking the others.
+
+        <!-- Real-Time Streaming -->
+        <div class="overview-grid" style="margin-top:22px;">
+          <div class="panel">
+            <div
+              style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">
+              Real-Time Streaming & Ingestion</div>
+            <p class="section-copy">
+              The smartphone buffers 30 seconds of GPS+accelerometer at 1Hz locally, then sends a <strong>bulk
+                POST</strong>
+              to reduce network calls by 30×. The server processes each sample through:
+            </p>
+            <div style="margin-top:14px; display:grid; gap:8px;">
+              <div
+                style="padding:10px 14px; border-radius:12px; background:rgba(239,35,60,0.04); border:1px solid rgba(239,35,60,0.12); font-size:0.88rem;">
+                <strong>1. Server-side Kalman Filter</strong> — Raw GPS (σ=5m) + accelerometer fused into clean 2D state
+                [x, vx, y, vy]. Heading-rotated equirectangular projection. All fusion happens server-side.
+              </div>
+              <div
+                style="padding:10px 14px; border-radius:12px; background:rgba(239,35,60,0.04); border:1px solid rgba(239,35,60,0.12); font-size:0.88rem;">
+                <strong>2. GIS link matching</strong> — Grid-indexed spatial lookup (<1ms) against 2.2K MOCT arterial
+                  links. Re-match only when moved>30m. Auto-detects speed_limit and lanes.
+              </div>
+              <div
+                style="padding:10px 14px; border-radius:12px; background:rgba(239,35,60,0.04); border:1px solid rgba(239,35,60,0.12); font-size:0.88rem;">
+                <strong>3. LinkBuffer accumulation</strong> — FCD records chain across consecutive links. Prediction
+                triggers at 1km accumulated distance. "Sticky link" prevents GPS jitter from causing false link
+                transitions.
+              </div>
+              <div
+                style="padding:10px 14px; border-radius:12px; background:rgba(239,35,60,0.04); border:1px solid rgba(239,35,60,0.12); font-size:0.88rem;">
+                <strong>4. Fan-out</strong> — Result stored to PostgreSQL, pushed via WebSocket, published to
+                Kafka/Pub-Sub. Each channel fails independently without blocking the others.
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div
+              style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">
+              Optimization Decisions</div>
+            <table style="width:100%; border-collapse:collapse; font-size:0.88rem; color:var(--ink-soft);">
+              <tr style="border-bottom:1px solid var(--surface-border);">
+                <td style="padding:8px 0; font-weight:700;">GIS matching</td>
+                <td style="padding:8px 0;">Grid index (0.001° cells) reduces O(2.2K) → O(9 cells)</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--surface-border);">
+                <td style="padding:8px 0; font-weight:700;">Re-match skip</td>
+                <td style="padding:8px 0;">30m threshold eliminates ~90% of GIS calls</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--surface-border);">
+                <td style="padding:8px 0; font-weight:700;">Bulk ingest</td>
+                <td style="padding:8px 0;">30s batch reduces HTTP calls 30× vs per-sample</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--surface-border);">
+                <td style="padding:8px 0; font-weight:700;">Sticky link</td>
+                <td style="padding:8px 0;">Prevents GPS jitter from triggering false traversals</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0; font-weight:700;">Graceful degradation</td>
+                <td style="padding:8px 0;">DB/Kafka/GIS each optional — prediction always available</td>
+              </tr>
+            </table>
+          </div>
         </div>
+
+        <!-- Database Schema — full width, horizontal ER diagram -->
+        <div class="panel" style="margin-top:22px;">
+          <div
+            style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">
+            Database Schema & Ensemble Logic</div>
+          <p class="section-copy">
+            Async SQLAlchemy + asyncpg with 5 ORM models. <strong>EnsembleResult</strong> tracks multi-probe aggregation
+            per link with a 15-minute rolling window (HCM analysis period).
+          </p>
+          <div class="mermaid-wrap" style="overflow-x:auto;">
+            <pre class="mermaid">
+flowchart LR
+    RL[RoadLink\nlink_id · road_rank\nlink_length_m · lanes] -->|has| ER[EnsembleResult\nensemble_density\nprobe_count · is_frozen]
+    RL -->|has| PR[Prediction\ndensity · cf_weight\ntraversal_time]
+    ER -->|aggregates| PR
+    PR -->|contains| FCD[FCDRecordRow\ntime · speed · brake]
+      </pre>
+          </div>
+          <p class="section-copy" style="margin-top:14px;">
+            <strong>Ensemble lifecycle:</strong> New probe prediction → find active ensemble for that link (or create) →
+            compute CF-weighted density → update window_end. If no new probe within 15 min → freeze.
+            Frozen ensembles are garbage-collected after 1 hour.
+          </p>
+        </div>
+
+        <!-- CF Ensemble — full width -->
+        <div class="panel" style="margin-top:22px;">
+          <div
+            style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">
+            CF-Weighted Bayesian Ensemble</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:22px; align-items:start;">
+            <div>
+              <p class="section-copy">
+                Each probe's prediction is weighted by its <strong>car-following intensity</strong> —
+                probes actively following a leader carry more density information than free-driving probes.
+              </p>
+              <p class="section-copy" style="margin-top:14px;">
+                <strong>Bayesian variant:</strong> sequential update where each probe's observation uncertainty
+                $\sigma_{\text{obs}} \propto e^{-\text{cf}}$ — higher CF intensity → lower uncertainty → more trusted.
+                Prior from previous link estimate or global mean. Tested R² = 0.622 vs simple mean 0.601.
+              </p>
+            </div>
+            <div
+              style="padding:20px; border-radius:14px; background:rgba(43,45,66,0.03); border:1px solid var(--surface-border); font-size:1rem; line-height:2.4;">
+              $$\text{cf}_i = \sigma_{a_x} + r_{\text{brake}} + \text{CV}_{\text{speed}}$$
+              $$w_i = \frac{\exp(\text{cf}_i)}{\sum_j \exp(\text{cf}_j)} \quad \text{(softmax)}$$
+              $$\hat{k}_{\text{ensemble}} = \sum_i w_i \cdot \hat{k}_i$$
+            </div>
+          </div>
+        </div>
+
+        <!-- CI/CD -->
+        <div class="panel" style="margin-top:22px;">
+          <div
+            style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">
+            CI/CD & Cloud Deployment</div>
+          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">
+            <div style="padding:12px; border-radius:12px; border:1px solid var(--surface-border); text-align:center;">
+              <div style="font:800 14px/1 var(--sans); margin-bottom:6px;">Lint</div>
+              <div style="color:var(--muted); font-size:0.78rem;">ruff check + format</div>
+            </div>
+            <div style="padding:12px; border-radius:12px; border:1px solid var(--surface-border); text-align:center;">
+              <div style="font:800 14px/1 var(--sans); margin-bottom:6px;">Type Check</div>
+              <div style="color:var(--muted); font-size:0.78rem;">mypy src/api/</div>
+            </div>
+            <div style="padding:12px; border-radius:12px; border:1px solid var(--surface-border); text-align:center;">
+              <div style="font:800 14px/1 var(--sans); margin-bottom:6px;">Test</div>
+              <div style="color:var(--muted); font-size:0.78rem;">145 tests × Python 3.11–3.13</div>
+            </div>
+            <div style="padding:12px; border-radius:12px; border:1px solid var(--surface-border); text-align:center;">
+              <div style="font:800 14px/1 var(--sans); margin-bottom:6px;">Deploy</div>
+              <div style="color:var(--muted); font-size:0.78rem;">Docker → GCP Cloud Run</div>
+            </div>
+          </div>
+          <p class="section-copy" style="margin-top:14px;">
+            CI runs on every push (lint → type check → pytest matrix → Docker build smoke test).
+            CD triggers on GitHub Release: build & push to Artifact Registry → deploy to Cloud Run (0–2 auto-scaling) →
+            verify health.
+            Code releases and model/GIS asset bundles are versioned separately.
+          </p>
+        </div>
+      </section>
+
+      <!-- ─── LESSONS LEARNED ─── -->
+      <section>
+        <div class="eyebrow">Lessons Learned</div>
+        <h2 class="section-title">What Worked, What Didn't, and What Comes Next</h2>
+        <p class="section-copy">
+          The strongest parts are the feature engineering pipeline, multi-probe ensemble design, and real-time serving
+          architecture.
+          The remaining gaps are around simulation fidelity and sensor assumptions rather than missing pipeline pieces.
+        </p>
+        <div style="display:grid; gap:14px; margin-top:20px;">
+          <div class="panel" style="padding:16px;">
+            <strong>Domain-engineered features outperform deep learning on tabular traffic data.</strong>
+            XGBoost with 31 hand-crafted features (R²=0.50) consistently beat LSTM and CNN-1D on raw 6-channel
+            timeseries (R²=0.45). The gap widened with multi-probe aggregation. Feature design grounded in car-following
+            theory mattered more than model complexity.
+          </div>
+          <div class="panel" style="padding:16px;">
+            <strong>Single-probe density estimation has a structural ceiling around R²≈0.50.</strong>
+            Tested across XGBoost, LightGBM, LSTM, CNN-1D, GPR (4 kernels), window features, and density weighting — all
+            converged to the same limit. The FD free-flow branch is degenerate: speed carries no density signal when all
+            vehicles travel at free-flow speed.
+          </div>
+          <div class="panel" style="padding:16px;">
+            <strong>Multi-probe feature-level ensemble breaks the ceiling, but route alignment is required.</strong>
+            N=5 probes on the same segment: R²=0.67 (feature ensemble) vs R²=0.62 (prediction ensemble). In production,
+            probes take different routes, making feature ensemble impractical. The Bayesian prediction ensemble recovers
+            93% of the theoretical gain without route constraints.
+          </div>
+          <div class="panel" style="padding:16px;">
+            <strong>Observation distance matters more than observation time.</strong>
+            Switching from fixed 300-second windows to distance-based 1 km link traversals improved feature quality and
+            aligned the system with real road network geometry (MOCT standard node-link). Seoul arterial links average
+            189 m, requiring LinkBuffer accumulation across multiple links.
+          </div>
+          <div class="panel" style="padding:16px;">
+            <strong>Simulation produces almost no congestion without bottlenecks.</strong>
+            Only 48 of 176K samples showed v_ratio &lt; 0.4. The single straight-link SUMO setup cannot generate
+            realistic stop-and-go waves. Future work requires multi-link networks with lane drops, signals, and merge
+            sections to validate high-density estimation.
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── EXPLORE ─── -->
+      <section>
+        <div class="eyebrow">System Interfaces</div>
+        <h2 class="section-title">Inspect the running pipeline</h2>
+        <div class="cards">
+          <a class="card" href="/map">
+            <div class="metric-label">Inference Visualization</div>
+            <p style="margin-top:10px; font:800 18px/1.2 var(--sans);">Link Density Map</p>
+            <p style="margin-top:6px; color:var(--ink-soft); font-size:0.88rem;">Renders per-link ensemble density from
+              TimescaleDB queries. Color-coded by traffic state, shows probe count and CF-weight per link.</p>
+          </a>
+          <a class="card" href="/mobile">
+            <div class="metric-label">Telemetry Ingestion Client</div>
+            <p style="margin-top:10px; font:800 18px/1.2 var(--sans);">Data Ingestion Test</p>
+            <p style="margin-top:6px; color:var(--ink-soft); font-size:0.88rem;">Streams raw GPS+accelerometer payloads
+              via bulk <code>POST /ingest</code>. Tests the full pipeline: Kalman fusion → GIS match → LinkBuffer →
+              inference → ensemble.</p>
+          </a>
+          <a class="card" href="/docs">
+            <div class="metric-label">API Schema</div>
+            <p style="margin-top:10px; font:800 18px/1.2 var(--sans);">OpenAPI Reference</p>
+            <p style="margin-top:6px; color:var(--ink-soft); font-size:0.88rem;">Interactive docs for
+              <code>/ingest</code>, <code>/predict</code>, <code>/map/links/*</code> endpoints. Includes
+              request/response schemas and live testing.
+            </p>
+          </a>
+        </div>
+      </section>
+
+      <!-- ─── TECH ─── -->
+      <section>
+        <div class="eyebrow">Stack</div>
+        <h2 class="section-title">Technologies</h2>
+        <div class="tech-pills">
+          <span class="tech-pill">Python</span>
+          <span class="tech-pill">XGBoost</span>
+          <span class="tech-pill">PyTorch</span>
+          <span class="tech-pill">SHAP</span>
+          <span class="tech-pill">FastAPI</span>
+          <span class="tech-pill">SQLAlchemy</span>
+          <span class="tech-pill">PostgreSQL</span>
+          <span class="tech-pill">TimescaleDB</span>
+          <span class="tech-pill">Kafka</span>
+          <span class="tech-pill">Pub/Sub</span>
+          <span class="tech-pill">Docker</span>
+          <span class="tech-pill">Cloud Run</span>
+          <span class="tech-pill">GitHub Actions</span>
+          <span class="tech-pill">SUMO</span>
+          <span class="tech-pill">Leaflet.js</span>
+          <span class="tech-pill">GeoJSON</span>
+        </div>
+      </section>
+
+    </main>
+
+    <footer>
+      <div>UrbanFlow — Traffic density estimation from probe vehicles</div>
+      <div>
+        <a href="/map">Demo</a> /
+        <a href="/docs">API</a> /
+        <a href="https://github.com/sewon-p/ml_project" target="_blank">GitHub</a>
       </div>
-    </div>
-    <div class="panel">
-      <div style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">Optimization Decisions</div>
-      <table style="width:100%; border-collapse:collapse; font-size:0.88rem; color:var(--ink-soft);">
-        <tr style="border-bottom:1px solid var(--surface-border);">
-          <td style="padding:8px 0; font-weight:700;">GIS matching</td>
-          <td style="padding:8px 0;">Grid index (0.001° cells) reduces O(2.2K) → O(9 cells)</td>
-        </tr>
-        <tr style="border-bottom:1px solid var(--surface-border);">
-          <td style="padding:8px 0; font-weight:700;">Re-match skip</td>
-          <td style="padding:8px 0;">30m threshold eliminates ~90% of GIS calls</td>
-        </tr>
-        <tr style="border-bottom:1px solid var(--surface-border);">
-          <td style="padding:8px 0; font-weight:700;">Bulk ingest</td>
-          <td style="padding:8px 0;">30s batch reduces HTTP calls 30× vs per-sample</td>
-        </tr>
-        <tr style="border-bottom:1px solid var(--surface-border);">
-          <td style="padding:8px 0; font-weight:700;">Sticky link</td>
-          <td style="padding:8px 0;">Prevents GPS jitter from triggering false traversals</td>
-        </tr>
-        <tr>
-          <td style="padding:8px 0; font-weight:700;">Graceful degradation</td>
-          <td style="padding:8px 0;">DB/Kafka/GIS each optional — prediction always available</td>
-        </tr>
-      </table>
-    </div>
+    </footer>
+
   </div>
-
-  <!-- Database & Ensemble -->
-  <div class="overview-grid" style="margin-top:22px;">
-    <div class="panel">
-      <div style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">Database Schema & Ensemble Logic</div>
-      <p class="section-copy">
-        Async SQLAlchemy + asyncpg with 5 ORM models. <strong>EnsembleResult</strong> tracks multi-probe aggregation
-        per link with a 15-minute rolling window (HCM analysis period).
-      </p>
-      <div class="mermaid-wrap">
-        <pre class="mermaid">
-erDiagram
-    RoadLink {
-        int id PK
-        string link_id UK
-        string road_name
-        string road_rank
-        float link_length_m
-        int lanes
-        float max_spd
-    }
-    EnsembleResult {
-        int id PK
-        float ensemble_density
-        float ensemble_flow
-        int probe_count
-        datetime window_start
-        datetime window_end
-        bool is_frozen
-    }
-    Prediction {
-        int id PK
-        float density
-        float flow
-        float cf_weight
-        float link_length_m
-        float traversal_time
-    }
-    FCDRecordRow {
-        int id PK
-        float time
-        float x
-        float y
-        float speed
-        float brake
-    }
-    RoadLink ||--o{ EnsembleResult : has
-    RoadLink ||--o{ Prediction : has
-    EnsembleResult ||--o{ Prediction : aggregates
-    Prediction ||--o{ FCDRecordRow : contains
-        </pre>
-      </div>
-      <p class="section-copy" style="margin-top:14px;">
-        <strong>Ensemble lifecycle:</strong> New probe prediction → find active ensemble for that link (or create) →
-        compute CF-weighted density → update window_end. If no new probe within 15 min → freeze.
-        Frozen ensembles are garbage-collected after 1 hour.
-      </p>
-    </div>
-    <div class="panel">
-      <div style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">CF-Weighted Bayesian Ensemble</div>
-      <p class="section-copy">
-        Each probe's prediction is weighted by its <strong>car-following intensity</strong> —
-        probes actively following a leader carry more density information than free-driving probes.
-      </p>
-      <div style="margin-top:14px; padding:20px; border-radius:14px; background:rgba(43,45,66,0.03); border:1px solid var(--surface-border); font-size:1rem; line-height:2.2;">
-        $$\text{cf}_i = \sigma_{a_x} + r_{\text{brake}} + \text{CV}_{\text{speed}}$$
-        $$w_i = \frac{\exp(\text{cf}_i)}{\sum_j \exp(\text{cf}_j)} \quad \text{(softmax)}$$
-        $$\hat{k}_{\text{ensemble}} = \sum_i w_i \cdot \hat{k}_i$$
-      </div>
-      <p class="section-copy" style="margin-top:14px;">
-        <strong>Bayesian variant:</strong> sequential update where each probe's observation uncertainty
-        $\sigma_{\text{obs}} \propto e^{-\text{cf}}$ — higher CF intensity → lower uncertainty → more trusted.
-        Prior from previous link estimate or global mean. Tested R² = 0.622 vs simple mean 0.601.
-      </p>
-    </div>
-  </div>
-
-  <!-- CI/CD -->
-  <div class="panel" style="margin-top:22px;">
-    <div style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">CI/CD & Cloud Deployment</div>
-    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">
-      <div style="padding:12px; border-radius:12px; border:1px solid var(--surface-border); text-align:center;">
-        <div style="font:800 14px/1 var(--sans); margin-bottom:6px;">Lint</div>
-        <div style="color:var(--muted); font-size:0.78rem;">ruff check + format</div>
-      </div>
-      <div style="padding:12px; border-radius:12px; border:1px solid var(--surface-border); text-align:center;">
-        <div style="font:800 14px/1 var(--sans); margin-bottom:6px;">Type Check</div>
-        <div style="color:var(--muted); font-size:0.78rem;">mypy src/api/</div>
-      </div>
-      <div style="padding:12px; border-radius:12px; border:1px solid var(--surface-border); text-align:center;">
-        <div style="font:800 14px/1 var(--sans); margin-bottom:6px;">Test</div>
-        <div style="color:var(--muted); font-size:0.78rem;">145 tests × Python 3.11–3.13</div>
-      </div>
-      <div style="padding:12px; border-radius:12px; border:1px solid var(--surface-border); text-align:center;">
-        <div style="font:800 14px/1 var(--sans); margin-bottom:6px;">Deploy</div>
-        <div style="color:var(--muted); font-size:0.78rem;">Docker → GCP Cloud Run</div>
-      </div>
-    </div>
-    <p class="section-copy" style="margin-top:14px;">
-      CI runs on every push (lint → type check → pytest matrix → Docker build smoke test).
-      CD triggers on GitHub Release: build & push to Artifact Registry → deploy to Cloud Run (0–2 auto-scaling) → verify health.
-      Code releases and model/GIS asset bundles are versioned separately.
-    </p>
-  </div>
-</section>
-
-<!-- ─── EXPLORE ─── -->
-<section>
-  <div class="eyebrow">Explore</div>
-  <h2 class="section-title">See it working</h2>
-  <div class="cards">
-    <a class="card" href="/map">
-      <div class="metric-label">Link Map</div>
-      <p style="margin-top:10px; font:800 18px/1.2 var(--sans);">Density Map</p>
-      <p style="margin-top:6px; color:var(--ink-soft); font-size:0.88rem;">Color-coded Seoul road links with ensemble probe counts and prediction history.</p>
-    </a>
-    <a class="card" href="/mobile">
-      <div class="metric-label">Mobile Probe</div>
-      <p style="margin-top:10px; font:800 18px/1.2 var(--sans);">Collect Data</p>
-      <p style="margin-top:6px; color:var(--ink-soft); font-size:0.88rem;">Stream GPS+accelerometer from your phone. Road info auto-detected from GIS.</p>
-    </a>
-    <a class="card" href="/docs">
-      <div class="metric-label">API</div>
-      <p style="margin-top:10px; font:800 18px/1.2 var(--sans);">API Reference</p>
-      <p style="margin-top:6px; color:var(--ink-soft); font-size:0.88rem;">OpenAPI docs for /ingest, /predict, /map endpoints.</p>
-    </a>
-  </div>
-</section>
-
-<!-- ─── TECH ─── -->
-<section>
-  <div class="eyebrow">Stack</div>
-  <h2 class="section-title">Technologies</h2>
-  <div class="tech-pills">
-    <span class="tech-pill">Python</span>
-    <span class="tech-pill">XGBoost</span>
-    <span class="tech-pill">PyTorch</span>
-    <span class="tech-pill">SHAP</span>
-    <span class="tech-pill">FastAPI</span>
-    <span class="tech-pill">SQLAlchemy</span>
-    <span class="tech-pill">PostgreSQL</span>
-    <span class="tech-pill">TimescaleDB</span>
-    <span class="tech-pill">Kafka</span>
-    <span class="tech-pill">Pub/Sub</span>
-    <span class="tech-pill">Docker</span>
-    <span class="tech-pill">Cloud Run</span>
-    <span class="tech-pill">GitHub Actions</span>
-    <span class="tech-pill">SUMO</span>
-    <span class="tech-pill">Leaflet.js</span>
-    <span class="tech-pill">GeoJSON</span>
-  </div>
-</section>
-
-</main>
-
-<footer>UrbanFlow · Solo end-to-end project · Traffic Engineering × ML × Data Engineering</footer>
-
-</div>
 </body>
+
 </html>
