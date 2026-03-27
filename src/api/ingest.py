@@ -217,9 +217,7 @@ class SessionBuffer:
         elif self._should_rematch(record.lat, record.lon):
             matcher = _get_link_matcher()
             if matcher is not None:
-                match = matcher.match(
-                    lat=record.lat, lon=record.lon, heading=record.heading
-                )
+                match = matcher.match(lat=record.lat, lon=record.lon, heading=record.heading)
                 if match is not None:
                     matched_link = {
                         "link_id": match.link_id,
@@ -297,9 +295,7 @@ class LinkBuffer:
 
         self.fusion = SensorFusion(use_kalman=True)
 
-    def add_raw(
-        self, record: IngestRecord
-    ) -> tuple[dict, LinkMeta | None, LinkTraversal | None]:
+    def add_raw(self, record: IngestRecord) -> tuple[dict, LinkMeta | None, LinkTraversal | None]:
         """Fuse sensor reading and accumulate. Returns completed traversal if ready."""
         self.speed_limit = record.speed_limit
         self.num_lanes = record.num_lanes
@@ -486,9 +482,7 @@ class SessionManager:
         for sid in expired:
             del self._sessions[sid]
             logger.info("Expired session: %s", sid)
-        expired_link = [
-            sid for sid, s in self._link_sessions.items() if s.is_expired
-        ]
+        expired_link = [sid for sid, s in self._link_sessions.items() if s.is_expired]
         for sid in expired_link:
             del self._link_sessions[sid]
             logger.info("Expired link session: %s", sid)
@@ -556,11 +550,10 @@ def _get_ensemble_aggregator():
     if _ensemble_aggregator is None:
         from src.api.ensemble import EnsembleAggregator
 
-        _ensemble_aggregator = EnsembleAggregator(
-            window_seconds=900.0, temperature=1.0
-        )
+        _ensemble_aggregator = EnsembleAggregator(window_seconds=900.0, temperature=1.0)
         logger.info("Ensemble aggregator initialized (15-min window)")
     return _ensemble_aggregator
+
 
 _live_link_history: dict[str, LiveLinkState] = {}
 _live_prediction_index: dict[int, tuple[str, LivePredictionEntry]] = {}
@@ -732,9 +725,7 @@ async def ingest(record: IngestRecord, request: Request) -> IngestResponse:
         completed_link_ids = None
 
         if traversal is not None and registry is not None:
-            prediction = sessions.predict_traversal(
-                traversal, record.session_id, registry
-            )
+            prediction = sessions.predict_traversal(traversal, record.session_id, registry)
 
             if prediction:
                 completed_link_ids = traversal["link_ids"]
@@ -759,9 +750,7 @@ async def ingest(record: IngestRecord, request: Request) -> IngestResponse:
                     ensemble_count = ens.probe_count
 
                     # Store live for map
-                    _store_live_prediction(
-                        cast(LinkMeta, link_meta), prediction, record.session_id
-                    )
+                    _store_live_prediction(cast(LinkMeta, link_meta), prediction, record.session_id)
 
                 # DB save (best-effort)
                 if getattr(request.app.state, "db_available", False):
@@ -788,9 +777,7 @@ async def ingest(record: IngestRecord, request: Request) -> IngestResponse:
                                 link_length_m=traversal["total_distance_m"],
                                 traversal_time=traversal["traversal_time"],
                                 cf_weight=cf_score,
-                                observed_at=datetime.fromtimestamp(
-                                    record.timestamp, tz=UTC
-                                ),
+                                observed_at=datetime.fromtimestamp(record.timestamp, tz=UTC),
                             )
                         prediction["prediction_id"] = pid
                     except Exception:
@@ -811,9 +798,7 @@ async def ingest(record: IngestRecord, request: Request) -> IngestResponse:
             prediction=prediction,
             traversal_completed=traversal is not None,
             link_ids=completed_link_ids,
-            traversal_distance_m=(
-                traversal["total_distance_m"] if traversal else None
-            ),
+            traversal_distance_m=(traversal["total_distance_m"] if traversal else None),
             ensemble_density=ensemble_density,
             ensemble_probe_count=ensemble_count,
         )
@@ -844,17 +829,11 @@ async def ingest(record: IngestRecord, request: Request) -> IngestResponse:
                             session_id=record.session_id,
                             link_id=(representative_link or {}).get("link_id"),
                             road_name=(representative_link or {}).get("road_name"),
-                            geometry_geojson=(representative_link or {}).get(
-                                "geometry_geojson"
-                            ),
+                            geometry_geojson=(representative_link or {}).get("geometry_geojson"),
                             center_lat=(representative_link or {}).get("center_lat"),
                             center_lon=(representative_link or {}).get("center_lon"),
-                            source=str(
-                                (representative_link or {}).get("source", "unknown")
-                            ),
-                            observed_at=datetime.fromtimestamp(
-                                record.timestamp, tz=UTC
-                            ),
+                            source=str((representative_link or {}).get("source", "unknown")),
+                            observed_at=datetime.fromtimestamp(record.timestamp, tz=UTC),
                         )
                     prediction["prediction_id"] = prediction_id
                 except Exception:
@@ -870,9 +849,7 @@ async def ingest(record: IngestRecord, request: Request) -> IngestResponse:
             elif matched_link is not None:
                 prediction["link_id"] = matched_link["link_id"]
                 prediction["road_name"] = matched_link.get("road_name")
-                _store_live_prediction(
-                    cast(LinkMeta, matched_link), prediction, record.session_id
-                )
+                _store_live_prediction(cast(LinkMeta, matched_link), prediction, record.session_id)
             await manager.send_to_session(record.session_id, prediction)
 
     try:

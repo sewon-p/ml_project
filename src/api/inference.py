@@ -121,9 +121,7 @@ def predict_density_from_traversal(
 
     # 3. Compute CF score before dropping features
     cf_score = (
-        feats.get("ax_std", 0.0)
-        + feats.get("brake_time_ratio", 0.0)
-        + feats.get("speed_cv", 0.0)
+        feats.get("ax_std", 0.0) + feats.get("brake_time_ratio", 0.0) + feats.get("speed_cv", 0.0)
     )
 
     # 4. Inject traversal metadata as features (if model supports them)

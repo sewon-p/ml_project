@@ -242,12 +242,9 @@ async def freeze_stale_ensembles(
 ) -> int:
     """Freeze ensembles with no updates within the window."""
     cutoff = datetime.now(UTC) - __import__("datetime").timedelta(minutes=max_age_minutes)
-    stmt = (
-        select(EnsembleResult)
-        .where(
-            EnsembleResult.is_frozen.is_(False),
-            EnsembleResult.window_end < cutoff,
-        )
+    stmt = select(EnsembleResult).where(
+        EnsembleResult.is_frozen.is_(False),
+        EnsembleResult.window_end < cutoff,
     )
     results = (await session.scalars(stmt)).all()
     for ens in results:

@@ -137,17 +137,13 @@ class CFScorePooling(nn.Module):
 
         return torch.stack([ax_std, brake_ratio, speed_cv], dim=-1)  # (B*N, 3)
 
-    def forward(
-        self, embeddings: torch.Tensor, x_raw: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, embeddings: torch.Tensor, x_raw: torch.Tensor) -> torch.Tensor:
         """
         embeddings: (B, N, D)
         x_raw: (B, N, C, T)
         """
         B, N, C, T = x_raw.shape
-        cf_feats = self.compute_cf_features(
-            x_raw.view(B * N, C, T)
-        )  # (B*N, 3)
+        cf_feats = self.compute_cf_features(x_raw.view(B * N, C, T))  # (B*N, 3)
         cf_feats = cf_feats.view(B, N, 3)
 
         scores = self.scale(cf_feats) / self.temperature  # (B, N, 1)
@@ -199,9 +195,7 @@ class MultiProbeModel(nn.Module):
             nn.Linear(64, 1),
         )
 
-    def forward(
-        self, x: torch.Tensor, cond: torch.Tensor | None = None
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, cond: torch.Tensor | None = None) -> torch.Tensor:
         if x.ndim == 4:
             # Multi-probe: (B, N, C, T)
             B, N, C, T = x.shape
