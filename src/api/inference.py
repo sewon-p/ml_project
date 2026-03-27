@@ -81,6 +81,69 @@ def predict_density(
     return _predict_from_feature_map(feats, speed_limit, num_lanes, registry)
 
 
+def predict_density_from_traversal(
+    traversal: dict,  # type: ignore[type-arg]
+    registry: ModelRegistry,
+) -> dict[str, float]:
+    """Run inference on a link-based traversal (variable length).
+
+    Accepts a LinkTraversal dict with fcd_records from one or more
+    consecutive links. The statistical features (mean, std, ratio, etc.)
+    are naturally length-invariant, so the same model handles 30s and 120s
+    trajectories. link_length_m and traversal_time are injected as
+    additional features if the model was trained with them.
+
+    Also returns the CF score for downstream ensemble weighting.
+    """
+    fcd_records: list[dict] = list(traversal.get("fcd_records", []))  # type: ignore[arg-type]
+    speed_limit = float(traversal.get("speed_limit", 22.22))
+    num_lanes = int(traversal.get("num_lanes", 2))
+    link_length_m = float(traversal.get("total_distance_m", 0.0))
+    traversal_time = float(traversal.get("traversal_time", 0.0))
+
+    # Guard: too few records
+    if len(fcd_records) < 10:
+        return {
+            "density": 0.0,
+            "flow": 0.0,
+            "fd_density": 0.0,
+            "fd_flow": 0.0,
+            "residual_density": 0.0,
+            "cf_score": 0.0,
+        }
+
+    # 1. Build trajectory from FCD
+    raw_df = pd.DataFrame(fcd_records)
+    trajectory = build_trajectory(raw_df)
+
+    # 2. Extract features (length-invariant statistics)
+    feats: dict[str, float] = extract_features(trajectory, speed_limit=speed_limit)
+
+    # 3. Compute CF score before dropping features
+    cf_score = (
+        feats.get("ax_std", 0.0)
+        + feats.get("brake_time_ratio", 0.0)
+        + feats.get("speed_cv", 0.0)
+    )
+
+    # 4. Inject traversal metadata as features (if model supports them)
+    feats["link_length_m"] = link_length_m
+    feats["traversal_time"] = traversal_time
+
+    # 5. Standard prediction pipeline
+    result = _predict_from_feature_map(feats, speed_limit, num_lanes, registry)
+    result["cf_score"] = cf_score
+    result["cf_features"] = {  # type: ignore[assignment]
+        "ax_std": feats.get("ax_std", 0.0),
+        "brake_time_ratio": feats.get("brake_time_ratio", 0.0),
+        "speed_cv": feats.get("speed_cv", 0.0),
+    }
+    result["link_length_m"] = link_length_m
+    result["traversal_time"] = traversal_time
+
+    return result
+
+
 def predict_density_from_features(
     features: dict[str, float],
     speed_limit: float,

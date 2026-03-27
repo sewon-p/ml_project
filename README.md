@@ -1,285 +1,328 @@
-# UrbanFlow — Real-Time Traffic Density Estimation from Probe Vehicle Data
+# UrbanFlow — Traffic Density Estimation from Probe Vehicles
 
-This project estimates road-level traffic density from a single probe vehicle's mobile telemetry and packages the result as a deployable data and ML system with real-time inference, spatial matching, SQL-backed storage, dashboards, and cloud deployment.
+Predict how congested a road is using only smartphone sensor data from vehicles driving on it.
 
-**[Live Portfolio](https://traffic-estimator-gcbqhrztha-du.a.run.app/)** · **[Console](https://traffic-estimator-gcbqhrztha-du.a.run.app/dashboard)** · **[API Docs](https://traffic-estimator-gcbqhrztha-du.a.run.app/docs)** · **[Map](https://traffic-estimator-gcbqhrztha-du.a.run.app/map)** · **[ML Pipeline](https://traffic-estimator-gcbqhrztha-du.a.run.app/ml-pipeline/)**
+UrbanFlow is an end-to-end traffic density estimation system that turns GPS + accelerometer trajectories from probe vehicles into per-link density estimates. It combines simulation-trained ML (XGBoost on 31 car-following features), multi-probe Bayesian ensemble, and a real-time serving pipeline deployed on Seoul's arterial road network (2.2K MOCT standard links).
 
-The repository focuses on:
+**[Live Demo](https://traffic-estimator-gcbqhrztha-du.a.run.app/)** · **[API Docs](https://traffic-estimator-gcbqhrztha-du.a.run.app/docs)** · **[Map](https://traffic-estimator-gcbqhrztha-du.a.run.app/map)** · **[ML Pipeline](https://traffic-estimator-gcbqhrztha-du.a.run.app/ml-pipeline/)**
 
-- simulation-based traffic dataset generation
-- feature-engineered ML model comparison and serving
-- real-time mobile telemetry ingestion and spatial link matching
-- async backend APIs, SQL persistence, and streaming interfaces
-- portfolio-ready dashboards, containerization, CI/CD, and Cloud Run deployment
+---
 
-## Overview
+## Table of Contents
 
-Estimating traffic state from a single moving vehicle is noisy, information-limited, and difficult to operationalize. UrbanFlow addresses that by combining simulation-based labeling, feature-engineered ML, and deployment-oriented backend services in one system.
+- [What This Project Does](#what-this-project-does)
+- [Problem](#problem)
+- [System Architecture](#system-architecture)
+- [ML Approach](#ml-approach)
+- [Backend and Data Engineering](#backend-and-data-engineering)
+- [Lessons Learned](#lessons-learned)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+- [Project Structure](#project-structure)
 
-The end-to-end workflow is:
+---
 
-1. Generate traffic scenarios in SUMO and collect floating-car trajectories.
-2. Build labels and engineered features grounded in traffic flow theory and car-following behavior.
-3. Compare multiple model families and select the best deployment model.
-4. Serve link-level predictions through FastAPI, GIS matching, SQL persistence, streaming, and dashboards.
+## What This Project Does
 
-The key design choice is treating the project as a full system rather than a notebook-only benchmark:
+1. **Generates labeled traffic data** — 35K SUMO scenarios × 5 probes = 176K samples of 6-channel trajectories (VX, VY, AX, AY, speed, brake)
+2. **Engineers 31 features** from car-following theory — speed statistics, acceleration patterns, braking behavior, lateral dynamics, time-series properties
+3. **Trains and compares 6 model families** — XGBoost, LightGBM, LSTM, CNN-1D, GPR, FD baselines under the same pipeline
+4. **Serves link-level predictions** — FastAPI, GIS link matching (2.2K Seoul arterial links), multi-probe ensemble, PostgreSQL, Kafka/Pub-Sub, Leaflet map
+5. **Multi-probe ensemble** — CF-weighted Bayesian aggregation of predictions per road link within a 15-minute rolling window
 
-- Offline pipeline:
-  - simulation, labeling, feature extraction, training, and evaluation
-- Online serving layer:
-  - mobile telemetry ingestion, Kalman fusion, feature generation, inference, and link matching
-- Review and operations layer:
-  - PostgreSQL-backed history, live map inspection, dashboard views, containerization, and CI/CD
+Solo end-to-end project: simulation → ML → backend → deployment.
 
-Designed, implemented, and deployed as a solo end-to-end project.
+## Problem
 
-## Engineering Scope
+Traffic density — vehicles per kilometer — is the fundamental measure of road congestion. But measuring it traditionally requires **loop detectors, cameras, or radar** embedded in the road, which are expensive and cover only major corridors.
 
-| Area | Implementation |
-|------|---------------|
-| **Data pipelines** | SUMO simulation → FCD collection → feature extraction → model training → evaluation, config-driven with versioned run directories |
-| **Backend API** | FastAPI async app: batch inference, mobile sensor ingest, map history, WebSocket, health check |
-| **Database** | Async PostgreSQL + TimescaleDB via SQLAlchemy, full ORM, transactional writes |
-| **Streaming** | Kafka + GCP Pub/Sub dual-broker abstraction, 1Hz mobile ingestion, WebSocket push |
-| **Cloud deployment** | Docker → GitHub Actions CI/CD → GCP Artifact Registry → Cloud Run, with Cloud SQL + Pub/Sub + Secret Manager |
-| **ML workflow** | 176K samples, 32 engineered features, GroupKFold CV, SHAP analysis, 6 model families compared |
-| **CI/CD** | Lint → type check → pytest matrix (3.11–3.13) → Docker build → Cloud Run deploy + verify |
-| **Frontend** | Console dashboard, mobile probe collector, Leaflet.js interactive map, ML pipeline manager |
+Probe vehicles (taxis, ride-hails, smartphones) are everywhere, but a single probe only observes its own trajectory. The core challenge: **can you estimate how many vehicles surround a probe, using only its speed, acceleration, and braking patterns?**
+
+Systematic experiments across 6 model families confirmed that single-probe accuracy plateaus at R²≈0.45–0.50 regardless of algorithm. This motivated the shift to multi-probe fusion: combining 5 probes via CF-weighted Bayesian ensemble improved R² to 0.67 — a +47% gain that no single-model optimization could achieve.
+
+---
 
 ## System Architecture
-
-UrbanFlow combines an offline workflow for simulation, feature engineering, and model development with an online serving pipeline for real-time inference, storage, and visualization.
 
 ```mermaid
 graph TB
     subgraph Offline["Offline ML Pipeline"]
-        A[Scenario Generation] --> B[SUMO Simulation]
-        B --> C[FCD Trajectory Collection]
-        C --> D[Ground Truth Labeling]
-        D --> E[Feature Engineering]
-        E --> F[Model Training]
-        F --> G[Model Evaluation and Selection]
+        A[SUMO Scenario Gen] --> B[FCD Trajectory Collection]
+        B --> C[Edie Ground Truth]
+        C --> D[31-Feature Engineering]
+        D --> E[Model Training & Comparison]
+        E --> F[Multi-Probe Penetration Study]
     end
 
-    subgraph Online["Online Serving Pipeline"]
-        H[Mobile Probe Telemetry] --> I[Ingestion API]
-        I --> J[Sensor Fusion and Buffering]
-        J --> K[Feature Extraction]
-        K --> L[XGBoost Inference]
-        L --> M[GIS Link Matching]
-        M --> N[(PostgreSQL / TimescaleDB)]
-        M --> O[Kafka / Pub-Sub]
-        M --> P[Live Map Dashboard]
-    end
-
-    G --> L
-```
-
-This architecture reflects the full lifecycle of the project: generate traffic data, train and compare models, select the best deployment model, and serve link-level predictions through a real-time backend.
-
-## Client and Server Responsibilities
-
-The serving layer supports both a server-centric ingestion flow and a client-assisted feature submission flow, making the mobile/server processing boundary explicit.
-
-```mermaid
-graph TB
-    subgraph Client["Mobile Client"]
-        A[GPS / Accelerometer / Heading]
-        A --> B[Optional Client-Side Fusion]
-        B --> C[Optional Client-Side Feature Window]
+    subgraph Phone["Smartphone Client"]
+        G[GPS + Accelerometer 1Hz] --> H[30s Local Buffer]
+        H --> I[POST /ingest bulk]
     end
 
     subgraph Server["Backend Server"]
-        A --> D[POST /ingest]
-        D --> E[Server-Side Kalman Fusion]
-        E --> F[300s Sliding Buffer]
-        F --> G[Feature Extraction]
+        I --> J[Kalman Sensor Fusion]
+        J --> K[GIS Link Match]
+        K --> L[LinkBuffer 1km Accumulation]
+        L --> M[31-Feature Extraction]
+        M --> N[XGBoost Inference]
+        N --> O[CF-Weighted Ensemble]
+    end
 
-        C --> H[POST /ingest-features]
-        H --> I[Direct Feature Payload]
+    subgraph Output["Storage & Display"]
+        O --> P[(PostgreSQL + TimescaleDB)]
+        O --> Q[Leaflet Map Dashboard]
+        O --> R[Kafka / Pub-Sub]
+    end
 
-        G --> J[XGBoost Inference]
-        I --> J
-        J --> K[GIS Link Matching]
-        K --> L[(PostgreSQL / TimescaleDB)]
-        K --> M[WebSocket Dashboard]
-        K --> N[Kafka / Pub-Sub]
+    F -.->|trained model| N
+    K -.->|auto speed_limit, lanes| L
+```
+
+### Real-Time Inference Sequence
+
+```mermaid
+sequenceDiagram
+    participant Phone as Smartphone
+    participant Server as Backend
+    participant GIS as LinkMatcher
+    participant LB as LinkBuffer
+    participant ML as XGBoost
+    participant Ens as Ensemble
+    participant Map as Map/DB
+
+    Phone->>Phone: Collect GPS+Accel (1Hz)
+    Phone->>Phone: Buffer 30 samples
+    Phone->>Server: POST /ingest (bulk)
+
+    loop Each sample
+        Server->>Server: Kalman fusion (server-side)
+        Server->>GIS: match(lat, lon)
+        GIS-->>Server: link_id, lanes, speed_limit, length
+        Server->>LB: Accumulate FCD + distance
+    end
+
+    alt Distance >= 1km
+        LB-->>Server: LinkTraversal
+        Server->>ML: 31 features → density
+        ML-->>Server: density, cf_score
+        Server->>Ens: Register per link (15-min window)
+        Ens-->>Server: CF-weighted ensemble
+        Server->>Map: Store + WebSocket push
+        Server-->>Phone: Prediction result
+    else Accumulating
+        Server-->>Phone: Distance status
     end
 ```
 
-- `POST /ingest` performs server-side fusion, buffering, feature extraction, and inference.
-- `POST /ingest-features` accepts a precomputed feature window from the client and performs lightweight inference on the server.
-- This split supports both richer backend processing and lower-overhead client-assisted operation.
+### Key Design Decisions
 
-## Data Pipeline
+**Link-based inference (not time-based)**: The system accumulates FCD as the probe traverses consecutive road links, triggering prediction at **1km+ distance** — not after a fixed time window. Seoul arterial links average 80–120m, so the system chains ~10 consecutive links per prediction.
 
-The pipeline starts from synthetic traffic generation in SUMO (20,000 scenarios × 5 probes = 176,845 samples), collects 6-channel floating-car trajectories (VX, VY, AX, AY, speed, brake at 1Hz × 300s), extracts features grounded in traffic flow theory, trains and evaluates multiple model families, and deploys the best model behind the serving API.
+**Client sends raw, server does everything**: Smartphone buffers 30s of raw GPS+accel locally, sends bulk. No fusion or ML on device. Server-side Kalman filter, GIS matching (auto-detects speed limit and lanes), feature extraction, inference, and ensemble.
 
-Each stage writes to a versioned run directory with manifest tracking. The ML pipeline dashboard supports resuming from any intermediate stage — retrain on existing features, re-evaluate a saved model, or filter by lane count and speed limit.
+**Multi-probe Bayesian ensemble**: When multiple probes traverse the same link within 15 minutes, predictions are combined using CF-weighted softmax — probes in active car-following get higher weight because their trajectories carry more density information.
+
+---
 
 ## ML Approach
 
 ### Feature Engineering
 
-32 features engineered from traffic flow theory and car-following dynamics:
-- **Speed-density relationships** — 5 fundamental diagram models (Underwood, Greenshields, Greenberg, Drake, Multi-regime)
-- **Car-following proxies** — acceleration variance, jerk, speed autocorrelation
-- **Congestion indicators** — stop count, brake ratio, slow-duration ratio
-- **Lateral dynamics** — VY variance, lateral energy
-- **Time-series properties** — FFT dominant frequency, sample entropy
+31 features from car-following theory and traffic flow dynamics, registered via `@register_feature` decorator and selected through YAML config:
 
-Features are registered via `@register_feature` decorator and selected through YAML config without code changes.
+| Category | Features | Rationale |
+|----------|----------|-----------|
+| Speed statistics | mean, std, cv, iqr, min, max, median, p10, p90 | FD relationship proxy |
+| Acceleration | ax_mean, ax_std, ay_mean, ay_std, jerk_mean, jerk_std | Car-following interaction intensity |
+| Braking | brake_count, brake_time_ratio, mean_brake_duration | Congestion indicator |
+| Stops | stop_count, stop_time_ratio, mean_stop_duration, slow_duration_ratio | Queue detection |
+| Lateral | vy_mean, vy_std, vy_min, vy_max, vy_variance, vy_energy | Lane-change proxy |
+| Time-series | speed_autocorr_lag1, speed_fft_dominant_freq, sample_entropy | Flow regime classification |
 
-### Model Comparison
+### Results
 
-| Model | MAE | RMSE | R² | Notes |
-|-------|-----|------|-----|-------|
-| Fundamental Diagram (Underwood) | 9.45 | 11.69 | -6.22 | Physics-only baseline |
-| LSTM (6ch × 300) | 2.54 | 3.28 | 0.43 | Raw time-series |
-| CNN-1D (6ch × 300) | 2.99 | 2.97 | 0.53 | Raw time-series |
-| GPR (Rational Quadratic) | 2.34 | 3.01 | 0.52 | 141K train, 4 kernels tested |
-| LightGBM (32 features) | 2.32 | 3.00 | 0.53 | Tabular features |
-| **XGBoost (32 features)** | **2.30** | **2.97** | **0.53** | **Best → production model** |
+**Multi-probe penetration rate** (1km, XGBoost, CF-weighted):
 
-XGBoost became the production model based on consistent performance across metrics. The comparison spanned GPR with 4 kernel functions, window-based temporal features, density-weighted sampling, bias correction, isotonic calibration, and k-means cluster analysis — confirming the result is stable across model families.
+| N (probes) | R² | MAE (veh/km/lane) | vs baseline |
+|------------|-----|-------------------|-------------|
+| 1 | 0.457 | 2.57 | — |
+| 2 | 0.531 | 2.20 | +16% |
+| 3 | 0.604 | 2.00 | +32% |
+| 5 | **0.671** | **1.80** | **+47%** |
 
-<p align="center">
-  <img src="docs/images/model_comparison.png" alt="Model Comparison" width="800">
-</p>
+MAE=1.80 means **1–2 vehicles per km per lane** error — approaching fixed loop-detector noise (±1–3 veh/km/lane).
 
-<p align="center">
-  <img src="docs/images/predicted_vs_actual.png" alt="Predicted vs Actual" width="450">
-  <img src="docs/images/shap_importance.png" alt="SHAP Feature Importance" width="450">
-</p>
+**Observation length** (N=5): 250m → R²=0.615, 500m → 0.647, 750m → 0.665, 1km → 0.671.
 
-<p align="center">
-  <img src="docs/images/density_range_analysis.png" alt="Density Range Analysis" width="800">
-</p>
+**Ensemble methods** (N=5): simple mean 0.601, CF-weighted 0.611, **Bayesian+CF 0.622**.
 
-### Residual Learning
+**Model comparison** (single probe): FD baseline <0, GPR 0.41, LSTM/CNN-1D 0.45, **XGBoost/LightGBM 0.50** → production.
 
-Inference combines a physics baseline with ML correction:
-1. Estimate baseline density from the Underwood fundamental diagram
-2. Predict the residual with XGBoost
-3. Final estimate = FD baseline + ML residual
-
-This keeps the model grounded in domain knowledge and improves interpretability.
-
-### Observational Limit
-
-Systematic experimentation across all model families suggests **R²≈0.53 is the practical ceiling** for single-probe density estimation. At low density (0–8 veh/km/lane), the probe drives in free-flow regardless of surrounding vehicles, so its trajectory carries minimal information about traffic volume. This defines the sensing boundary and what additional data sources (gap sensors, multi-probe fusion) would be needed to push further.
+---
 
 ## Backend and Data Engineering
 
-### API
+### Ingestion Pipeline
 
-**FastAPI** async backend serving batch inference (`POST /predict`), live mobile ingestion (`POST /ingest`), link-level map history (`/map/links/*`), and WebSocket prediction push. Uses lifespan management and degrades gracefully when optional services (DB, Kafka, GIS) are unavailable.
+```
+Smartphone (1Hz GPS + accelerometer)
+  → 30s local buffer (reduce network 30×)
+  → POST /ingest (bulk)
+  → Kalman Filter: GPS(σ=5m) + accel → state [x, vx, y, vy]
+  → GIS link match: grid-indexed 2.2K MOCT links (<1ms)
+       → auto-detect speed_limit, lanes from matched link
+  → LinkBuffer: accumulate FCD across consecutive links
+       → "sticky link" prevents GPS jitter false transitions
+  → 1km distance reached → 31 feature extraction → XGBoost
+  → Prediction stored to ALL traversed links
+  → Fan-out (each independent, failures don't block):
+       → PostgreSQL (async transactional write)
+       → WebSocket push (live dashboard)
+       → Kafka/Pub-Sub (downstream consumers)
+  → Ensemble aggregator: CF-weighted, 15-min rolling window
+```
 
-### Database
+### Optimization Decisions
 
-Async SQLAlchemy + asyncpg with full ORM: Prediction, RoadLink, FCDRecordRow, Scenario. TimescaleDB hypertable for time-series FCD storage. Transactional writes with link upsert logic.
+| Optimization | What it does | Impact |
+|-------------|-------------|--------|
+| Grid spatial index | 0.001° cells, search 3×3 neighborhood only | O(2.2K) → O(9 cells), <1ms |
+| Re-match skip | Don't re-query GIS until probe moves >30m | ~90% fewer GIS calls |
+| 30s bulk ingest | Client buffers locally, sends batch | 30× fewer HTTP requests |
+| Sticky link | Require confirmed link change before switching | Prevents GPS jitter traversals |
+| Graceful degradation | DB/Kafka/GIS each optional | Prediction always available |
 
-### Spatial Optimization
+### Database Schema
 
-Matching GPS to 400K+ Seoul road links required spatial indexing:
+```mermaid
+erDiagram
+    RoadLink {
+        int id PK
+        string link_id UK
+        string road_rank
+        float link_length_m
+        int lanes
+    }
+    EnsembleResult {
+        int id PK
+        float ensemble_density
+        int probe_count
+        datetime window_start
+        datetime window_end
+        bool is_frozen
+    }
+    Prediction {
+        int id PK
+        float density
+        float flow
+        float cf_weight
+        float traversal_time
+    }
+    FCDRecordRow {
+        int id PK
+        float time
+        float speed
+        float brake
+    }
+    RoadLink ||--o{ EnsembleResult : has
+    RoadLink ||--o{ Prediction : has
+    EnsembleResult ||--o{ Prediction : aggregates
+    Prediction ||--o{ FCDRecordRow : contains
+```
 
-| Approach | Complexity | Typical latency |
-|----------|-----------|-----------------|
-| Naive scan | O(n) | ~50ms |
-| **Grid index** (0.001° ≈ 100m cells) | **O(1) + 3×3 neighborhood** | **<1ms** |
+**Ensemble lifecycle**: new probe → find/create active ensemble for that link → CF-weighted update → extend window. No new probe within 15 min → freeze. Garbage-collected after 1 hour.
 
-Links are pre-indexed into grid cells, scored by perpendicular distance + heading alignment, and **re-matched only when the probe moves >30m** — reducing GIS calls by roughly 90%.
+### CF-Weighted Ensemble
 
-### Streaming
+```
+cf_score_i = ax_std + brake_time_ratio + speed_cv
+weight_i   = exp(cf_score_i) / Σ exp(cf_score_j)    # softmax
+ensemble_k = Σ weight_i × density_i                  # weighted mean
+```
 
-A dual-broker abstraction auto-detects Kafka or GCP Pub/Sub from environment variables. The same publish interface works across local docker-compose and Cloud Run with zero code changes.
+Car-following intensity determines how much to trust each probe. Probes in active car-following carry more density information → higher weight. Bayesian variant uses CF-informed observation uncertainty for sequential updating (R²=0.622 vs simple mean 0.601).
 
 ### Sensor Fusion
 
-A **2D Kalman filter** fuses noisy GPS and accelerometer data per session:
-- State: `[x, vx, y, vy]` in equirectangular frame
-- GPS measurement (σ=5m) + accelerometer control input (heading-rotated)
-- Sessions are garbage-collected after 10 minutes of inactivity
+2D Kalman filter per session: state `[x, vx, y, vy]` in equirectangular frame. GPS measurement update (σ=5m) + accelerometer control input (heading-rotated). Sessions garbage-collected after 10 min inactivity.
 
-## Platform and DevOps
+---
 
-### Web Interfaces
+## Lessons Learned
 
-- **ML Pipeline** (`/ml-pipeline/`) — run versioning, stage resume, model/feature selection, live log streaming
-- **Console** (`/dashboard`) — project overview and service health
-- **Mobile Probe** (`/mobile`) — browser-based GPS+accel collection with client-side Kalman filter
-- **Map** (`/map`) — Leaflet.js with color-coded link densities and prediction history
+- **The single-probe ceiling is real**: R²≈0.45–0.50 for one vehicle. Car-following theory explains why — multi-probe fusion is necessary, not optional.
+- **Feature-level > prediction-level ensemble**: Combining features across probes (R²=0.67) outperforms combining predictions (R²=0.62), but requires same road segment. Prediction-level Bayesian ensemble is the deployment compromise.
+- **Observation length matters**: 250m→1km improves R² by +0.05. The system chains short urban links (~80–120m) to reach 1km before predicting.
+- **Graceful degradation over hard dependencies**: Every external service (DB, Kafka, GIS) is optional. Prediction always works.
 
-### Docker and CI/CD
-
-**Local**: docker-compose with PostgreSQL + TimescaleDB, Kafka, and FastAPI — all health-checked.
-
-**CI** (every push): ruff → mypy → pytest (3.11/3.12/3.13) → Docker build smoke test.
-
-**CD** (on GitHub Release): build & push to GHCR + GCP Artifact Registry → deploy to Cloud Run (0–2 auto-scaling) → verify health endpoints.
-
-### Performance
-
-- **MPS (Apple Silicon) training**: auto device detection (CUDA → MPS → CPU). CNN-1D measured at ~22× faster on MPS vs CPU on M5 MacBook Air (3.6ms vs 80ms per batch, batch_size=128)
-- **Density-weighted sampling**: configurable weights to compensate for high-density data scarcity
-- **Config inheritance**: YAML `_base_` with recursive merge for DRY experiment configs
-
-## Project Structure
-
-```
-src/
-├── api/            FastAPI app, ingest pipeline, map router, async DB, schemas
-├── data/           Datasets, Parquet I/O, preprocessing
-├── evaluation/     Metrics, SHAP, traffic state classification
-├── features/       @register_feature registry, 7 modules, window features
-├── gis/            Grid-indexed link matcher
-├── models/         XGBoost, LightGBM, CNN1D, LSTM, FD models
-├── simulation/     SUMO network gen, FCD collection, Edie ground truth
-├── streaming/      Kafka/Pub-Sub abstraction, Kalman sensor fusion
-├── training/       TabularTrainer (GroupKFold), DLTrainer (PyTorch), Optuna
-├── utils/          Config, logging, seed, checkpoints
-└── visualization/  Plots, SHAP, model comparison
-
-scripts/            Pipeline entry points, dashboard, console
-static/             Web pages (console, mobile, map, pipeline)
-configs/            Hierarchical YAML (inheritable via _base_)
-.github/workflows/  CI + CD
-```
+---
 
 ## Tech Stack
 
 | Layer | Technologies |
 |-------|-------------|
-| **ML** | XGBoost, LightGBM, PyTorch (CNN-1D, LSTM), GPyTorch (GPR), scikit-learn, SHAP, Optuna |
-| **Backend** | FastAPI, uvicorn, WebSocket, Pydantic |
-| **Database** | PostgreSQL + TimescaleDB, SQLAlchemy (async), asyncpg |
+| **ML** | XGBoost, LightGBM, PyTorch (CNN-1D, LSTM, DeepSets), GPyTorch, scikit-learn, SHAP |
+| **Backend** | FastAPI, uvicorn, WebSocket, Pydantic, SQLAlchemy async |
+| **Database** | PostgreSQL + TimescaleDB, asyncpg |
 | **Streaming** | Apache Kafka, Google Cloud Pub/Sub |
-| **Spatial** | Custom grid-indexed matcher, GeoJSON, Leaflet.js |
+| **Spatial** | MOCT standard links, grid-indexed matcher, GeoJSON, Leaflet.js |
 | **Infra** | Docker, Cloud Run, Artifact Registry, Secret Manager, GitHub Actions |
-| **Data** | Apache Parquet, NumPy NPZ, YAML configs |
-| **Simulation** | SUMO (TraCI), Edie's generalized definitions |
+| **Data** | Apache Parquet, NumPy NPZ, SUMO (TraCI), Edie's definitions |
 
 ## Quick Start
 
 ```bash
+# Install and verify
 pip install -e ".[dev]"
-pytest
+pytest                        # 145 tests
+ruff check src/ scripts/      # lint
 
-# With Docker
+# Run server (no Docker)
+python scripts/run_console.py
+# → /map, /mobile, /ml-pipeline/, /docs
+
+# Docker with DB + Kafka
 docker-compose up -d && curl localhost:8000/health
 
-# Without Docker
-python scripts/run_console.py
-
-# → /dashboard      project console
-# → /map            density map
-# → /mobile         probe collection
-# → /ml-pipeline/   pipeline manager
-# → /docs           OpenAPI docs
+# Train a model
+python scripts/extract_features.py --config configs/default.yaml
+python scripts/train.py --config configs/default.yaml
 ```
 
-**Recommended first pages**: [`/dashboard`](https://traffic-estimator-gcbqhrztha-du.a.run.app/dashboard) for project overview, [`/map`](https://traffic-estimator-gcbqhrztha-du.a.run.app/map) for live predictions, [`/docs`](https://traffic-estimator-gcbqhrztha-du.a.run.app/docs) for API reference.
+<details>
+<summary>Environment variables</summary>
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | (none) | PostgreSQL async URL. Server runs without DB if unset |
+| `CONFIG_PATH` | `configs/default.yaml` | Model and GIS config path |
+| `MIN_TRAVERSAL_DISTANCE_M` | `1000` | Minimum link accumulation before prediction |
+| `KAFKA_BOOTSTRAP_SERVERS` | (none) | Kafka broker. Falls back to Pub/Sub or skips |
+
+</details>
+
+## Project Structure
+
+```
+src/
+├── api/            FastAPI app, link-based ingest, ensemble, async DB
+├── data/           Dataset loading, Parquet I/O, preprocessing
+├── evaluation/     Metrics, SHAP, traffic state classification
+├── features/       @register_feature registry, 7 feature modules
+├── gis/            Grid-indexed MOCT link matcher (road hierarchy)
+├── models/         XGBoost, LightGBM, CNN1D, LSTM, FD, multi-probe DeepSets
+├── simulation/     SUMO network gen, FCD collection, Edie ground truth
+├── streaming/      Kafka/Pub-Sub abstraction, Kalman sensor fusion
+├── training/       TabularTrainer (GroupKFold), DLTrainer (PyTorch)
+├── utils/          Config, logging, seed, checkpoints
+└── visualization/  Plots, SHAP, model comparison
+
+scripts/            Pipeline entry points (train, evaluate, extract, dashboard)
+static/             Web pages (console, mobile, map, pipeline manager)
+configs/            Hierarchical YAML (inheritable via _base_)
+data/gis/           MOCT standard link GeoJSON (2.2K Seoul arterial links)
+.github/workflows/  CI (lint+test+build) + CD (Cloud Run deploy)
+```
 
 ## License
 

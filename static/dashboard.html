@@ -4,53 +4,67 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ML Pipeline Dashboard v0.3.0</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
   :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --border: #2a2d3a;
-    --text: #e0e0e0;
-    --muted: #888;
-    --accent: #4f8ff7;
-    --accent2: #38b2ac;
-    --danger: #e53e3e;
-    --success: #38a169;
-    --warn: #d69e2e;
+    --bg: #EDF2F4;
+    --surface: rgba(255, 255, 255, 0.92);
+    --border: rgba(141, 153, 174, 0.25);
+    --text: #2B2D42;
+    --muted: #8D99AE;
+    --accent: #EF233C;
+    --accent2: #2B2D42;
+    --danger: #b91c1c;
+    --success: #15803d;
+    --warn: #c2410c;
+    --ink-soft: rgba(43, 45, 66, 0.72);
+    --shadow: 0 8px 24px rgba(43, 45, 66, 0.06);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'Segoe UI', -apple-system, sans-serif;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     background: var(--bg);
     color: var(--text);
     line-height: 1.5;
     padding: 24px;
   }
-  h1 { font-size: 1.5rem; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+  h1 { font-size: 1.5rem; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-weight: 900; }
   h1 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--success); }
   h1 .dot.off { background: var(--muted); }
-  h2 { font-size: 1.1rem; color: var(--accent); margin-bottom: 12px; }
-  h3 { font-size: 0.95rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.1rem; color: var(--accent); margin-bottom: 12px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-weight: 700;
+  }
+  h3 { font-size: 0.95rem; margin-bottom: 8px; font-weight: 700; }
 
   .grid { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 18px;
+    border-radius: 16px;
+    padding: 20px;
     margin-bottom: 16px;
+    box-shadow: var(--shadow);
   }
-  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+  label {
+    display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-weight: 600;
+  }
   input[type=number], select {
     width: 100%;
-    background: var(--bg);
+    background: rgba(255, 255, 255, 0.78);
     border: 1px solid var(--border);
     color: var(--text);
     padding: 8px 10px;
-    border-radius: 6px;
+    border-radius: 10px;
     font-size: 0.95rem;
     margin-bottom: 12px;
+    font-family: inherit;
   }
-  input[type=number]:focus, select:focus { outline: none; border-color: var(--accent); }
+  input[type=number]:focus, select:focus {
+    outline: none; border-color: rgba(239, 35, 60, 0.40);
+    box-shadow: 0 0 0 4px rgba(239, 35, 60, 0.08);
+  }
 
   /* Tabs */
   .tab-bar {
@@ -59,7 +73,8 @@
   }
   .tab-btn {
     padding: 10px 20px; border: none; background: transparent;
-    color: var(--muted); font-size: 0.95rem; font-weight: 600;
+    color: var(--muted); font-size: 0.88rem; font-weight: 700;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
     cursor: pointer; border-bottom: 2px solid transparent;
     margin-bottom: -2px; transition: all 0.15s;
   }
@@ -73,39 +88,42 @@
   .checkbox-group label {
     display: flex; align-items: center; gap: 8px;
     color: var(--text); cursor: pointer; padding: 6px 0; font-size: 0.9rem;
+    font-family: 'Pretendard', sans-serif; font-weight: 500;
   }
   .checkbox-group input[type=checkbox] {
     accent-color: var(--accent); width: 16px; height: 16px;
   }
   .step-num {
     display: inline-block; width: 22px; height: 22px; line-height: 22px;
-    text-align: center; border-radius: 50%; background: var(--border);
-    font-size: 0.75rem; font-weight: 600; margin-right: 4px;
+    text-align: center; border-radius: 50%; background: rgba(239, 35, 60, 0.10);
+    color: var(--accent); font-size: 0.75rem; font-weight: 700; margin-right: 4px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
   }
 
   /* Buttons */
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    padding: 10px 20px; border: none; border-radius: 8px;
-    font-size: 0.95rem; font-weight: 600; cursor: pointer;
-    transition: all 0.15s;
+    padding: 10px 20px; border: none; border-radius: 14px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.92rem; font-weight: 700; cursor: pointer;
+    transition: all 0.2s ease;
   }
   .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #3a7ae0; }
-  .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(239, 35, 60, 0.18); }
+  .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; transform: none; box-shadow: none; }
   .btn-danger { background: var(--danger); color: #fff; }
-  .btn-danger:hover { background: #c53030; }
-  .btn-sm { padding: 5px 12px; font-size: 0.8rem; border-radius: 6px; }
+  .btn-danger:hover { transform: translateY(-2px); }
+  .btn-sm { padding: 5px 12px; font-size: 0.8rem; border-radius: 8px; }
   .btn-outline {
-    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    background: transparent; border: 2px solid var(--border); color: var(--muted);
   }
-  .btn-outline:hover { border-color: var(--accent); color: var(--text); }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
   .btn-group { display: flex; gap: 8px; margin-top: 4px; }
 
   /* Progress */
   .progress-section { margin-bottom: 16px; }
   .progress-bar-bg {
-    height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;
+    height: 8px; background: rgba(141, 153, 174, 0.18); border-radius: 4px; overflow: hidden;
     margin: 8px 0;
   }
   .progress-bar-fill {
@@ -115,57 +133,59 @@
   .progress-bar-fill.error { background: var(--danger); }
   .progress-info {
     display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--muted);
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
   }
   .status-badge {
-    display: inline-block; padding: 2px 10px; border-radius: 12px;
-    font-size: 0.8rem; font-weight: 600;
+    display: inline-block; padding: 2px 10px; border-radius: 8px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.8rem; font-weight: 700;
   }
-  .badge-running { background: rgba(79,143,247,0.2); color: var(--accent); }
-  .badge-idle { background: rgba(136,136,136,0.2); color: var(--muted); }
-  .badge-done { background: rgba(56,161,105,0.2); color: var(--success); }
-  .badge-error { background: rgba(229,62,62,0.2); color: var(--danger); }
+  .badge-running { background: rgba(239, 35, 60, 0.10); color: var(--accent); }
+  .badge-idle { background: rgba(141, 153, 174, 0.15); color: var(--muted); }
+  .badge-done { background: rgba(21, 128, 61, 0.12); color: var(--success); }
+  .badge-error { background: rgba(185, 28, 28, 0.12); color: var(--danger); }
 
   /* Log */
   .log-box {
-    background: #0d0f14;
+    background: #2B2D42;
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px;
-    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    border-radius: 14px;
+    padding: 14px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
     font-size: 0.8rem;
     line-height: 1.6;
     height: 320px;
     overflow-y: auto;
     white-space: pre-wrap;
     word-break: break-all;
-    color: #aaa;
+    color: #c8cdd5;
   }
-  .log-box .error { color: var(--danger); }
-  .log-box .success { color: var(--success); }
-  .log-box .info { color: var(--accent); }
+  .log-box .error { color: #f87171; }
+  .log-box .success { color: #4ade80; }
+  .log-box .info { color: #93c5fd; }
 
   /* Asset cards for resume */
   .asset-list { max-height: 240px; overflow-y: auto; }
   .asset-item {
-    background: var(--bg);
+    background: rgba(255, 255, 255, 0.65);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 14px;
     padding: 12px;
     margin-bottom: 8px;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all 0.2s ease;
   }
-  .asset-item:hover { border-color: var(--accent); }
-  .asset-item.selected { border-color: var(--accent); background: rgba(79,143,247,0.08); }
-  .asset-item .title { font-weight: 600; font-size: 0.9rem; }
-  .asset-item .meta { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .asset-item:hover { border-color: rgba(239, 35, 60, 0.38); }
+  .asset-item.selected { border-color: var(--accent); background: rgba(239, 35, 60, 0.06); }
+  .asset-item .title { font-weight: 700; font-size: 0.9rem; }
+  .asset-item .meta { font-size: 0.78rem; color: var(--muted); margin-top: 2px; font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; }
 
   /* Run history */
   .run-list { max-height: 300px; overflow-y: auto; }
   .run-item {
-    background: var(--bg);
+    background: rgba(255, 255, 255, 0.65);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 14px;
     padding: 12px;
     margin-bottom: 8px;
     display: flex;
@@ -173,17 +193,18 @@
     align-items: flex-start;
   }
   .run-item .run-info { flex: 1; }
-  .run-item .run-id { font-weight: 600; font-size: 0.9rem; }
+  .run-item .run-id { font-weight: 700; font-size: 0.9rem; }
   .run-item .run-meta { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
   .run-status {
-    display: inline-block; padding: 1px 8px; border-radius: 10px;
-    font-size: 0.72rem; font-weight: 600;
+    display: inline-block; padding: 1px 8px; border-radius: 8px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.72rem; font-weight: 700;
   }
-  .run-status.completed { background: rgba(56,161,105,0.2); color: var(--success); }
-  .run-status.running { background: rgba(79,143,247,0.2); color: var(--accent); }
-  .run-status.failed { background: rgba(229,62,62,0.2); color: var(--danger); }
-  .run-status.pending { background: rgba(136,136,136,0.2); color: var(--muted); }
-  .run-status.cancelled { background: rgba(214,158,46,0.2); color: var(--warn); }
+  .run-status.completed { background: rgba(21, 128, 61, 0.12); color: var(--success); }
+  .run-status.running { background: rgba(239, 35, 60, 0.10); color: var(--accent); }
+  .run-status.failed { background: rgba(185, 28, 28, 0.12); color: var(--danger); }
+  .run-status.pending { background: rgba(141, 153, 174, 0.15); color: var(--muted); }
+  .run-status.cancelled { background: rgba(194, 65, 12, 0.12); color: var(--warn); }
 
   .spinner {
     display: inline-block; width: 14px; height: 14px;
@@ -191,8 +212,14 @@
     border-radius: 50%; animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .timer { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .hint { font-size: 0.8rem; color: var(--muted); margin-bottom: 12px; }
+  .timer {
+    font-size: 1.8rem; font-weight: 800; font-variant-numeric: tabular-nums;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  }
+  .hint {
+    font-size: 0.8rem; color: var(--muted); margin-bottom: 12px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  }
 
   /* Eval results */
   .eval-model { margin-bottom: 20px; }
@@ -202,23 +229,27 @@
     font-size: 0.88rem;
   }
   .metrics-table th {
-    text-align: left; padding: 6px 12px; background: var(--bg);
-    border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 600;
+    text-align: left; padding: 6px 12px; background: rgba(141, 153, 174, 0.08);
+    border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 700;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.82rem;
   }
   .metrics-table td {
     padding: 6px 12px; border-bottom: 1px solid var(--border);
     font-variant-numeric: tabular-nums;
   }
-  .metrics-table td.val { font-weight: 700; font-size: 1rem; }
+  .metrics-table td.val {
+    font-weight: 800; font-size: 1rem;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  }
   .scatter-container {
-    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    background: rgba(255, 255, 255, 0.65); border: 1px solid var(--border); border-radius: 14px;
     padding: 8px; display: inline-block;
   }
   .scatter-container canvas { display: block; }
 
   /* Scenario Config tab */
   .sc-section { margin-bottom: 16px; }
-  .sc-section h3 { color: var(--accent2); margin-bottom: 8px; font-size: 0.95rem; }
+  .sc-section h3 { color: var(--accent2); margin-bottom: 8px; font-size: 0.95rem; font-weight: 700; }
   .sc-row {
     display: grid;
     grid-template-columns: 160px 90px 70px 70px 70px 70px;
@@ -242,15 +273,20 @@
   .sc-header h2 { margin-bottom: 0; }
   details.sc-details { margin-bottom: 12px; }
   details.sc-details summary {
-    cursor: pointer; font-weight: 600; color: var(--accent2);
+    cursor: pointer; font-weight: 700; color: var(--accent2);
     font-size: 0.95rem; padding: 6px 0;
   }
   .sc-check-group { display: flex; gap: 12px; align-items: center; margin-bottom: 6px; }
   .sc-check-group label {
     display: flex; align-items: center; gap: 4px;
     color: var(--text); font-size: 0.85rem; margin-bottom: 0;
+    font-family: 'Pretendard', sans-serif;
   }
   .sc-check-group input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
+
+  @media (max-width: 980px) {
+    .grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -1311,7 +1347,7 @@ function drawScatter(canvasId, actual, predicted, target) {
   const pad = 45;
 
   // Clear
-  ctx.fillStyle = '#0f1117';
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
   if (!actual || actual.length === 0) return;
@@ -1326,14 +1362,14 @@ function drawScatter(canvasId, actual, predicted, target) {
   const toY = v => H - pad - (v - mn) / (mx - mn) * (H - pad * 2);
 
   // Grid lines
-  ctx.strokeStyle = '#2a2d3a';
+  ctx.strokeStyle = 'rgba(141, 153, 174, 0.25)';
   ctx.lineWidth = 0.5;
   for (let i = 0; i <= 4; i++) {
     const v = mn + (mx - mn) * i / 4;
     const x = toX(v), y = toY(v);
     ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x, pad); ctx.lineTo(x, H - pad); ctx.stroke();
-    ctx.fillStyle = '#888';
+    ctx.fillStyle = '#8D99AE';
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText(v.toFixed(0), pad - 4, y + 3);
@@ -1342,7 +1378,7 @@ function drawScatter(canvasId, actual, predicted, target) {
   }
 
   // 1:1 line
-  ctx.strokeStyle = '#e53e3e';
+  ctx.strokeStyle = '#EF233C';
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 4]);
   ctx.beginPath();
@@ -1352,7 +1388,7 @@ function drawScatter(canvasId, actual, predicted, target) {
   ctx.setLineDash([]);
 
   // Points
-  ctx.fillStyle = 'rgba(79,143,247,0.4)';
+  ctx.fillStyle = 'rgba(43, 45, 66, 0.30)';
   for (let i = 0; i < actual.length; i++) {
     const x = toX(actual[i]);
     const y = toY(predicted[i]);
@@ -1362,7 +1398,7 @@ function drawScatter(canvasId, actual, predicted, target) {
   }
 
   // Axis labels
-  ctx.fillStyle = '#aaa';
+  ctx.fillStyle = '#8D99AE';
   ctx.font = '12px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(`Actual ${target}`, W / 2, H - 4);
@@ -1380,7 +1416,7 @@ function drawFeatureImportance(canvasId, importance) {
   const W = canvas.width, H = canvas.height;
 
   // Clear
-  ctx.fillStyle = '#0f1117';
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
   // Sort by value descending, take top 20
@@ -1397,7 +1433,7 @@ function drawFeatureImportance(canvasId, importance) {
   const gap = (barArea - barH * n) / (n + 1);
 
   // Title
-  ctx.fillStyle = '#e0e0e0';
+  ctx.fillStyle = '#2B2D42';
   ctx.font = 'bold 12px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('Feature Importance (mean |SHAP|)', W / 2, 18);
@@ -1410,18 +1446,18 @@ function drawFeatureImportance(canvasId, importance) {
     const barW = (val / maxVal) * (W - padLeft - padRight);
 
     // Bar
-    ctx.fillStyle = '#4f8ff7';
+    ctx.fillStyle = '#EF233C';
     ctx.fillRect(padLeft, y, barW, barH);
 
     // Label
-    ctx.fillStyle = '#ccc';
+    ctx.fillStyle = '#2B2D42';
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     ctx.fillText(name.length > 22 ? name.slice(0, 20) + '..' : name, padLeft - 6, y + barH / 2);
 
     // Value
-    ctx.fillStyle = '#888';
+    ctx.fillStyle = '#8D99AE';
     ctx.textAlign = 'left';
     ctx.fillText(val.toFixed(4), padLeft + barW + 4, y + barH / 2);
   });

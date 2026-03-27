@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>UrbanFlow Mobile Probe</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="/static/site.css">
   <style>
     .mobile-grid {
@@ -18,7 +19,7 @@
       gap: 14px;
       padding: 16px 18px;
       border-radius: var(--radius-lg);
-      background: rgba(255, 255, 255, 0.70);
+      background: rgba(255, 255, 255, 0.92);
       border: 1px solid var(--border);
     }
 
@@ -72,9 +73,10 @@
         <span class="eyebrow">Mobile Ingest</span>
         <h1>Capture a probe drive from your phone.</h1>
         <p>
-          This page performs local sensor fusion and 300-second feature extraction in the
-          browser. Once a full window is ready, it sends a lightweight feature payload to
-          <code>/ingest-features</code> instead of streaming raw 1 Hz telemetry to the server.
+          This page streams GPS + accelerometer data at 1 Hz to <code>/ingest</code>.
+          The server accumulates data across road links until 1 km is reached,
+          extracts features, predicts density, and registers the result with the
+          multi-probe ensemble. Road info (speed limit, lanes) is auto-detected from GIS link matching.
         </p>
       </section>
 
@@ -124,8 +126,12 @@
                 <div class="metric-value" id="speed">—</div>
               </div>
               <div class="metric">
-                <span class="metric-label">Buffer</span>
-                <div class="metric-value" id="buffer">0 / 300</div>
+                <span class="metric-label">Distance</span>
+                <div class="metric-value" id="buffer">0 m</div>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Current Link</span>
+                <div class="metric-value" id="currentLink" style="font-size:0.9rem;">—</div>
               </div>
               <div class="metric">
                 <span class="metric-label">Predictions</span>
@@ -142,26 +148,8 @@
         <section class="card stack">
           <div>
             <p class="kicker">Configuration</p>
-            <h2>Road assumptions</h2>
-          </div>
-          <div class="settings-grid">
-            <div class="field">
-              <label for="speedLimit">Speed limit</label>
-              <select id="speedLimit">
-                <option value="13.89">50 km/h</option>
-                <option value="16.67">60 km/h</option>
-                <option value="22.22" selected>80 km/h</option>
-                <option value="27.78">100 km/h</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="numLanes">Lane count</label>
-              <select id="numLanes">
-                <option value="1">1 lane</option>
-                <option value="2" selected>2 lanes</option>
-                <option value="3">3 lanes</option>
-              </select>
-            </div>
+            <h2>Collection control</h2>
+            <p class="muted">Road info (speed limit, lanes) is auto-detected from GPS link matching.</p>
           </div>
           <div class="btn-row">
             <button class="btn" id="startBtn" type="button">Start collection</button>
@@ -186,8 +174,8 @@
   </div>
 
   <script>
-    const WINDOW_SIZE = 300;
-    const PREDICTION_STRIDE = 30;
+    const BULK_INTERVAL_SEC = 30;  // Send bulk every 30s
+    const BULK_SEND_MS = BULK_INTERVAL_SEC * 1000;
     const EARTH_RADIUS_M = 6371000.0;
     const BRAKE_DECEL_THRESHOLD = -1.5;
     let sessionId = null;
@@ -698,46 +686,62 @@
       log(sourceMessage);
     }
 
-    async function sendFeatureWindow() {
-      if (fusedWindow.length < WINDOW_SIZE) return;
-      if (sampleCount - lastSubmittedSample < PREDICTION_STRIDE) return;
+    let sampleBuffer = [];  // Local buffer for bulk sending
+    let bulkTimer = null;
 
-      const features = extractClientFeatures(fusedWindow);
-      const last = fusedWindow[fusedWindow.length - 1];
-      const payload = {
-        session_id: sessionId,
-        timestamp: last.time,
-        speed_limit: parseFloat(document.getElementById('speedLimit').value),
-        num_lanes: parseInt(document.getElementById('numLanes').value, 10),
-        buffer_count: fusedWindow.length,
-        features,
-        lat: last.lat,
-        lon: last.lon,
-        heading: last.heading,
-      };
+    async function sendBulkIngest() {
+      if (!sessionId || sampleBuffer.length === 0) return;
+      const batch = sampleBuffer.splice(0);  // Take all and clear
 
-      try {
-        const response = await fetch(`${API_BASE}/ingest-features`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+      // Send each sample sequentially (server accumulates via LinkBuffer)
+      let lastResult = null;
+      for (const payload of batch) {
+        try {
+          const response = await fetch(`${API_BASE}/ingest`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!response.ok) continue;
+          lastResult = await response.json();
+        } catch (error) {
+          // Network error — skip this sample
         }
-        const result = await response.json();
-        lastSubmittedSample = sampleCount;
-        if (result.prediction) {
-          applyPrediction(result.prediction, 'Server prediction received from /ingest-features.');
-        }
-      } catch (error) {
-        log(`Feature send error: ${error.message}`);
+      }
+
+      if (!lastResult) return;
+
+      // Update UI from last response
+      const distText = lastResult.traversal_distance_m
+        ? `${lastResult.traversal_distance_m.toFixed(0)} m`
+        : `${lastResult.buffer_count} samples`;
+      document.getElementById('buffer').textContent = distText;
+
+      if (lastResult.link_ids && lastResult.link_ids.length > 0) {
+        document.getElementById('currentLink').textContent =
+          lastResult.link_ids[lastResult.link_ids.length - 1];
+      }
+
+      if (lastResult.ensemble_density != null) {
+        log(`Ensemble: ${lastResult.ensemble_density.toFixed(2)} veh/km (${lastResult.ensemble_probe_count} probes)`);
+      }
+
+      if (lastResult.prediction) {
+        applyPrediction(lastResult.prediction, `Traversal complete (${lastResult.link_ids?.length || 0} links)`);
+      }
+      if (lastResult.traversal_completed) {
+        log(`Traversal: ${lastResult.traversal_distance_m?.toFixed(0)}m, ${lastResult.link_ids?.length} links`);
       }
     }
 
     function captureSample() {
       if (!currentFix || !sessionId) return;
-      const sample = processFusionSample({
+      sampleCount += 1;
+      document.getElementById('speed').textContent = `${(latestSensor.speed * 3.6).toFixed(1)} km/h`;
+
+      // Buffer locally
+      sampleBuffer.push({
+        session_id: sessionId,
         lat: latestSensor.lat,
         lon: latestSensor.lon,
         speed: latestSensor.speed,
@@ -746,12 +750,11 @@
         accel_y: latestSensor.accel_y,
         accel_z: latestSensor.accel_z,
         timestamp: Date.now() / 1000,
+        speed_limit: 22.22,
+        num_lanes: 2,
       });
-      fusedWindow.push(sample);
-      if (fusedWindow.length > WINDOW_SIZE) fusedWindow.shift();
-      sampleCount += 1;
-      document.getElementById('buffer').textContent = `${Math.min(fusedWindow.length, WINDOW_SIZE)} / ${WINDOW_SIZE}`;
-      void sendFeatureWindow();
+
+      document.getElementById('buffer').textContent = `${sampleBuffer.length} buffered`;
     }
 
     async function startCollection() {
@@ -766,7 +769,8 @@
       clientFusion = createClientFusion();
       updateCollectionState('Collecting', `Session ${sessionId.slice(0, 8)}...`);
       document.getElementById('predCount').textContent = '0';
-      document.getElementById('buffer').textContent = `0 / ${WINDOW_SIZE}`;
+      document.getElementById('buffer').textContent = '0 m';
+      document.getElementById('currentLink').textContent = '—';
 
       const motionReady = await startAccelerometer();
       if (!motionReady) {
@@ -775,11 +779,12 @@
       startGPS();
       connectWebSocket();
       sampleInterval = window.setInterval(captureSample, 1000);
+      bulkTimer = window.setInterval(sendBulkIngest, BULK_SEND_MS);
 
       document.getElementById('startBtn').hidden = true;
       document.getElementById('stopBtn').hidden = false;
       setStatus('warn', 'Waiting');
-      log('Collection started at 1 Hz with local fusion.');
+      log(`Collection started — 1 Hz capture, bulk send every ${BULK_INTERVAL_SEC}s.`);
     }
 
     function stopCollection() {
@@ -791,6 +796,12 @@
         clearInterval(sampleInterval);
         sampleInterval = null;
       }
+      if (bulkTimer) {
+        clearInterval(bulkTimer);
+        bulkTimer = null;
+      }
+      // Flush remaining samples
+      void sendBulkIngest();
       if (ws) {
         ws.close();
         ws = null;

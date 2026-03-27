@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UrbanFlow Link Map</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="/static/site.css">
   <link
     rel="stylesheet"
@@ -25,7 +26,7 @@
     }
 
     .sidebar {
-      background: var(--surface);
+      background: rgba(255, 255, 255, 0.92);
       border: 1px solid var(--border);
       border-radius: var(--radius-xl);
       box-shadow: var(--shadow);
@@ -39,7 +40,7 @@
       overflow: hidden;
       border: 1px solid var(--border);
       box-shadow: var(--shadow);
-      background: var(--surface);
+      background: rgba(255, 255, 255, 0.92);
     }
 
     #map {
@@ -54,8 +55,8 @@
       right: 18px;
       width: min(420px, calc(100% - 36px));
       padding: 18px;
-      border-radius: 22px;
-      background: rgba(255, 252, 246, 0.95);
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.95);
       border: 1px solid var(--border);
       box-shadow: var(--shadow);
       z-index: 500;
@@ -77,10 +78,11 @@
       width: 100%;
       text-align: left;
       padding: 14px;
-      border-radius: 16px;
+      border-radius: 14px;
       border: 1px solid var(--border);
-      background: rgba(255, 255, 255, 0.64);
+      background: rgba(255, 255, 255, 0.92);
       cursor: pointer;
+      transition: all 0.2s ease;
     }
 
     .history-top,
@@ -273,11 +275,11 @@
       document.getElementById('drawerMeta').textContent =
         `${formatTime(detail.observed_at)} · session ${detail.session_id || '-'}`;
       const cards = [
-        ['Density', `${detail.density.toFixed(2)} veh/km`],
+        ['Density', `${detail.density.toFixed(2)} veh/km/lane`],
         ['Flow', `${detail.flow.toFixed(1)} veh/h`],
-        ['FD density', `${detail.fd_density.toFixed(2)} veh/km`],
-        ['Residual', `${detail.residual_density.toFixed(2)} Δk`],
       ];
+      if (detail.link_length_m) cards.push(['Link Length', `${detail.link_length_m.toFixed(0)} m`]);
+      if (detail.cf_weight != null) cards.push(['CF Score', detail.cf_weight.toFixed(3)]);
       document.getElementById('drawerBody').innerHTML = cards.map(([label, value]) => `
         <div class="metric">
           <span class="metric-label">${label}</span>
@@ -301,19 +303,44 @@
       const payload = await response.json();
 
       document.getElementById('selectedTitle').textContent = payload.link.road_name || payload.link.link_id;
-      document.getElementById('selectedMeta').textContent = `${payload.link.link_id} · source ${payload.link.source}`;
+      const linkLen = payload.link.link_length_m ? ` · ${payload.link.link_length_m.toFixed(0)}m` : '';
+      const linkLanes = payload.link.lanes ? ` · ${payload.link.lanes}L` : '';
+      const linkRank = payload.link.road_rank ? ` · rank ${payload.link.road_rank}` : '';
+      document.getElementById('selectedMeta').textContent = `${payload.link.link_id}${linkLen}${linkLanes}${linkRank}`;
 
       const container = document.getElementById('historyContainer');
       container.innerHTML = '';
+      // Show ensemble summary if available
+      if (payload.ensemble && payload.ensemble.probe_count > 1) {
+        const ensDiv = document.createElement('div');
+        ensDiv.className = 'history-item';
+        ensDiv.style.background = 'rgba(99,102,241,0.08)';
+        ensDiv.style.borderColor = '#6366f1';
+        ensDiv.innerHTML = `
+          <div class="history-top">
+            <strong style="color:#6366f1;">Ensemble (${payload.ensemble.probe_count} probes)</strong>
+            <span class="chip" style="background:#6366f1;color:#fff;">CF-weighted</span>
+          </div>
+          <p class="muted" style="margin:8px 0 0;">
+            Density <strong>${payload.ensemble.ensemble_density.toFixed(2)}</strong> veh/km ·
+            Flow <strong>${payload.ensemble.ensemble_flow.toFixed(1)}</strong> veh/h
+          </p>
+        `;
+        container.appendChild(ensDiv);
+      }
+
       payload.history.forEach((item) => {
         const button = document.createElement('button');
         button.className = 'history-item';
+        const cfBadge = item.cf_weight != null
+          ? `<span style="font-size:0.72rem;color:#888;margin-left:4px;">CF ${item.cf_weight.toFixed(2)}</span>`
+          : '';
         button.innerHTML = `
           <div class="history-top">
             <strong>${formatTime(item.observed_at)}</strong>
             <span class="chip" style="background:${densityColor(item.density)}; color:#fff;">${densityLabel(item.density)}</span>
           </div>
-          <p class="muted" style="margin:8px 0 0;">Density ${item.density.toFixed(2)} veh/km · Flow ${item.flow.toFixed(1)} veh/h</p>
+          <p class="muted" style="margin:8px 0 0;">Density ${item.density.toFixed(2)} veh/km · Flow ${item.flow.toFixed(1)} veh/h${cfBadge}</p>
         `;
         button.addEventListener('click', () => loadPredictionDetail(item.prediction_id));
         container.appendChild(button);
@@ -325,11 +352,20 @@
     }
 
     function bindLayer(layer, item) {
+      const pred = item.latest_prediction;
+      const ens = item.ensemble;
+      const probeTag = ens && ens.probe_count > 1
+        ? `<span style="background:#6366f1;color:#fff;padding:2px 8px;border-radius:99px;font-size:0.75rem;font-weight:700;margin-left:6px;">${ens.probe_count} probes</span>`
+        : '';
+      const densityVal = ens ? ens.ensemble_density : pred.density;
+      const densityLine = ens && ens.probe_count > 1
+        ? `Ensemble ${ens.ensemble_density.toFixed(2)} veh/km (${ens.probe_count} probes)`
+        : `Density ${pred.density.toFixed(2)} veh/km`;
       layer.bindPopup(`
-        <strong>${item.link.road_name || item.link.link_id}</strong><br>
+        <strong>${item.link.road_name || item.link.link_id}</strong>${probeTag}<br>
         ${item.link.link_id}<br>
-        Density ${item.latest_prediction.density.toFixed(2)} veh/km<br>
-        ${formatTime(item.latest_prediction.observed_at)}
+        ${densityLine}<br>
+        ${formatTime(pred.observed_at)}
       `);
       layer.on('click', () => loadHistory(item.link.link_id).catch(showError));
     }
@@ -345,10 +381,13 @@
       items.forEach((item) => {
         const geometry = safeGeometry(item.link);
         if (!geometry) return;
+        const displayDensity = item.ensemble && item.ensemble.probe_count > 1
+          ? item.ensemble.ensemble_density
+          : item.latest_prediction.density;
         const layer = L.geoJSON(geometry, {
           style: {
-            color: densityColor(item.latest_prediction.density),
-            weight: 5,
+            color: densityColor(displayDensity),
+            weight: item.ensemble && item.ensemble.probe_count > 1 ? 7 : 5,
             opacity: 0.9
           }
         });

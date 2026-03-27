@@ -24,6 +24,10 @@ class RoadLinkMatch:
     center_lon: float
     source: str
     distance_m: float
+    road_rank: str | None = None
+    link_length_m: float | None = None
+    lanes: int | None = None
+    max_spd: float | None = None
 
 
 @dataclass(frozen=True)
@@ -35,6 +39,10 @@ class _PreparedLink:
     center_lat: float
     center_lon: float
     segments: list[tuple[tuple[float, float], tuple[float, float]]]
+    road_rank: str | None = None
+    link_length_m: float | None = None
+    lanes: int | None = None
+    max_spd: float | None = None
 
 
 def _heading_delta_deg(a: float, b: float) -> float:
@@ -112,6 +120,8 @@ class LinkMatcher:
         self.road_name_property = road_name_property
         self.max_match_distance_m = max_match_distance_m
         self.heading_weight_m = heading_weight_m
+        self.min_road_rank: int | None = None
+        self.min_link_length_m: float | None = None
         self.links = self._load_links()
         self._grid: dict[tuple[int, int], list[_PreparedLink]] = {}
         self._build_grid()
@@ -133,7 +143,7 @@ class LinkMatcher:
         if not path.exists():
             return None
 
-        return cls(
+        matcher = cls(
             road_links_path=path,
             source=gis_cfg.get("source", "unknown"),
             link_id_property=gis_cfg.get("link_id_property", "link_id"),
@@ -141,6 +151,11 @@ class LinkMatcher:
             max_match_distance_m=float(gis_cfg.get("max_match_distance_m", 40.0)),
             heading_weight_m=float(gis_cfg.get("heading_weight_m", 15.0)),
         )
+        if "min_road_rank" in gis_cfg:
+            matcher.min_road_rank = int(gis_cfg["min_road_rank"])
+        if "min_link_length_m" in gis_cfg:
+            matcher.min_link_length_m = float(gis_cfg["min_link_length_m"])
+        return matcher
 
     def _load_links(self) -> list[_PreparedLink]:
         with open(self.road_links_path, encoding="utf-8") as f:
@@ -169,6 +184,27 @@ class LinkMatcher:
             if not segments:
                 continue
 
+            road_rank = props.get("road_rank")
+            link_length_m = props.get("link_length_m")
+            lanes = props.get("lanes")
+            max_spd = props.get("max_spd")
+
+            # Filter by road rank (lower = higher hierarchy)
+            if self.min_road_rank is not None and road_rank is not None:
+                try:
+                    if int(road_rank) > self.min_road_rank:
+                        continue
+                except (ValueError, TypeError):
+                    pass
+
+            # Filter by minimum link length
+            if self.min_link_length_m is not None and link_length_m is not None:
+                try:
+                    if float(link_length_m) < self.min_link_length_m:
+                        continue
+                except (ValueError, TypeError):
+                    pass
+
             prepared.append(
                 _PreparedLink(
                     link_id=str(link_id),
@@ -178,6 +214,10 @@ class LinkMatcher:
                     center_lat=center_lat,
                     center_lon=center_lon,
                     segments=segments,
+                    road_rank=str(road_rank) if road_rank is not None else None,
+                    link_length_m=float(link_length_m) if link_length_m is not None else None,
+                    lanes=int(lanes) if lanes is not None else None,
+                    max_spd=float(max_spd) if max_spd is not None else None,
                 )
             )
         return prepared
@@ -272,4 +312,8 @@ class LinkMatcher:
             center_lon=best_link.center_lon,
             source=best_link.source,
             distance_m=best_distance,
+            road_rank=best_link.road_rank,
+            link_length_m=best_link.link_length_m,
+            lanes=best_link.lanes,
+            max_spd=best_link.max_spd,
         )

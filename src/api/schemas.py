@@ -84,6 +84,10 @@ class RoadLinkSummary(BaseModel):
     geometry_geojson: str | None = Field(default=None, description="GeoJSON geometry string")
     center_lat: float | None = Field(default=None, description="Center latitude")
     center_lon: float | None = Field(default=None, description="Center longitude")
+    road_rank: str | None = Field(default=None, description="MOCT road hierarchy rank")
+    link_length_m: float | None = Field(default=None, description="Link length in meters")
+    lanes: int | None = Field(default=None, description="Number of lanes")
+    max_spd: float | None = Field(default=None, description="Max speed km/h")
 
 
 class LinkPredictionSummary(BaseModel):
