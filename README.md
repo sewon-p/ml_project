@@ -6,6 +6,10 @@ UrbanFlow is an end-to-end traffic density estimation system that turns GPS + ac
 
 **[Live Demo](https://traffic-estimator-gcbqhrztha-du.a.run.app/)** · **[API Docs](https://traffic-estimator-gcbqhrztha-du.a.run.app/docs)** · **[Map](https://traffic-estimator-gcbqhrztha-du.a.run.app/map)** · **[ML Pipeline](https://traffic-estimator-gcbqhrztha-du.a.run.app/ml-pipeline/)**
 
+<p align="center">
+  <img src="docs/images/map.png" width="80%" alt="Link density map — Seoul arterial network">
+</p>
+
 ---
 
 ## Table of Contents
@@ -17,7 +21,7 @@ UrbanFlow is an end-to-end traffic density estimation system that turns GPS + ac
 - [Backend and Data Engineering](#backend-and-data-engineering)
 - [Lessons Learned](#lessons-learned)
 - [Tech Stack](#tech-stack)
-- [Quick Start](#quick-start)
+- [Running the Project](#running-the-project)
 - [Project Structure](#project-structure)
 
 ---
@@ -158,6 +162,10 @@ MAE=1.80 means **1–2 vehicles per km per lane** error — approaching fixed lo
 
 **Model comparison** (single probe): FD baseline <0, GPR 0.41, LSTM/CNN-1D 0.45, **XGBoost/LightGBM 0.50** → production.
 
+<p align="center">
+  <img src="docs/images/probe_count_vs_r2.png" width="70%" alt="Probe count vs R²">
+</p>
+
 ---
 
 ## Backend and Data Engineering
@@ -252,6 +260,10 @@ Car-following intensity determines how much to trust each probe. Probes in activ
 
 2D Kalman filter per session: state `[x, vx, y, vy]` in equirectangular frame. GPS measurement update (σ=5m) + accelerometer control input (heading-rotated). Sessions garbage-collected after 10 min inactivity.
 
+| Mobile Probe Collection | API Schema (Swagger) |
+|:---:|:---:|
+| <img src="docs/images/mobile.png" width="45%"> | <img src="docs/images/swagger.png" width="100%"> |
+
 ---
 
 ## Lessons Learned
@@ -276,39 +288,69 @@ Car-following intensity determines how much to trust each probe. Probes in activ
 | **Infra** | Docker, Cloud Run, Artifact Registry, Secret Manager, GitHub Actions |
 | **Data** | Apache Parquet, NumPy NPZ, SUMO (TraCI), Edie's definitions |
 
-## Quick Start
-
 > **Note:** The [live demo](https://traffic-estimator-gcbqhrztha-du.a.run.app/) runs in read-only mode — ML Pipeline execution is disabled on the hosted server. Clone and run locally to train models.
 
+## Running the Project
+
+### Local (recommended for development)
+
 ```bash
-# Install and verify
+python -m venv .venv
+source .venv/bin/activate
 pip install -e ".[dev]"
-pytest                        # 145 tests
-ruff check src/ scripts/      # lint
-
-# Run server (no Docker)
 python scripts/run_console.py
-# → /map, /mobile, /ml-pipeline/, /docs
-
-# Docker with DB + Kafka
-docker-compose up -d && curl localhost:8000/health
-
-# Train a model
-python scripts/extract_features.py --config configs/default.yaml
-python scripts/train.py --config configs/default.yaml
 ```
 
-<details>
-<summary>Environment variables</summary>
+Then open:
+- `http://localhost:8000/` — project overview
+- `http://localhost:8000/map` — link density map
+- `http://localhost:8000/mobile` — mobile probe collection
+- `http://localhost:8000/ml-pipeline/` — ML training dashboard
+- `http://localhost:8000/docs` — API schema
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DATABASE_URL` | (none) | PostgreSQL async URL. Server runs without DB if unset |
-| `CONFIG_PATH` | `configs/default.yaml` | Model and GIS config path |
-| `MIN_TRAVERSAL_DISTANCE_M` | `1000` | Minimum link accumulation before prediction |
-| `KAFKA_BOOTSTRAP_SERVERS` | (none) | Kafka broker. Falls back to Pub/Sub or skips |
+### Docker
 
-</details>
+```bash
+docker-compose up -d
+curl localhost:8000/health
+```
+
+### ML Pipeline (simulation → training → evaluation)
+
+```bash
+# Full pipeline
+python scripts/run_all.py --config configs/default.yaml
+
+# Or step by step
+python scripts/generate_scenarios.py --config configs/simulation/scenarios.yaml
+python scripts/run_simulation.py --config configs/simulation/scenarios.yaml  # requires SUMO
+python scripts/extract_features.py --config configs/default.yaml
+python scripts/train.py --config configs/default.yaml
+python scripts/evaluate.py --config configs/default.yaml
+```
+
+The ML Pipeline dashboard (`/ml-pipeline/`) provides a web UI for these steps with run versioning and resume support. On the hosted server, pipeline execution is disabled — clone and run locally.
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | No | PostgreSQL async URL. Server runs without DB if unset |
+| `CONFIG_PATH` | No | Model and GIS config path (default: `configs/default.yaml`) |
+| `MIN_TRAVERSAL_DISTANCE_M` | No | Min link accumulation before prediction (default: 1000) |
+| `KAFKA_BOOTSTRAP_SERVERS` | No | Kafka broker. Falls back to Pub/Sub or skips |
+
+### CI/CD and Deployment
+
+Pushes to `main` trigger CI:
+1. **Lint** — `ruff check + format`
+2. **Type check** — `mypy src/api/`
+3. **Test** — `pytest` (145 tests × Python 3.11–3.13)
+
+GitHub Release triggers CD:
+1. **Build** — Docker image → GCP Artifact Registry
+2. **Deploy** — Cloud Run (0–2 auto-scaling, 2 GiB memory)
+3. **Verify** — health check on deployed URL
 
 ## Project Structure
 
