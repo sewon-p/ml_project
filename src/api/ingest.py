@@ -37,9 +37,9 @@ _LIVE_HISTORY_LIMIT = 20
 _MATCH_SKIP_DISTANCE_M = 30.0  # skip GIS matching if moved less than this
 
 # Link-based accumulation settings
-_MIN_TRAVERSAL_DISTANCE_M = float(os.environ.get("MIN_TRAVERSAL_DISTANCE_M", "1000"))
+_MIN_TRAVERSAL_DISTANCE_M = float(os.environ.get("MIN_TRAVERSAL_DISTANCE_M", "500"))
 _TARGET_TRAVERSAL_DISTANCE_M = float(os.environ.get("TARGET_TRAVERSAL_DISTANCE_M", "1000"))
-_MIN_TRAVERSAL_RECORDS = int(os.environ.get("MIN_TRAVERSAL_RECORDS", "30"))
+_MIN_TRAVERSAL_RECORDS = int(os.environ.get("MIN_TRAVERSAL_RECORDS", "100"))
 _LINK_EXIT_TIMEOUT = int(os.environ.get("LINK_EXIT_TIMEOUT", "120"))
 _STICKY_LINK_COUNT = 1  # consecutive matches to new link before switching
 
@@ -358,8 +358,8 @@ class LinkBuffer:
             # No match — still accumulate FCD
             self.accumulated_records.append(fcd)
 
-        # Check if target distance reached
-        if completed is None and self.accumulated_distance_m >= _TARGET_TRAVERSAL_DISTANCE_M:
+        # Check if target distance reached (including single long links)
+        if completed is None and self.accumulated_distance_m >= _MIN_TRAVERSAL_DISTANCE_M:
             if len(self.accumulated_records) >= _MIN_TRAVERSAL_RECORDS:
                 completed = self._complete_traversal()
 

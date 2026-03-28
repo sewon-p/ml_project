@@ -50,3 +50,9 @@ Thumbs.db
 
 # Legacy
 legacy/
+
+# Node (playwright for GIF generation)
+node_modules/
+package.json
+package-lock.json
+t.mjs

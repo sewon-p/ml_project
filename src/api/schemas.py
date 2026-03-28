@@ -103,11 +103,21 @@ class LinkPredictionSummary(BaseModel):
     residual_density: float = Field(description="Residual correction Delta k")
 
 
+class EnsembleSummary(BaseModel):
+    """Ensemble state for a link."""
+
+    ensemble_density: float
+    ensemble_flow: float = 0.0
+    probe_count: int
+    is_frozen: bool = False
+
+
 class LinkLatestResponse(BaseModel):
     """Map layer payload: one latest prediction per link."""
 
     link: RoadLinkSummary
     latest_prediction: LinkPredictionSummary
+    ensemble: EnsembleSummary | None = None
 
 
 class LinkHistoryResponse(BaseModel):
@@ -115,6 +125,7 @@ class LinkHistoryResponse(BaseModel):
 
     link: RoadLinkSummary
     history: list[LinkPredictionSummary]
+    ensemble: EnsembleSummary | None = None
 
 
 class PredictionDetailResponse(BaseModel):

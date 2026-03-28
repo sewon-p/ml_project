@@ -180,12 +180,11 @@
             </div>
           </div>
 
-          <div>
+          <div style="margin-top:-4px;">
             <p class="kicker">Selected Link</p>
-            <h2 id="selectedTitle">Choose a link</h2>
-            <p class="muted" id="selectedMeta">Click a highlighted link on the map to open its history.</p>
+            <h2 id="selectedTitle" style="margin-bottom:4px;">Choose a link</h2>
+            <p class="muted" id="selectedMeta" style="margin-bottom:0;">Click a highlighted link on the map to open its history.</p>
           </div>
-
           <div id="historyContainer" class="history-list">
             <div class="empty">No link selected yet.</div>
           </div>
@@ -224,6 +223,7 @@
     };
 
     const map = L.map('map', { zoomControl: false, preferCanvas: true }).setView(CONFIG.seoulCenter, CONFIG.seoulZoom);
+    window._map = map;  // expose for automation/testing
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     L.tileLayer(CONFIG.tileUrl, {
       attribution: CONFIG.tileAttribution,
@@ -310,23 +310,33 @@
 
       const container = document.getElementById('historyContainer');
       container.innerHTML = '';
-      // Show ensemble summary if available
-      if (payload.ensemble && payload.ensemble.probe_count > 1) {
+      // Show ensemble summary — prominent card
+      if (payload.ensemble && payload.ensemble.probe_count > 0) {
         const ensDiv = document.createElement('div');
-        ensDiv.className = 'history-item';
-        ensDiv.style.background = 'rgba(99,102,241,0.08)';
-        ensDiv.style.borderColor = '#6366f1';
+        ensDiv.style.cssText = 'padding:18px 20px; border-radius:16px; background:linear-gradient(135deg, #2B2D42 0%, #3d3f5c 100%); color:#fff; margin-bottom:12px; box-shadow:0 4px 12px rgba(43,45,66,0.25);';
         ensDiv.innerHTML = `
-          <div class="history-top">
-            <strong style="color:#6366f1;">Ensemble (${payload.ensemble.probe_count} probes)</strong>
-            <span class="chip" style="background:#6366f1;color:#fff;">CF-weighted</span>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <span style="font-weight:800; font-size:1.1rem;">Ensemble Result</span>
+            <span style="background:rgba(255,255,255,0.2); padding:4px 10px; border-radius:8px; font-size:0.75rem; font-weight:700;">${payload.ensemble.probe_count} probe${payload.ensemble.probe_count > 1 ? 's' : ''} · CF-weighted</span>
           </div>
-          <p class="muted" style="margin:8px 0 0;">
-            Density <strong>${payload.ensemble.ensemble_density.toFixed(2)}</strong> veh/km ·
-            Flow <strong>${payload.ensemble.ensemble_flow.toFixed(1)}</strong> veh/h
-          </p>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div>
+              <div style="font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em;">Density</div>
+              <div style="font-size:1.6rem; font-weight:800;">${payload.ensemble.ensemble_density.toFixed(1)} <span style="font-size:0.8rem; font-weight:500;">veh/km/lane</span></div>
+            </div>
+            <div>
+              <div style="font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em;">Flow</div>
+              <div style="font-size:1.6rem; font-weight:800;">${payload.ensemble.ensemble_flow.toFixed(0)} <span style="font-size:0.8rem; font-weight:500;">veh/h</span></div>
+            </div>
+          </div>
         `;
         container.appendChild(ensDiv);
+
+        // Separator
+        const sep = document.createElement('div');
+        sep.style.cssText = 'font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; font-weight:700; padding:8px 0 4px;';
+        sep.textContent = 'Individual probe predictions';
+        container.appendChild(sep);
       }
 
       payload.history.forEach((item) => {
@@ -340,7 +350,7 @@
             <strong>${formatTime(item.observed_at)}</strong>
             <span class="chip" style="background:${densityColor(item.density)}; color:#fff;">${densityLabel(item.density)}</span>
           </div>
-          <p class="muted" style="margin:8px 0 0;">Density ${item.density.toFixed(2)} veh/km · Flow ${item.flow.toFixed(1)} veh/h${cfBadge}</p>
+          <p class="muted" style="margin:8px 0 0;">Density ${item.density.toFixed(2)} veh/km/lane · Flow ${item.flow.toFixed(1)} veh/h${cfBadge}</p>
         `;
         button.addEventListener('click', () => loadPredictionDetail(item.prediction_id));
         container.appendChild(button);
@@ -359,8 +369,8 @@
         : '';
       const densityVal = ens ? ens.ensemble_density : pred.density;
       const densityLine = ens && ens.probe_count > 1
-        ? `Ensemble ${ens.ensemble_density.toFixed(2)} veh/km (${ens.probe_count} probes)`
-        : `Density ${pred.density.toFixed(2)} veh/km`;
+        ? `Ensemble ${ens.ensemble_density.toFixed(2)} veh/km/lane (${ens.probe_count} probes)`
+        : `Density ${pred.density.toFixed(2)} veh/km/lane`;
       layer.bindPopup(`
         <strong>${item.link.road_name || item.link.link_id}</strong>${probeTag}<br>
         ${item.link.link_id}<br>
@@ -417,8 +427,40 @@
     document.getElementById('fitBtn').addEventListener('click', () => map.setView(CONFIG.seoulCenter, CONFIG.seoulZoom));
     document.getElementById('closeDrawer').addEventListener('click', () => document.getElementById('detailDrawer').classList.add('hidden'));
 
-    loadLatestLinks().catch(showError);
-    window.setInterval(() => loadLatestLinks().catch(showError), 60000);
+    loadLatestLinks().then(() => {
+      // Auto-select first link for demo/screenshot
+      if (!selectedLinkId && linkLookup.size > 0) {
+        const firstId = linkLookup.keys().next().value;
+        loadHistory(firstId).catch(showError);
+      }
+    }).catch(showError);
+
+    // Live polling: refresh links every 5s, selected link history every 3s
+    let prevHistoryCount = 0;
+    async function pollUpdates() {
+      try {
+        await loadLatestLinks();
+        if (selectedLinkId) {
+          const res = await fetch(`/map/links/${encodeURIComponent(selectedLinkId)}/history?limit=30`);
+          if (res.ok) {
+            const payload = await res.json();
+            const newCount = payload.history.length;
+            if (newCount !== prevHistoryCount) {
+              prevHistoryCount = newCount;
+              await loadHistory(selectedLinkId);
+              // Flash effect on new entry
+              const firstItem = document.querySelector('#historyContainer .history-item');
+              if (firstItem) {
+                firstItem.style.transition = 'background 0.5s';
+                firstItem.style.background = 'rgba(239,35,60,0.12)';
+                setTimeout(() => { firstItem.style.background = ''; }, 1500);
+              }
+            }
+          }
+        }
+      } catch(e) {}
+    }
+    window.setInterval(pollUpdates, 5000);
   </script>
 </body>
 </html>

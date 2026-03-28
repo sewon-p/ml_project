@@ -100,10 +100,12 @@ def _demo_payload() -> tuple[dict[str, RoadLinkSummary], dict[str, list[LinkPred
         links[link_id] = link
 
         entries: list[LinkPredictionSummary] = []
-        base_density = 12.0 + (idx % 9) * 7.5
-        for hist_idx in range(5):
-            density = base_density + hist_idx * 2.4
-            fd_density = max(5.0, density - 4.2)
+        base_density = 6.0 + (idx % 12) * 4.5
+        import math
+        for hist_idx in range(8):
+            density = base_density + 6.0 * math.sin(hist_idx * 0.8 + idx * 0.3) + hist_idx * 1.2
+            density = max(2.0, min(28.0, density))
+            fd_density = max(3.0, density - 3.0 - hist_idx * 0.5)
             entries.append(
                 LinkPredictionSummary(
                     prediction_id=idx * 100 + hist_idx,
@@ -133,6 +135,21 @@ def _demo_fcd(prediction: LinkPredictionSummary) -> list[FCDRecord]:
         )
         for t in range(300)
     ]
+
+
+def _get_ensemble_snapshot() -> dict:
+    """Get ensemble aggregator state for all links."""
+    try:
+        from src.api.ingest import _get_ensemble_aggregator
+
+        agg = _get_ensemble_aggregator()
+        if agg is None:
+            return {}
+        return {lid: {"ensemble_density": s.ensemble_density, "ensemble_flow": s.ensemble_flow,
+                       "probe_count": s.probe_count, "is_frozen": s.is_frozen}
+                for lid, s in agg._active.items()}
+    except Exception:
+        return {}
 
 
 def _live_payload() -> tuple[dict[str, RoadLinkSummary], dict[str, list[LinkPredictionSummary]]]:
@@ -171,11 +188,27 @@ async def latest_link_predictions(
 ) -> list[LinkLatestResponse]:
     live_links, live_history = _live_payload()
     if live_links:
-        return [
-            LinkLatestResponse(link=live_links[link_id], latest_prediction=live_history[link_id][0])
-            for link_id in list(live_links.keys())[:limit]
-            if link_id in live_history and live_history[link_id]
-        ]
+        ensemble_snapshot = _get_ensemble_snapshot()
+        results = []
+        for link_id in list(live_links.keys())[:limit]:
+            if link_id not in live_history or not live_history[link_id]:
+                continue
+            ens = ensemble_snapshot.get(link_id)
+            ens_summary = None
+            if ens and ens.get("probe_count", 0) > 0:
+                from src.api.schemas import EnsembleSummary
+                ens_summary = EnsembleSummary(
+                    ensemble_density=ens["ensemble_density"],
+                    ensemble_flow=ens.get("ensemble_flow", 0.0),
+                    probe_count=ens["probe_count"],
+                    is_frozen=ens.get("is_frozen", False),
+                )
+            results.append(LinkLatestResponse(
+                link=live_links[link_id],
+                latest_prediction=live_history[link_id][0],
+                ensemble=ens_summary,
+            ))
+        return results
 
     if session is not None:
         try:
@@ -207,7 +240,20 @@ async def link_history(
 ) -> LinkHistoryResponse:
     live_links, live_history = _live_payload()
     if link_id in live_links and link_id in live_history:
-        return LinkHistoryResponse(link=live_links[link_id], history=live_history[link_id][:limit])
+        ens_snap = _get_ensemble_snapshot().get(link_id)
+        ens_summary = None
+        if ens_snap and ens_snap.get("probe_count", 0) > 0:
+            from src.api.schemas import EnsembleSummary
+            ens_summary = EnsembleSummary(
+                ensemble_density=ens_snap["ensemble_density"],
+                ensemble_flow=ens_snap.get("ensemble_flow", 0.0),
+                probe_count=ens_snap["probe_count"],
+            )
+        return LinkHistoryResponse(
+            link=live_links[link_id],
+            history=live_history[link_id][:limit],
+            ensemble=ens_summary,
+        )
 
     if session is not None:
         try:

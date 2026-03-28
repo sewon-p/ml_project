@@ -114,7 +114,24 @@ def predict_density_from_traversal(
 
     # 1. Build trajectory from FCD
     raw_df = pd.DataFrame(fcd_records)
-    trajectory = build_trajectory(raw_df)
+
+    # If raw data already has 6-channel columns (VX,VY,AX,AY,speed,brake),
+    # use directly. Otherwise go through build_trajectory.
+    from src.data.preprocessing import CHANNELS
+
+    if all(c in raw_df.columns for c in CHANNELS):
+        trajectory = raw_df[CHANNELS].copy()
+    else:
+        trajectory = build_trajectory(raw_df)
+
+    # 1b. Resample to 100 timesteps (match training data from 1km npz)
+    _TARGET_TS = 100
+    if len(trajectory) > _TARGET_TS:
+        idx = np.linspace(0, len(trajectory) - 1, _TARGET_TS, dtype=int)
+        trajectory = trajectory.iloc[idx].reset_index(drop=True)
+    elif len(trajectory) < _TARGET_TS:
+        pad = pd.concat([trajectory.iloc[[-1]]] * (_TARGET_TS - len(trajectory)), ignore_index=True)
+        trajectory = pd.concat([trajectory, pad], ignore_index=True)
 
     # 2. Extract features (length-invariant statistics)
     feats: dict[str, float] = extract_features(trajectory, speed_limit=speed_limit)

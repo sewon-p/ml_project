@@ -16,11 +16,15 @@ _EXCLUDE_COLUMNS = {
     "probe_idx",
     "density",
     "flow",
+    "density_per_lane",
+    "flow_per_lane",
     "demand_vehph",
+    "traversal_time",
     "k_fd",
     "q_fd",
     "delta_density",
     "delta_flow",
+    "gap_mean",
 }
 
 
@@ -48,9 +52,24 @@ class ModelRegistry:
                 self.feature_columns = json.load(f)
         else:
             tabular_path = cfg.get("data", {}).get("tabular_path", "data/features/dataset.parquet")
-            schema = pq.read_schema(tabular_path)
-            all_columns = [f.name for f in schema]
-            self.feature_columns = [c for c in all_columns if c not in _EXCLUDE_COLUMNS]
+            try:
+                schema = pq.read_schema(tabular_path)
+                all_columns = [f.name for f in schema]
+                self.feature_columns = [c for c in all_columns if c not in _EXCLUDE_COLUMNS]
+            except Exception:
+                # Fallback: known 32 feature columns matching the deployed model
+                self.feature_columns = [
+                    "speed_mean", "speed_std", "speed_cv", "speed_iqr",
+                    "speed_min", "speed_max", "speed_median", "speed_p10", "speed_p90",
+                    "vy_mean", "vy_std", "vy_min", "vy_max",
+                    "ax_mean", "ax_std", "ay_mean", "ay_std",
+                    "jerk_mean", "jerk_std",
+                    "stop_count", "stop_time_ratio", "mean_stop_duration",
+                    "speed_autocorr_lag1", "speed_fft_dominant_freq", "sample_entropy",
+                    "brake_count", "brake_time_ratio", "mean_brake_duration",
+                    "vy_variance", "vy_energy",
+                    "num_lanes", "speed_limit",
+                ]
 
         # --- residual correction config ---
         rc = cfg.get("residual_correction", {})
