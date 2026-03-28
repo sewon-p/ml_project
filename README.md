@@ -234,10 +234,16 @@ erDiagram
 
 ### CF-Weighted Ensemble
 
+```math
+\text{cf}_i = \sigma_{a_x} + r_{\text{brake}} + \text{CV}_{\text{speed}}
 ```
-cf_score_i = ax_std + brake_time_ratio + speed_cv
-weight_i   = exp(cf_score_i) / Σ exp(cf_score_j)    # softmax
-ensemble_k = Σ weight_i × density_i                  # weighted mean
+
+```math
+w_i = \frac{\exp(\text{cf}_i)}{\sum_j \exp(\text{cf}_j)} \quad \text{(softmax)}
+```
+
+```math
+\hat{k}_{\text{ensemble}} = \sum_i w_i \cdot \hat{k}_i
 ```
 
 Car-following intensity determines how much to trust each probe. Probes in active car-following carry more density information → higher weight. Bayesian variant uses CF-informed observation uncertainty for sequential updating (R²=0.622 vs simple mean 0.601).
@@ -271,6 +277,8 @@ Car-following intensity determines how much to trust each probe. Probes in activ
 | **Data** | Apache Parquet, NumPy NPZ, SUMO (TraCI), Edie's definitions |
 
 ## Quick Start
+
+> **Note:** The [live demo](https://traffic-estimator-gcbqhrztha-du.a.run.app/) runs in read-only mode — ML Pipeline execution is disabled on the hosted server. Clone and run locally to train models.
 
 ```bash
 # Install and verify

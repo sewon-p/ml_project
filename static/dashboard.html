@@ -1611,6 +1611,29 @@ document.querySelectorAll('#modelTypes input, #resumeModelTypes input').forEach(
   cb.addEventListener('change', updateFeatureSections);
 });
 updateFeatureSections();
+
+// Cloud environment detection — show read-only overlay
+(async () => {
+  try {
+    const r = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    if (r.status === 403) {
+      const overlay = document.createElement('div');
+      overlay.innerHTML = `
+        <div style="position:fixed;inset:0;z-index:9999;background:rgba(43,45,66,0.55);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;">
+          <div style="background:#fff;border-radius:20px;padding:36px 44px;max-width:460px;text-align:center;box-shadow:0 24px 48px rgba(0,0,0,0.18);">
+            <div style="font-size:2.4rem;margin-bottom:12px;">🔒</div>
+            <h2 style="margin:0 0 10px;font-size:1.3rem;color:#2B2D42;">Cloud Environment — Read Only</h2>
+            <p style="color:#8D99AE;font-size:0.95rem;line-height:1.6;margin:0 0 20px;">
+              ML Pipeline execution is disabled on the hosted server.<br>
+              Clone the repo and run locally to train models.
+            </p>
+            <a href="/about" style="display:inline-block;padding:12px 24px;background:#EF233C;color:#fff;border-radius:14px;font-weight:700;text-decoration:none;">Back to About</a>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+    }
+  } catch (e) {}
+})();
 </script>
 </body>
 </html>

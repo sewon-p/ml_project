@@ -955,25 +955,20 @@ flowchart LR
           <div
             style="font:700 13px/1 var(--mono); color:var(--accent); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:14px;">
             CF-Weighted Bayesian Ensemble</div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:22px; align-items:start;">
-            <div>
-              <p class="section-copy">
-                Each probe's prediction is weighted by its <strong>car-following intensity</strong> —
-                probes actively following a leader carry more density information than free-driving probes.
-              </p>
-              <p class="section-copy" style="margin-top:14px;">
-                <strong>Bayesian variant:</strong> sequential update where each probe's observation uncertainty
-                $\sigma_{\text{obs}} \propto e^{-\text{cf}}$ — higher CF intensity → lower uncertainty → more trusted.
-                Prior from previous link estimate or global mean. Tested R² = 0.622 vs simple mean 0.601.
-              </p>
-            </div>
-            <div
-              style="padding:20px; border-radius:14px; background:rgba(43,45,66,0.03); border:1px solid var(--surface-border); font-size:1rem; line-height:2.4;">
-              $$\text{cf}_i = \sigma_{a_x} + r_{\text{brake}} + \text{CV}_{\text{speed}}$$
-              $$w_i = \frac{\exp(\text{cf}_i)}{\sum_j \exp(\text{cf}_j)} \quad \text{(softmax)}$$
-              $$\hat{k}_{\text{ensemble}} = \sum_i w_i \cdot \hat{k}_i$$
-            </div>
+          <div style="padding:20px; border-radius:14px; background:rgba(43,45,66,0.03); border:1px solid var(--surface-border); font-size:1rem; line-height:2.4; margin-bottom:16px; overflow-x:auto;">
+            $$\text{cf}_i = \sigma_{a_x} + r_{\text{brake}} + \text{CV}_{\text{speed}}$$
+            $$w_i = \frac{\exp(\text{cf}_i)}{\sum_j \exp(\text{cf}_j)} \quad \text{(softmax)}$$
+            $$\hat{k}_{\text{ensemble}} = \sum_i w_i \cdot \hat{k}_i$$
           </div>
+          <p class="section-copy">
+            Each probe's prediction is weighted by its <strong>car-following intensity</strong> —
+            probes actively following a leader carry more density information than free-driving probes.
+          </p>
+          <p class="section-copy" style="margin-top:14px;">
+            <strong>Bayesian variant:</strong> sequential update where each probe's observation uncertainty
+            $\sigma_{\text{obs}} \propto e^{-\text{cf}}$ — higher CF intensity → lower uncertainty → more trusted.
+            Prior from previous link estimate or global mean. Tested R² = 0.622 vs simple mean 0.601.
+          </p>
         </div>
 
         <!-- CI/CD -->

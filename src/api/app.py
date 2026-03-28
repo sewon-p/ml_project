@@ -249,11 +249,11 @@ def _static_page(name: str) -> FileResponse:
 
 @app.get("/", include_in_schema=False)
 async def root() -> RedirectResponse:
-    return RedirectResponse(url="/portfolio")
+    return RedirectResponse(url="/about")
 
 
-@app.get("/portfolio", include_in_schema=False)
-async def portfolio_page() -> FileResponse:
+@app.get("/about", include_in_schema=False)
+async def about_page() -> FileResponse:
     return _static_page("portfolio.html")
 
 
