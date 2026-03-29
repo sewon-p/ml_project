@@ -56,13 +56,11 @@ def _serialize_prediction(prediction: Prediction) -> LinkPredictionSummary:
 
 
 @lru_cache(maxsize=1)
-def _demo_payload() -> (
-    tuple[
-        dict[str, RoadLinkSummary],
-        dict[str, list[LinkPredictionSummary]],
-        dict[str, EnsembleSummary],
-    ]
-):
+def _demo_payload() -> tuple[
+    dict[str, RoadLinkSummary],
+    dict[str, list[LinkPredictionSummary]],
+    dict[str, EnsembleSummary],
+]:
     config_path = os.environ.get("CONFIG_PATH", "configs/default.yaml")
     cfg = load_config(config_path)
     gis_path = cfg.get("gis", {}).get("road_links_path", "data/gis/seoul_links.geojson")
