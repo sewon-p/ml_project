@@ -102,6 +102,7 @@ def _demo_payload() -> tuple[dict[str, RoadLinkSummary], dict[str, list[LinkPred
         entries: list[LinkPredictionSummary] = []
         base_density = 6.0 + (idx % 12) * 4.5
         import math
+
         for hist_idx in range(8):
             density = base_density + 6.0 * math.sin(hist_idx * 0.8 + idx * 0.3) + hist_idx * 1.2
             density = max(2.0, min(28.0, density))
@@ -145,9 +146,15 @@ def _get_ensemble_snapshot() -> dict:
         agg = _get_ensemble_aggregator()
         if agg is None:
             return {}
-        return {lid: {"ensemble_density": s.ensemble_density, "ensemble_flow": s.ensemble_flow,
-                       "probe_count": s.probe_count, "is_frozen": s.is_frozen}
-                for lid, s in agg._active.items()}
+        return {
+            lid: {
+                "ensemble_density": s.ensemble_density,
+                "ensemble_flow": s.ensemble_flow,
+                "probe_count": s.probe_count,
+                "is_frozen": s.is_frozen,
+            }
+            for lid, s in agg._active.items()
+        }
     except Exception:
         return {}
 
@@ -197,17 +204,20 @@ async def latest_link_predictions(
             ens_summary = None
             if ens and ens.get("probe_count", 0) > 0:
                 from src.api.schemas import EnsembleSummary
+
                 ens_summary = EnsembleSummary(
                     ensemble_density=ens["ensemble_density"],
                     ensemble_flow=ens.get("ensemble_flow", 0.0),
                     probe_count=ens["probe_count"],
                     is_frozen=ens.get("is_frozen", False),
                 )
-            results.append(LinkLatestResponse(
-                link=live_links[link_id],
-                latest_prediction=live_history[link_id][0],
-                ensemble=ens_summary,
-            ))
+            results.append(
+                LinkLatestResponse(
+                    link=live_links[link_id],
+                    latest_prediction=live_history[link_id][0],
+                    ensemble=ens_summary,
+                )
+            )
         return results
 
     if session is not None:
@@ -244,6 +254,7 @@ async def link_history(
         ens_summary = None
         if ens_snap and ens_snap.get("probe_count", 0) > 0:
             from src.api.schemas import EnsembleSummary
+
             ens_summary = EnsembleSummary(
                 ensemble_density=ens_snap["ensemble_density"],
                 ensemble_flow=ens_snap.get("ensemble_flow", 0.0),
