@@ -7,7 +7,7 @@ UrbanFlow is an end-to-end traffic density estimation system that turns GPS + ac
 **[Live Demo](https://traffic-estimator-gcbqhrztha-du.a.run.app/)** · **[API Docs](https://traffic-estimator-gcbqhrztha-du.a.run.app/docs)** · **[Map](https://traffic-estimator-gcbqhrztha-du.a.run.app/map)** · **[ML Pipeline](https://traffic-estimator-gcbqhrztha-du.a.run.app/ml-pipeline/)**
 
 <p align="center">
-  <img src="docs/images/map.png" width="80%" alt="Link density map — Seoul arterial network">
+  <img src="docs/images/map_demo.gif" width="80%" alt="Multi-probe ensemble on Seoul arterial network">
 </p>
 
 ---
@@ -259,10 +259,6 @@ Car-following intensity determines how much to trust each probe. Probes in activ
 ### Sensor Fusion
 
 2D Kalman filter per session: state `[x, vx, y, vy]` in equirectangular frame. GPS measurement update (σ=5m) + accelerometer control input (heading-rotated). Sessions garbage-collected after 10 min inactivity.
-
-| Mobile Probe Collection | API Schema (Swagger) |
-|:---:|:---:|
-| <img src="docs/images/mobile.png" width="45%"> | <img src="docs/images/swagger.png" width="100%"> |
 
 ---
 
