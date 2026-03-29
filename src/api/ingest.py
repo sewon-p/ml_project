@@ -37,7 +37,7 @@ _LIVE_HISTORY_LIMIT = 20
 _MATCH_SKIP_DISTANCE_M = 30.0  # skip GIS matching if moved less than this
 
 # Link-based accumulation settings
-_MIN_TRAVERSAL_DISTANCE_M = float(os.environ.get("MIN_TRAVERSAL_DISTANCE_M", "500"))
+_MIN_TRAVERSAL_DISTANCE_M = float(os.environ.get("MIN_TRAVERSAL_DISTANCE_M", "1000"))
 _TARGET_TRAVERSAL_DISTANCE_M = float(os.environ.get("TARGET_TRAVERSAL_DISTANCE_M", "1000"))
 _MIN_TRAVERSAL_RECORDS = int(os.environ.get("MIN_TRAVERSAL_RECORDS", "100"))
 _LINK_EXIT_TIMEOUT = int(os.environ.get("LINK_EXIT_TIMEOUT", "120"))

@@ -27,9 +27,12 @@ def _predict_from_feature_map(
         [[feats.get(col, 0.0) for col in registry.feature_columns]],
         dtype=np.float64,
     )
-    delta_k = float(registry.model.predict(feature_vector)[0])
+    density = float(registry.model.predict(feature_vector)[0])
 
     speed_mean = float(feats.get("speed_mean", 0.0))
+    flow = density * speed_mean * 3.6
+
+    # FD baseline for reference (not used in prediction)
     v_free = speed_limit * registry.v_free_factor
     fd = compute_fd_density(
         registry.fd_model,
@@ -42,15 +45,12 @@ def _predict_from_feature_map(
     k_fd = float(fd["k_fd"])
     q_fd = float(fd["q_fd"])
 
-    density = k_fd + delta_k
-    flow = density * speed_mean * 3.6
-
     return {
         "density": density,
         "flow": flow,
         "fd_density": k_fd,
         "fd_flow": q_fd,
-        "residual_density": delta_k,
+        "residual_density": density - k_fd,
     }
 
 
@@ -67,9 +67,9 @@ def predict_density(
         2. Extract scalar features via the feature registry.
         3. Drop redundant features, add num_lanes / speed_limit.
         4. Align to training column order → numpy array.
-        5. XGBoost predict → Δk (residual).
-        6. Compute Underwood FD baseline → k_fd, q_fd.
-        7. Final density = k_fd + Δk.
+        5. XGBoost predict → density (direct).
+        6. Compute Underwood FD baseline → k_fd, q_fd (reference only).
+        7. Final density = XGBoost output.
     """
     # 1. raw FCD → 6-channel trajectory
     raw_df = pd.DataFrame(fcd_records)

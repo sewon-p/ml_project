@@ -128,10 +128,9 @@ class TestPredictEndpoint:
         assert "prediction_id" in data
         # prediction_id is None when DB is unavailable
         assert data["prediction_id"] is None
-        # residual should match mock
-        assert data["residual_density"] == pytest.approx(2.5)
-        # density = fd_density + residual
-        assert data["density"] == pytest.approx(data["fd_density"] + 2.5)
+        # density is direct XGBoost output (not residual-based)
+        # residual_density = density - fd_density (reference only)
+        assert data["residual_density"] == pytest.approx(data["density"] - data["fd_density"])
 
     def test_predict_empty_records(self, client: TestClient) -> None:
         payload = {
@@ -178,8 +177,9 @@ class TestFeatureIngestEndpoint:
         assert data["status"] == "ok"
         assert data["buffer_count"] == 300
         assert data["prediction"] is not None
-        assert data["prediction"]["density"] == pytest.approx(
-            data["prediction"]["fd_density"] + 2.5
+        assert data["prediction"]["density"] > 0
+        assert data["prediction"]["residual_density"] == pytest.approx(
+            data["prediction"]["density"] - data["prediction"]["fd_density"]
         )
 
 
@@ -235,7 +235,9 @@ class TestInference:
             num_lanes=2,
             registry=registry,
         )
-        assert result["density"] == pytest.approx(result["fd_density"] + 5.0)
+        # Model outputs density directly (not residual)
+        assert result["density"] == pytest.approx(5.0)
+        assert result["residual_density"] == pytest.approx(5.0 - result["fd_density"])
 
     def test_predict_density_from_features(self) -> None:
         from src.api.inference import predict_density_from_features
@@ -257,7 +259,8 @@ class TestInference:
             num_lanes=2,
             registry=registry,
         )
-        assert result["density"] == pytest.approx(result["fd_density"] + 2.5)
+        assert result["density"] == pytest.approx(2.5)
+        assert result["residual_density"] == pytest.approx(2.5 - result["fd_density"])
 
 
 class TestBuildTrajectory:
