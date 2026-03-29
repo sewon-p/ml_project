@@ -27,7 +27,8 @@ def _predict_from_feature_map(
         [[feats.get(col, 0.0) for col in registry.feature_columns]],
         dtype=np.float64,
     )
-    density = float(registry.model.predict(feature_vector)[0])
+    density_total = float(registry.model.predict(feature_vector)[0])
+    density = density_total / max(num_lanes, 1)  # per-lane
 
     speed_mean = float(feats.get("speed_mean", 0.0))
     flow = density * speed_mean * 3.6

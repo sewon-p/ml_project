@@ -380,6 +380,8 @@
       layer.on('click', () => loadHistory(item.link.link_id).catch(showError));
     }
 
+    let initialLoadDone = false;
+
     async function loadLatestLinks() {
       const response = await fetch('/map/links/latest?limit=1000');
       if (!response.ok) throw new Error(`Failed to load links (${response.status})`);
@@ -411,11 +413,15 @@
       document.getElementById('loadedCount').textContent = String(items.length);
       document.getElementById('refreshedAt').textContent = new Date().toLocaleTimeString('en-US');
 
-      if (bounds.length) {
-        const merged = bounds.reduce((acc, cur) => acc.extend(cur), bounds[0]);
-        map.fitBounds(merged.pad(0.08));
-      } else {
-        map.setView(CONFIG.seoulCenter, CONFIG.seoulZoom);
+      // Only fit bounds on first load — preserve user's zoom/pan on polls
+      if (!initialLoadDone) {
+        initialLoadDone = true;
+        if (bounds.length) {
+          const merged = bounds.reduce((acc, cur) => acc.extend(cur), bounds[0]);
+          map.fitBounds(merged.pad(0.08));
+        } else {
+          map.setView(CONFIG.seoulCenter, CONFIG.seoulZoom);
+        }
       }
 
       if (selectedLinkId && linkLookup.has(selectedLinkId)) {

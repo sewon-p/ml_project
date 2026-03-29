@@ -235,9 +235,9 @@ class TestInference:
             num_lanes=2,
             registry=registry,
         )
-        # Model outputs density directly (not residual)
-        assert result["density"] == pytest.approx(5.0)
-        assert result["residual_density"] == pytest.approx(5.0 - result["fd_density"])
+        # Model outputs total density=5.0, divided by num_lanes=2 → 2.5 per lane
+        assert result["density"] == pytest.approx(2.5)
+        assert result["residual_density"] == pytest.approx(2.5 - result["fd_density"])
 
     def test_predict_density_from_features(self) -> None:
         from src.api.inference import predict_density_from_features
@@ -259,8 +259,9 @@ class TestInference:
             num_lanes=2,
             registry=registry,
         )
-        assert result["density"] == pytest.approx(2.5)
-        assert result["residual_density"] == pytest.approx(2.5 - result["fd_density"])
+        # mock returns 2.5 total, /2 lanes = 1.25 per lane
+        assert result["density"] == pytest.approx(1.25)
+        assert result["residual_density"] == pytest.approx(1.25 - result["fd_density"])
 
 
 class TestBuildTrajectory:

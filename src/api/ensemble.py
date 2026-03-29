@@ -96,9 +96,13 @@ class EnsembleAggregator:
             )
             self._active[link_id] = state
         else:
-            # Prune predictions older than window from the newest
             state.predictions.append(probe)
             state.window_end = ts
+            # Prune predictions older than window_seconds from the newest
+            cutoff = ts - self.window_seconds
+            state.predictions = [p for p in state.predictions if p.timestamp >= cutoff]
+            if state.predictions:
+                state.window_start = state.predictions[0].timestamp
 
         # Recompute ensemble
         self._recompute(state)

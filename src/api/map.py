@@ -17,6 +17,7 @@ from src.api.crud import get_link_history, get_prediction_detail, list_latest_li
 from src.api.database import get_optional_session
 from src.api.models_db import Prediction, RoadLink
 from src.api.schemas import (
+    EnsembleSummary,
     FCDRecord,
     LinkHistoryResponse,
     LinkLatestResponse,
@@ -55,7 +56,13 @@ def _serialize_prediction(prediction: Prediction) -> LinkPredictionSummary:
 
 
 @lru_cache(maxsize=1)
-def _demo_payload() -> tuple[dict[str, RoadLinkSummary], dict[str, list[LinkPredictionSummary]]]:
+def _demo_payload() -> (
+    tuple[
+        dict[str, RoadLinkSummary],
+        dict[str, list[LinkPredictionSummary]],
+        dict[str, EnsembleSummary],
+    ]
+):
     config_path = os.environ.get("CONFIG_PATH", "configs/default.yaml")
     cfg = load_config(config_path)
     gis_path = cfg.get("gis", {}).get("road_links_path", "data/gis/seoul_links.geojson")
@@ -63,14 +70,17 @@ def _demo_payload() -> tuple[dict[str, RoadLinkSummary], dict[str, list[LinkPred
     if not path.is_absolute():
         path = (Path(config_path).resolve().parent.parent / path).resolve()
     if not path.exists():
-        return {}, {}
+        return {}, {}, {}
 
     with open(path, encoding="utf-8") as f:
         geojson = json.load(f)
 
     links: dict[str, RoadLinkSummary] = {}
     history: dict[str, list[LinkPredictionSummary]] = {}
+    ensembles: dict[str, EnsembleSummary] = {}
     base_time = datetime(2026, 3, 14, 16, 0, tzinfo=UTC)
+
+    import math
 
     for idx, feature in enumerate(geojson.get("features", [])[:80], start=1):
         props = feature.get("properties") or {}
@@ -101,7 +111,6 @@ def _demo_payload() -> tuple[dict[str, RoadLinkSummary], dict[str, list[LinkPred
 
         entries: list[LinkPredictionSummary] = []
         base_density = 6.0 + (idx % 12) * 4.5
-        import math
 
         for hist_idx in range(8):
             density = base_density + 6.0 * math.sin(hist_idx * 0.8 + idx * 0.3) + hist_idx * 1.2
@@ -121,7 +130,20 @@ def _demo_payload() -> tuple[dict[str, RoadLinkSummary], dict[str, list[LinkPred
             )
         history[link_id] = entries
 
-    return links, history
+        # Ensemble: simulate multi-probe for ~60% of links
+        probe_count = 1 + (idx * 7 + 3) % 5  # 1-5 probes
+        if probe_count > 1:
+            latest = entries[0]
+            ens_density = latest.density + math.sin(idx * 1.7) * 1.5
+            ens_density = max(2.0, min(28.0, ens_density))
+            ensembles[link_id] = EnsembleSummary(
+                ensemble_density=ens_density,
+                ensemble_flow=ens_density * (8.0 + (idx % 5) * 2.1) * 3.6,
+                probe_count=probe_count,
+                is_frozen=idx % 7 == 0,
+            )
+
+    return links, history, ensembles
 
 
 def _demo_fcd(prediction: LinkPredictionSummary) -> list[FCDRecord]:
@@ -234,9 +256,13 @@ async def latest_link_predictions(
         except Exception:
             logger.warning("Latest link query failed; falling back to demo payload", exc_info=True)
 
-    links, history = _demo_payload()
+    links, history, demo_ensembles = _demo_payload()
     return [
-        LinkLatestResponse(link=link, latest_prediction=history[link_id][0])
+        LinkLatestResponse(
+            link=link,
+            latest_prediction=history[link_id][0],
+            ensemble=demo_ensembles.get(link_id),
+        )
         for link_id, link in list(links.items())[:limit]
         if link_id in history and history[link_id]
     ]
@@ -278,10 +304,14 @@ async def link_history(
         except Exception:
             logger.warning("Link history query failed; falling back to demo payload", exc_info=True)
 
-    links, history = _demo_payload()
+    links, history, demo_ensembles = _demo_payload()
     if link_id not in links or link_id not in history:
         raise HTTPException(status_code=404, detail=f"Unknown link_id: {link_id}")
-    return LinkHistoryResponse(link=links[link_id], history=history[link_id][:limit])
+    return LinkHistoryResponse(
+        link=links[link_id],
+        history=history[link_id][:limit],
+        ensemble=demo_ensembles.get(link_id),
+    )
 
 
 @router.get("/predictions/{prediction_id}", response_model=PredictionDetailResponse)
@@ -352,7 +382,7 @@ async def prediction_detail(
                 "Prediction detail query failed; falling back to demo payload", exc_info=True
             )
 
-    links, history = _demo_payload()
+    links, history, _demo_ens = _demo_payload()
     for link_id, entries in history.items():
         for demo_prediction in entries:
             demo_entry = cast(LinkPredictionSummary, demo_prediction)
