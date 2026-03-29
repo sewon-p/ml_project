@@ -137,7 +137,7 @@ def test_latest_link_predictions_falls_back_to_demo_on_db_error(monkeypatch) -> 
     monkeypatch.setattr(
         map_api,
         "_demo_payload",
-        lambda: ({"demo-link-001": demo_link}, {"demo-link-001": [demo_prediction]}),
+        lambda: ({"demo-link-001": demo_link}, {"demo-link-001": [demo_prediction]}, {}),
     )
 
     with TestClient(app) as client:
