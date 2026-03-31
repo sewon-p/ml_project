@@ -4,23 +4,323 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UrbanFlow Console</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="/static/site.css">
+  <style>
+    .skip-link {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 1001;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: var(--dark);
+      color: #fff;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-decoration: none;
+      transform: translateY(-180%);
+      transition: transform 160ms ease;
+    }
+
+    .skip-link:focus-visible {
+      transform: translateY(0);
+    }
+
+    .nav-link.active,
+    .nav-link[aria-current="page"] {
+      background: rgba(239, 35, 60, 0.14);
+      color: var(--dark);
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .dashboard-hero {
+      margin-bottom: 0;
+    }
+
+    .dashboard-hero p {
+      max-width: 62ch;
+    }
+
+    .status-card {
+      background:
+        linear-gradient(135deg, rgba(239, 35, 60, 0.08), rgba(237, 242, 244, 0.92) 46%),
+        rgba(255, 255, 255, 0.92);
+    }
+
+    .status-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .status-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .status-note {
+      min-height: 1.4em;
+      color: var(--muted);
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 0.78rem;
+    }
+
+    .dashboard-metric-value-sm {
+      font-size: 1.15rem;
+    }
+
+    .dashboard-section {
+      margin-top: 18px;
+    }
+
+    .dashboard-priority {
+      display: grid;
+      gap: 18px;
+    }
+
+    .section-heading {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .section-heading.card {
+      padding: 18px 20px;
+      gap: 10px;
+      background:
+        linear-gradient(135deg, rgba(239, 35, 60, 0.07), rgba(255, 255, 255, 0.94) 44%),
+        rgba(255, 255, 255, 0.94);
+    }
+
+    .section-heading .eyebrow {
+      margin-bottom: 0;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+    }
+
+    .section-heading p {
+      margin: 0;
+    }
+
+    .section-stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .quicklink-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .quicklink-card {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      min-height: 100%;
+    }
+
+    .quicklink-card h2 {
+      margin-bottom: 0;
+    }
+
+    .quicklink-card p:last-child {
+      margin: 0;
+    }
+
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .details-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .disclosure {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .disclosure summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 22px;
+      cursor: default;
+    }
+
+    .disclosure summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .disclosure-copy {
+      display: grid;
+      gap: 6px;
+    }
+
+    .disclosure-copy h2,
+    .disclosure-copy p {
+      margin: 0;
+    }
+
+    .disclosure-icon {
+      flex: 0 0 auto;
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--border);
+      color: var(--accent);
+      position: relative;
+      transition: transform 160ms ease;
+    }
+
+    .disclosure-icon::before {
+      content: '';
+      width: 10px;
+      height: 10px;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: translateY(-2px) rotate(45deg);
+    }
+
+    .disclosure[open] .disclosure-icon {
+      transform: rotate(180deg);
+    }
+
+    .disclosure-body {
+      padding: 0 22px 22px;
+      border-top: 1px solid rgba(94, 103, 122, 0.12);
+    }
+
+    .status-banner {
+      display: none;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink-soft);
+    }
+
+    .status-banner.visible {
+      display: block;
+    }
+
+    .status-banner.error {
+      border-color: rgba(185, 28, 28, 0.24);
+      background: rgba(185, 28, 28, 0.08);
+      color: #7f1d1d;
+    }
+
+    .status-banner.warning {
+      border-color: rgba(194, 65, 12, 0.2);
+      background: rgba(194, 65, 12, 0.08);
+      color: #9a3412;
+    }
+
+    .status-banner.success {
+      border-color: rgba(21, 128, 61, 0.2);
+      background: rgba(21, 128, 61, 0.08);
+      color: #166534;
+    }
+
+    @media (max-width: 980px) {
+      .dashboard-grid,
+      .quicklink-grid,
+      .flow-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .dashboard-hero {
+        padding: 22px 20px;
+      }
+
+      .dashboard-hero h1 {
+        font-size: 1.8rem;
+        line-height: 1.02;
+      }
+
+      .dashboard-hero p {
+        font-size: 1rem;
+      }
+
+      .status-actions {
+        width: 100%;
+      }
+
+      .status-actions .btn {
+        width: 100%;
+      }
+
+      .dashboard-grid {
+        gap: 14px;
+      }
+
+      .quicklink-grid {
+        gap: 12px;
+      }
+
+      .quicklink-card {
+        padding: 18px;
+      }
+
+      .details-stack {
+        gap: 12px;
+      }
+
+      .disclosure summary {
+        padding: 18px;
+      }
+
+      .disclosure-body {
+        padding: 0 18px 18px;
+      }
+
+      .dashboard-section {
+        margin-top: 14px;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="shell">
+    <a class="skip-link" href="#mainContent">Skip to content</a>
     <header class="topbar">
       <div class="brand">
-        <div class="brand-mark">UF</div>
         <div class="brand-copy">
-          <div class="brand-title">UrbanFlow Console</div>
+          <div class="brand-title">Urban<span class="accent">Flow</span></div>
           <div class="brand-subtitle">Traffic density estimation from mobile probe traces</div>
         </div>
         <a class="brand-shortcut" href="/ml-pipeline/">ML Pipeline</a>
       </div>
       <nav class="nav">
-        <a class="nav-link" href="/portfolio">About</a>
-        <a class="nav-link active" href="/dashboard">Dashboard</a>
+        <a class="nav-link" href="/about">About</a>
+        <a class="nav-link active" href="/dashboard" aria-current="page">Dashboard</a>
         <a class="nav-link" href="/map">Map</a>
         <a class="nav-link" href="/mobile">Mobile</a>
         <a class="nav-link" href="/health">Health</a>
@@ -28,108 +328,180 @@
       </nav>
     </header>
 
-    <main class="page">
-      <section class="hero">
-        <span class="eyebrow">Intern Project Demo</span>
-        <h1>One probe vehicle, one clean monitoring surface.</h1>
-        <p>
-          This console bundles the mobile collection flow, live link map, health check,
-          and API documentation into a single English-first presentation. It is designed
-          to be submission-ready: minimal, legible, and easy to demo.
-        </p>
-      </section>
-
-      <section class="grid three">
-        <a class="card" href="/map">
-          <p class="kicker">Live Surface</p>
-          <h2>Map</h2>
-          <p class="muted">Review link-level density snapshots, open link history, and inspect prediction details.</p>
-        </a>
-        <a class="card" href="/mobile">
-          <p class="kicker">Collection</p>
-          <h2>Mobile Probe</h2>
-          <p class="muted">Stream GPS and motion data from a phone directly into the inference pipeline.</p>
-        </a>
-        <a class="card" href="/docs">
-          <p class="kicker">Reference</p>
-          <h2>API Docs</h2>
-          <p class="muted">Swagger documentation for `/predict`, `/ingest`, `/map/*`, and related routes.</p>
-        </a>
-      </section>
-
-      <section class="grid two" style="margin-top:18px;">
-        <div class="card stack">
-          <div>
-            <p class="kicker">System Status</p>
-            <h2>Service Health</h2>
-            <p class="muted">Live readout from the running FastAPI application.</p>
-          </div>
-          <div class="metric-grid">
-            <div class="metric">
-              <span class="metric-label">Status</span>
-              <div class="metric-value" id="healthStatus">Loading</div>
-            </div>
-            <div class="metric">
-              <span class="metric-label">Model</span>
-              <div class="metric-value" id="healthModel" style="font-size:1.15rem;">-</div>
-            </div>
-            <div class="metric">
-              <span class="metric-label">Features</span>
-              <div class="metric-value" id="healthFeatures">-</div>
-            </div>
-            <div class="metric">
-              <span class="metric-label">Residual Mode</span>
-              <div class="metric-value" id="healthResidual" style="font-size:1.15rem;">-</div>
-            </div>
-          </div>
-          <div class="btn-row">
-            <a class="btn" href="/health">Open Health</a>
-            <button class="btn secondary" id="refreshHealthBtn" type="button">Refresh</button>
-          </div>
-        </div>
-
-        <div class="card stack">
-          <div>
-            <p class="kicker">Map Feed</p>
-            <h2>Latest Link Feed</h2>
-            <p class="muted">A quick view of how many links are currently available in the map layer.</p>
-          </div>
-          <div class="metric-grid">
-            <div class="metric">
-              <span class="metric-label">Links Returned</span>
-              <div class="metric-value" id="mapCount">Loading</div>
-            </div>
-            <div class="metric">
-              <span class="metric-label">Latest Sample</span>
-              <div class="metric-value" id="mapSample" style="font-size:1.15rem;">-</div>
-            </div>
-          </div>
-          <p class="footnote">
-            If the database is empty, the map switches to a local demo layer backed by the Seoul centerline GeoJSON.
+    <main class="page" id="mainContent">
+      <section class="dashboard-grid">
+        <div class="hero dashboard-hero">
+          <span class="eyebrow">Intern Project Demo</span>
+          <h1>One probe vehicle, one clean monitoring surface.</h1>
+          <p>
+            Start here when you need a fast project check. The page surfaces runtime health,
+            the latest map signal, and the shortest paths into the live demo flows without
+            making you hunt across separate pages first.
           </p>
         </div>
+
+        <section class="card stack status-card" aria-labelledby="liveStatusTitle">
+          <div class="status-head">
+            <div>
+              <p class="kicker">Live Status</p>
+              <h2 id="liveStatusTitle">Runtime snapshot</h2>
+              <p class="muted">Health and latest map feed are fetched together so the page shows one consistent snapshot.</p>
+            </div>
+            <div class="status-actions">
+              <button class="btn secondary" id="refreshHealthBtn" type="button">Refresh snapshot</button>
+            </div>
+          </div>
+          <p class="status-note" id="statusNote" aria-live="polite">Waiting for first snapshot.</p>
+          <div class="status-banner" id="statusBanner" aria-live="polite"></div>
+        </section>
       </section>
 
-      <section class="card" style="margin-top:18px;">
-        <p class="kicker">Demo Flow</p>
-        <h2>How the pieces connect</h2>
-        <div class="grid two">
-          <div class="empty">
-            <strong>1. Mobile collection</strong><br>
-            The phone page sends GPS, speed, heading, and acceleration to <code>/ingest</code> at 1 Hz.
+      <section class="dashboard-priority dashboard-section">
+        <section class="grid two">
+          <div class="card stack">
+            <div>
+              <p class="kicker">System Status</p>
+              <h2>Service Health</h2>
+              <p class="muted" id="healthStateCopy">Live readout from the running FastAPI application.</p>
+            </div>
+            <div class="metric-grid" aria-live="polite">
+              <div class="metric">
+                <span class="metric-label">Status</span>
+                <div class="metric-value" id="healthStatus">Loading</div>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Model</span>
+                <div class="metric-value dashboard-metric-value-sm" id="healthModel">-</div>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Features</span>
+                <div class="metric-value" id="healthFeatures">-</div>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Residual Mode</span>
+                <div class="metric-value dashboard-metric-value-sm" id="healthResidual">-</div>
+              </div>
+            </div>
+            <div class="btn-row">
+              <a class="btn" href="/health">Open Health</a>
+              <button class="btn secondary" id="retryHealthBtn" type="button">Retry health</button>
+            </div>
           </div>
-          <div class="empty">
-            <strong>2. Link attribution</strong><br>
-            Incoming points are matched against the local Seoul road centerline layer.
+
+          <div class="card stack">
+            <div>
+              <p class="kicker">Map Feed</p>
+              <h2>Latest Link Feed</h2>
+              <p class="muted" id="mapStateCopy">A quick view of how many links are currently available in the map layer.</p>
+            </div>
+            <div class="metric-grid" aria-live="polite">
+              <div class="metric">
+                <span class="metric-label">Links Returned</span>
+                <div class="metric-value" id="mapCount">Loading</div>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Latest Sample</span>
+                <div class="metric-value dashboard-metric-value-sm" id="mapSample">-</div>
+              </div>
+            </div>
+            <p class="footnote">
+              If the database is empty, the map switches to a local demo layer backed by the Seoul centerline GeoJSON.
+            </p>
           </div>
-          <div class="empty">
-            <strong>3. Density estimation</strong><br>
-            Link-based accumulation (1km target) triggers prediction with multi-probe ensemble and stores link-level results.
-          </div>
-          <div class="empty">
-            <strong>4. Map review</strong><br>
-            The map page colors links and exposes history and detail panels for presentation.
-          </div>
+        </section>
+
+        <div class="section-heading card">
+          <span class="eyebrow">Quick Actions</span>
+          <h2>Move from snapshot to the right surface.</h2>
+          <p class="muted">Open the main demo pages from here once the runtime snapshot above looks healthy.</p>
+        </div>
+        <div class="quicklink-grid">
+        <a class="card quicklink-card" href="/map">
+          <p class="kicker">Live Surface</p>
+          <h2>Map</h2>
+          <p class="muted">Review link-level density snapshots and inspect prediction details.</p>
+        </a>
+        <a class="card quicklink-card" href="/mobile">
+          <p class="kicker">Collection</p>
+          <h2>Mobile Probe</h2>
+          <p class="muted">Stream GPS and motion data from a phone into the inference pipeline.</p>
+        </a>
+        <a class="card quicklink-card" href="/health">
+          <p class="kicker">Diagnostics</p>
+          <h2>Health</h2>
+          <p class="muted">Open the detailed backend health page when the snapshot shows a problem.</p>
+        </a>
+        <a class="card quicklink-card" href="/docs">
+          <p class="kicker">Reference</p>
+          <h2>API Docs</h2>
+          <p class="muted">Open Swagger docs for `/predict`, `/ingest`, `/map/*`, and related routes.</p>
+        </a>
+        </div>
+      </section>
+
+      <section class="section-stack dashboard-section">
+        <div class="details-stack">
+          <details class="card disclosure">
+            <summary>
+              <div class="disclosure-copy">
+                <p class="kicker">Demo Flow</p>
+                <h2>How the pieces connect</h2>
+                <p class="muted">Expand for the four-step path from phone collection to map review.</p>
+              </div>
+              <span class="disclosure-icon" aria-hidden="true"></span>
+            </summary>
+            <div class="disclosure-body">
+              <div class="flow-grid">
+                <div class="empty">
+                  <strong>1. Mobile collection</strong><br>
+                  The phone page sends GPS, speed, heading, and acceleration to <code>/ingest</code> at 1 Hz.
+                </div>
+                <div class="empty">
+                  <strong>2. Link attribution</strong><br>
+                  Incoming points are matched against the local Seoul road centerline layer.
+                </div>
+                <div class="empty">
+                  <strong>3. Density estimation</strong><br>
+                  Link-based accumulation (1km target) triggers prediction with multi-probe ensemble and stores link-level results.
+                </div>
+                <div class="empty">
+                  <strong>4. Map review</strong><br>
+                  The map page colors links and exposes history and detail panels for presentation.
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details class="card disclosure">
+            <summary>
+              <div class="disclosure-copy">
+                <p class="kicker">Failure Modes</p>
+                <h2>What this page tells you when something breaks</h2>
+                <p class="muted">Expand for the recovery behavior behind health failures, empty map data, and slow refreshes.</p>
+              </div>
+              <span class="disclosure-icon" aria-hidden="true"></span>
+            </summary>
+            <div class="disclosure-body">
+              <div class="flow-grid">
+                <div class="empty">
+                  <strong>Health request fails</strong><br>
+                  The health panel keeps the last successful values, marks the section as unavailable, and prompts a retry.
+                </div>
+                <div class="empty">
+                  <strong>Map feed is empty</strong><br>
+                  The page distinguishes “no rows yet” from request failure so you can demo an empty DB without confusion.
+                </div>
+                <div class="empty">
+                  <strong>Slow refresh</strong><br>
+                  The snapshot button disables while requests are in flight to prevent overlapping fetches.
+                </div>
+                <div class="empty">
+                  <strong>Partial outage</strong><br>
+                  Health and map feed fail independently, so one broken endpoint does not blank the whole console.
+                </div>
+              </div>
+            </div>
+          </details>
         </div>
       </section>
 
@@ -141,27 +513,98 @@
   </div>
 
   <script>
+    const refreshButton = document.getElementById('refreshHealthBtn');
+    const retryHealthButton = document.getElementById('retryHealthBtn');
+    const statusNote = document.getElementById('statusNote');
+    const statusBanner = document.getElementById('statusBanner');
+    const healthStateCopy = document.getElementById('healthStateCopy');
+    const mapStateCopy = document.getElementById('mapStateCopy');
+
+    function setBanner(kind, message = '') {
+      statusBanner.className = 'status-banner';
+      statusBanner.textContent = '';
+      if (!message) {
+        return;
+      }
+
+      statusBanner.classList.add('visible', kind);
+      statusBanner.textContent = message;
+    }
+
+    function setLoadingState(isLoading) {
+      refreshButton.disabled = isLoading;
+      retryHealthButton.disabled = isLoading;
+      refreshButton.textContent = isLoading ? 'Refreshing...' : 'Refresh snapshot';
+      retryHealthButton.textContent = isLoading ? 'Refreshing...' : 'Retry health';
+      statusNote.textContent = isLoading ? 'Refreshing health and map feed.' : statusNote.textContent;
+    }
+
+    async function readJson(url, errorLabel) {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`${errorLabel} request failed (${response.status})`);
+      }
+      return response.json();
+    }
+
     async function loadHealth() {
-      const response = await fetch('/health?format=json');
-      const data = await response.json();
+      const data = await readJson('/health?format=json', 'Health');
       document.getElementById('healthStatus').textContent = data.status.toUpperCase();
       document.getElementById('healthModel').textContent = data.model;
       document.getElementById('healthFeatures').textContent = String(data.n_features);
       document.getElementById('healthResidual').textContent = data.residual_correction ? 'Enabled' : 'Disabled';
+      healthStateCopy.textContent = 'Live readout from the running FastAPI application.';
+      return data;
     }
 
     async function loadMapSample() {
-      const response = await fetch('/map/links/latest?limit=4');
-      const data = await response.json();
+      const data = await readJson('/map/links/latest?limit=4', 'Map feed');
       document.getElementById('mapCount').textContent = String(data.length);
       document.getElementById('mapSample').textContent = data[0]?.link?.link_id || 'No data';
+      mapStateCopy.textContent = data.length
+        ? 'Latest map rows returned successfully.'
+        : 'The map endpoint is healthy, but there are no rows yet.';
+      return data;
     }
 
-    document.getElementById('refreshHealthBtn').addEventListener('click', async () => {
-      await Promise.all([loadHealth(), loadMapSample()]);
-    });
+    async function refreshSnapshot() {
+      setLoadingState(true);
+      setBanner();
+      try {
+        const results = await Promise.allSettled([loadHealth(), loadMapSample()]);
+        const [healthResult, mapResult] = results;
+        const failed = results.filter((result) => result.status === 'rejected');
 
-    Promise.all([loadHealth(), loadMapSample()]);
+        if (healthResult.status === 'rejected') {
+          document.getElementById('healthStatus').textContent = 'Unavailable';
+          healthStateCopy.textContent = 'Health endpoint did not respond. Last snapshot may be stale.';
+        }
+
+        if (mapResult.status === 'rejected') {
+          document.getElementById('mapCount').textContent = 'Error';
+          document.getElementById('mapSample').textContent = '-';
+          mapStateCopy.textContent = 'Map feed request failed. Retry to fetch the latest link layer state.';
+        }
+
+        if (!failed.length) {
+          statusNote.textContent = 'Snapshot updated successfully.';
+          setBanner('success', 'Health and map feed refreshed successfully.');
+        } else if (failed.length === 1) {
+          statusNote.textContent = 'Snapshot completed with one unavailable source.';
+          setBanner('warning', failed[0].reason.message);
+        } else {
+          statusNote.textContent = 'Snapshot failed. Both sources are unavailable.';
+          setBanner('error', 'Health and map feed requests both failed. Check the backend and retry.');
+        }
+      } finally {
+        setLoadingState(false);
+      }
+    }
+
+    refreshButton.addEventListener('click', refreshSnapshot);
+    retryHealthButton.addEventListener('click', refreshSnapshot);
+
+    refreshSnapshot();
   </script>
 </body>
 </html>

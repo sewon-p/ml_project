@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UrbanFlow Mobile Probe</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="/static/site.css">
   <style>
@@ -33,16 +36,235 @@
       font-size: 1rem;
     }
 
+    .status-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .status-detail {
+      display: grid;
+      gap: 10px;
+      padding: 16px 18px;
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--border);
+    }
+
+    .status-detail-copy {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 0.92rem;
+    }
+
+    .status-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    }
+
+    .readiness-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .readiness-item {
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.62);
+      display: grid;
+      gap: 4px;
+    }
+
+    .readiness-label {
+      font: 700 0.72rem/1 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .readiness-value {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--dark);
+    }
+
+    .readiness-value.ok {
+      color: var(--success);
+    }
+
+    .readiness-value.warn {
+      color: var(--warning);
+    }
+
+    .readiness-value.error {
+      color: var(--accent);
+    }
+
+    .control-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .hint-card {
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    .hint-card strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.95rem;
+    }
+
+    .hint-card p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 0.88rem;
+    }
+
     .settings-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
     }
 
+    .metric-value-sm {
+      font-size: 0.9rem;
+    }
+
+    /* ── Traversal progress bar ── */
+    .traversal-progress {
+      display: none;
+      margin-top: 10px;
+    }
+    .traversal-progress.visible {
+      display: block;
+    }
+    .traversal-track {
+      height: 6px;
+      background: rgba(141, 153, 174, 0.18);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .traversal-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      border-radius: 3px;
+      transition: width 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    .traversal-fill.complete {
+      background: var(--success);
+    }
+    .traversal-label {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    /* ── Status dot pulse ── */
+    @keyframes dot-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+    .dot.warn {
+      animation: dot-pulse 1.8s ease-in-out infinite;
+    }
+    .dot.ok {
+      animation: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .dot.warn { animation: none; }
+      .traversal-fill { transition: none; }
+    }
+
+    .metric-value-md {
+      font-size: 1.05rem;
+    }
+
+    /* ── Mobile: phone on dashboard mount ── */
     @media (max-width: 680px) {
       .settings-grid,
-      .metric-grid {
+      .metric-grid,
+      .readiness-grid {
         grid-template-columns: 1fr;
+      }
+
+      /* Collapse hero to compact summary */
+      .hero {
+        padding: 14px 18px;
+      }
+      .hero h1 {
+        font-size: 1.15rem;
+        line-height: 1.2;
+        margin: 6px 0 0;
+      }
+      .hero p {
+        display: none;
+      }
+
+      /* Larger metric values for glanceability */
+      .metric-value {
+        font-size: 2rem;
+      }
+      .metric-value-sm {
+        font-size: 1.1rem;
+      }
+      .metric-value-md {
+        font-size: 1.3rem;
+      }
+
+      /* Bottom floating action bar */
+      .mobile-fab {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 900;
+        display: flex;
+        gap: 10px;
+        padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(18px);
+        border-top: 1px solid var(--border);
+        box-shadow: 0 -4px 20px rgba(43, 45, 66, 0.08);
+      }
+      .mobile-fab .btn {
+        flex: 1;
+        padding: 16px;
+        font-size: 1rem;
+        min-height: 52px;
+      }
+
+      /* Hide desktop control card + footer on mobile */
+      .desktop-controls {
+        display: none;
+      }
+      .footer {
+        display: none;
+      }
+
+      /* Extra bottom padding so content isn't hidden behind FAB */
+      .mobile-grid {
+        padding-bottom: 80px;
+      }
+    }
+
+    /* Desktop: hide mobile FAB */
+    @media (min-width: 681px) {
+      .mobile-fab {
+        display: none;
       }
     }
   </style>
@@ -51,15 +273,14 @@
   <div class="shell">
     <header class="topbar">
       <div class="brand">
-        <div class="brand-mark">UF</div>
         <div class="brand-copy">
-          <div class="brand-title">UrbanFlow Console</div>
+          <div class="brand-title">Urban<span class="accent">Flow</span></div>
           <div class="brand-subtitle">Mobile probe capture</div>
         </div>
         <a class="brand-shortcut" href="/ml-pipeline/">ML Pipeline</a>
       </div>
       <nav class="nav">
-        <a class="nav-link" href="/portfolio">About</a>
+        <a class="nav-link" href="/about">About</a>
         <a class="nav-link" href="/dashboard">Dashboard</a>
         <a class="nav-link" href="/map">Map</a>
         <a class="nav-link active" href="/mobile">Mobile</a>
@@ -82,11 +303,47 @@
 
       <div class="mobile-grid">
         <div class="status-banner">
-          <div class="status-copy">
-            <strong id="collectionLabel">Idle</strong>
-            <span class="muted" id="sessionLabel">No active session</span>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
+              <div class="status-copy">
+                <strong id="collectionLabel">Idle</strong>
+                <span class="muted" id="sessionLabel">No active session</span>
+              </div>
+              <span class="chip"><span class="dot" id="statusDot"></span><span id="statusText">Inactive</span></span>
+            </div>
+            <div class="traversal-progress" id="traversalProgress">
+              <div class="traversal-track">
+                <div class="traversal-fill" id="traversalFill"></div>
+              </div>
+              <div class="traversal-label">
+                <span id="traversalDist">0 m</span>
+                <span>1,000 m</span>
+              </div>
+            </div>
           </div>
-          <span class="chip"><span class="dot" id="statusDot"></span><span id="statusText">Inactive</span></span>
+        </div>
+
+        <div class="status-detail" aria-live="polite">
+          <p class="status-detail-copy" id="statusDetailCopy">Start collection after confirming HTTPS, motion permission, GPS lock, and live server connectivity.</p>
+          <p class="status-note" id="statusDetailNote">No checks completed yet.</p>
+          <div class="readiness-grid">
+            <div class="readiness-item">
+              <span class="readiness-label">HTTPS</span>
+              <div class="readiness-value" id="secureState">Pending</div>
+            </div>
+            <div class="readiness-item">
+              <span class="readiness-label">Motion</span>
+              <div class="readiness-value" id="motionState">Pending</div>
+            </div>
+            <div class="readiness-item">
+              <span class="readiness-label">GPS</span>
+              <div class="readiness-value" id="gpsState">Waiting</div>
+            </div>
+            <div class="readiness-item">
+              <span class="readiness-label">Connection</span>
+              <div class="readiness-value" id="socketState">Offline</div>
+            </div>
+          </div>
         </div>
 
         <section class="grid two">
@@ -98,19 +355,19 @@
             <div class="metric-grid">
               <div class="metric">
                 <span class="metric-label">Density</span>
-                <div class="metric-value" id="density">—</div>
+                <div class="metric-value" id="density">— veh/km</div>
               </div>
               <div class="metric">
                 <span class="metric-label">Flow</span>
-                <div class="metric-value" id="flow">—</div>
+                <div class="metric-value" id="flow">— veh/h</div>
               </div>
               <div class="metric">
-                <span class="metric-label">FD baseline</span>
-                <div class="metric-value" id="fdDensity">—</div>
+                <span class="metric-label" title="Fundamental Diagram baseline density">FD estimate</span>
+                <div class="metric-value" id="fdDensity">— veh/km</div>
               </div>
               <div class="metric">
-                <span class="metric-label">Residual</span>
-                <div class="metric-value" id="residual">—</div>
+                <span class="metric-label" title="XGBoost residual correction (Δk)">ML correction</span>
+                <div class="metric-value" id="residual">— Δk</div>
               </div>
             </div>
           </div>
@@ -123,15 +380,15 @@
             <div class="metric-grid">
               <div class="metric">
                 <span class="metric-label">Speed</span>
-                <div class="metric-value" id="speed">—</div>
+                <div class="metric-value" id="speed">— km/h</div>
               </div>
               <div class="metric">
                 <span class="metric-label">Distance</span>
                 <div class="metric-value" id="buffer">0 m</div>
               </div>
               <div class="metric">
-                <span class="metric-label">Current Link</span>
-                <div class="metric-value" id="currentLink" style="font-size:0.9rem;">—</div>
+                <span class="metric-label" title="Matched GIS road segment ID">Road link</span>
+                <div class="metric-value metric-value-sm" id="currentLink">—</div>
               </div>
               <div class="metric">
                 <span class="metric-label">Predictions</span>
@@ -139,21 +396,25 @@
               </div>
               <div class="metric">
                 <span class="metric-label">GPS</span>
-                <div class="metric-value" id="gps" style="font-size:1.05rem;">—</div>
+                <div class="metric-value metric-value-md" id="gps">—</div>
               </div>
             </div>
           </div>
         </section>
 
-        <section class="card stack">
+        <section class="card stack desktop-controls">
           <div>
             <p class="kicker">Configuration</p>
             <h2>Collection control</h2>
             <p class="muted">Road info (speed limit, lanes) is auto-detected from GPS link matching.</p>
           </div>
+          <div class="hint-card">
+            <strong>Before you start</strong>
+            <p>Open over HTTPS on iPhone, allow Motion and Location permissions, then wait for GPS to stabilize outdoors.</p>
+          </div>
+          <p class="control-note" id="controlNote">The button stays available, but the readiness checks above tell you what still needs attention.</p>
           <div class="btn-row">
-            <button class="btn" id="startBtn" type="button">Start collection</button>
-            <button class="btn danger" id="stopBtn" type="button" hidden>Stop</button>
+            <button class="btn control-btn" type="button" data-state="idle">Start collection</button>
             <a class="btn secondary" href="/map">Open map</a>
           </div>
         </section>
@@ -167,6 +428,11 @@
         </section>
       </div>
     </main>
+
+    <div class="mobile-fab">
+      <button class="btn control-btn" type="button" data-state="idle">Start collection</button>
+      <a class="btn secondary" href="/map">Map</a>
+    </div>
 
     <footer class="footer">
       UrbanFlow Console · Mobile Probe
@@ -191,8 +457,43 @@
     let clientFusion = null;
     let fusedWindow = [];
     let latestSensor = { lat: 0, lon: 0, speed: 0, heading: 0, accel_x: 0, accel_y: 0, accel_z: 0 };
+    let wsHeartbeat = null;
+    let isCollecting = false;
+    let controlTransition = null;
     const API_BASE = location.origin;
     const WS_BASE = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+
+    function setReadiness(id, text, tone = '') {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.className = `readiness-value${tone ? ` ${tone}` : ''}`;
+      el.textContent = text;
+    }
+
+    function setStatusDetail(copy, note = '') {
+      document.getElementById('statusDetailCopy').textContent = copy;
+      document.getElementById('statusDetailNote').textContent = note;
+    }
+
+    function syncControlButtons() {
+      const buttons = document.querySelectorAll('.control-btn');
+      buttons.forEach((button) => {
+        const busy = controlTransition !== null;
+        const nextState = busy ? controlTransition : (isCollecting ? 'active' : 'idle');
+        button.dataset.state = nextState;
+        button.disabled = busy;
+        button.classList.toggle('danger', !busy && isCollecting);
+        if (controlTransition === 'starting') {
+          button.textContent = 'Starting...';
+        } else if (controlTransition === 'stopping') {
+          button.textContent = 'Stopping...';
+        } else if (isCollecting) {
+          button.textContent = 'Stop collection';
+        } else {
+          button.textContent = 'Start collection';
+        }
+      });
+    }
 
     function generateSessionId() {
       if (window.crypto && typeof window.crypto.randomUUID === 'function') {
@@ -203,9 +504,13 @@
 
     function ensureSecureContext() {
       const isLocalhost = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
-      if (window.isSecureContext || isLocalhost) return true;
+      if (window.isSecureContext || isLocalhost) {
+        setReadiness('secureState', 'Ready', 'ok');
+        return true;
+      }
       log('Mobile sensors on iPhone require HTTPS. Open this page over https://');
-      alert('This page must be opened over HTTPS on iPhone to access GPS and motion sensors.');
+      setReadiness('secureState', 'HTTPS required', 'error');
+      setStatusDetail('This browser cannot access iPhone motion sensors without HTTPS.', 'Open the page on `https://` or use localhost during local testing.');
       return false;
     }
 
@@ -593,6 +898,29 @@
       };
     }
 
+    const TRAVERSAL_THRESHOLD_M = 1000;
+
+    function updateTraversalProgress(distanceM) {
+      const progress = document.getElementById('traversalProgress');
+      const fill = document.getElementById('traversalFill');
+      const label = document.getElementById('traversalDist');
+      progress.classList.add('visible');
+      const pct = Math.min(100, (distanceM / TRAVERSAL_THRESHOLD_M) * 100);
+      fill.style.width = `${pct}%`;
+      fill.classList.toggle('complete', pct >= 100);
+      label.textContent = `${Math.round(distanceM)} m`;
+    }
+
+    function resetTraversalProgress() {
+      const progress = document.getElementById('traversalProgress');
+      const fill = document.getElementById('traversalFill');
+      const label = document.getElementById('traversalDist');
+      fill.style.width = '0%';
+      fill.classList.remove('complete');
+      label.textContent = '0 m';
+      progress.classList.remove('visible');
+    }
+
     function updateCollectionState(label, sessionText) {
       document.getElementById('collectionLabel').textContent = label;
       document.getElementById('sessionLabel').textContent = sessionText;
@@ -601,20 +929,37 @@
     function startGPS() {
       if (!navigator.geolocation) {
         log('Geolocation is not supported on this device.');
+        setReadiness('gpsState', 'Unavailable', 'error');
+        setStatusDetail('This browser does not support geolocation.', 'Use a phone browser with location support enabled.');
         return;
       }
+      setReadiness('gpsState', 'Requesting...', 'warn');
       gpsWatchId = navigator.geolocation.watchPosition(
         (pos) => {
+          const wasLost = !currentFix && sessionId;
           currentFix = pos;
           latestSensor.lat = pos.coords.latitude;
           latestSensor.lon = pos.coords.longitude;
           latestSensor.speed = pos.coords.speed || 0;
           latestSensor.heading = pos.coords.heading || 0;
           document.getElementById('gps').textContent =
-            `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+            `${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)}`;
           document.getElementById('speed').textContent = `${(latestSensor.speed * 3.6).toFixed(1)} km/h`;
+          setReadiness('gpsState', 'Locked', 'ok');
+          if (wasLost) {
+            setStatus('warn', 'Waiting');
+            updateCollectionState('Collecting', `Session ${sessionId.slice(0, 8)}...`);
+            setStatusDetail('GPS signal recovered. Waiting for enough traversal distance to trigger inference.', 'Keep driving until the progress bar reaches 1 km.');
+            log('GPS signal recovered.');
+          }
         },
-        (err) => log(`GPS error: ${err.message}`),
+        (err) => {
+          log(`GPS error: ${err.message}`);
+          setStatus('error', 'GPS error');
+          updateCollectionState('GPS signal lost', 'Move to an open area for better reception');
+          setReadiness('gpsState', 'No fix', 'error');
+          setStatusDetail('GPS data is unavailable right now.', err.message || 'Move outdoors or allow location access in Safari settings.');
+        },
         { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
       );
       log('GPS watcher started.');
@@ -628,14 +973,18 @@
         const permission = await DeviceMotionEvent.requestPermission().catch(() => 'denied');
         if (permission !== 'granted') {
           log('Motion permission was not granted.');
+          setReadiness('motionState', 'Denied', 'error');
+          setStatusDetail('Motion access was denied.', 'Allow Motion & Orientation Access, then start collection again.');
           return false;
         }
       }
+      setReadiness('motionState', 'Granted', 'ok');
       if (typeof DeviceOrientationEvent !== 'undefined' &&
           typeof DeviceOrientationEvent.requestPermission === 'function') {
         const orientationPermission = await DeviceOrientationEvent.requestPermission().catch(() => 'denied');
         if (orientationPermission !== 'granted') {
           log('Orientation permission was not granted.');
+          setStatusDetail('Motion access is partially available.', 'Orientation was denied, so heading may be less stable.');
         }
       }
       motionHandler = (event) => {
@@ -661,6 +1010,8 @@
       ws = new WebSocket(`${WS_BASE}/ws/dashboard/${sessionId}`);
       ws.onopen = () => {
         setStatus('warn', 'Waiting');
+        setReadiness('socketState', 'Connected', 'ok');
+        setStatusDetail('Live link is connected. Waiting for the first prediction payload.', 'The page will switch to Active once the server emits a prediction.');
         log('WebSocket connected.');
       };
       ws.onmessage = (event) => {
@@ -668,9 +1019,27 @@
         if (data.type === 'pong') return;
         applyPrediction(data, 'WebSocket update received.');
       };
-      ws.onerror = () => log('WebSocket error.');
-      ws.onclose = () => setStatus('', 'Inactive');
-      window.setInterval(() => {
+      ws.onerror = () => {
+        log('WebSocket error.');
+        setStatus('error', 'Connection error');
+        setReadiness('socketState', 'Error', 'error');
+        setStatusDetail('The realtime socket encountered an error.', 'Collection can continue, but live updates may lag until reconnection succeeds.');
+      };
+      ws.onclose = () => {
+        if (sessionId) {
+          setStatus('warn', 'Reconnecting');
+          updateCollectionState('Connection lost', 'Retrying in 5s...');
+          setReadiness('socketState', 'Reconnecting', 'warn');
+          setStatusDetail('Realtime updates disconnected temporarily.', 'Retrying the WebSocket connection in 5 seconds.');
+          log('WebSocket closed — reconnecting in 5s.');
+          setTimeout(() => { if (sessionId) connectWebSocket(); }, 5000);
+        } else {
+          setStatus('', 'Inactive');
+          setReadiness('socketState', 'Offline');
+        }
+      };
+      if (wsHeartbeat) clearInterval(wsHeartbeat);
+      wsHeartbeat = window.setInterval(() => {
         if (ws && ws.readyState === 1) ws.send('ping');
       }, 30000);
     }
@@ -683,6 +1052,8 @@
       document.getElementById('residual').textContent = `${data.residual_density?.toFixed(2) ?? '—'} Δk`;
       document.getElementById('predCount').textContent = String(predCount);
       setStatus('ok', 'Active');
+      setReadiness('socketState', 'Streaming', 'ok');
+      setStatusDetail('Prediction received successfully.', 'Metrics are updating from the latest server inference.');
       log(sourceMessage);
     }
 
@@ -695,6 +1066,7 @@
 
       // Send each sample sequentially (server accumulates via LinkBuffer)
       let lastResult = null;
+      let networkErrors = 0;
       for (const payload of batch) {
         try {
           const response = await fetch(`${API_BASE}/ingest`, {
@@ -702,20 +1074,29 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
           });
-          if (!response.ok) continue;
+          if (!response.ok) { networkErrors += 1; continue; }
           lastResult = await response.json();
         } catch (error) {
-          // Network error — skip this sample
+          networkErrors += 1;
         }
+      }
+      if (networkErrors > 0 && !lastResult) {
+        setStatus('error', 'Send failed');
+        updateCollectionState('Network error', 'Check connection — will retry next interval');
+        setReadiness('socketState', 'Upload failed', 'error');
+        setStatusDetail('Buffered samples could not reach the ingest API.', `Failed to send ${networkErrors} samples. The next bulk cycle will retry with new data.`);
+        log(`Failed to send ${networkErrors} samples.`);
+        return;
       }
 
       if (!lastResult) return;
 
       // Update UI from last response
-      const distText = lastResult.traversal_distance_m
-        ? `${lastResult.traversal_distance_m.toFixed(0)} m`
-        : `${lastResult.buffer_count} samples`;
+      const distM = lastResult.traversal_distance_m || 0;
+      const distText = distM ? `${distM.toFixed(0)} m` : `${lastResult.buffer_count} samples`;
       document.getElementById('buffer').textContent = distText;
+      if (distM > 0) updateTraversalProgress(distM);
+      setStatusDetail('Samples uploaded successfully.', `Buffered drive data is accumulating across links toward the 1 km inference threshold.`);
 
       if (lastResult.link_ids && lastResult.link_ids.length > 0) {
         document.getElementById('currentLink').textContent =
@@ -731,6 +1112,7 @@
       }
       if (lastResult.traversal_completed) {
         log(`Traversal: ${lastResult.traversal_distance_m?.toFixed(0)}m, ${lastResult.link_ids?.length} links`);
+        resetTraversalProgress();
       }
     }
 
@@ -758,7 +1140,10 @@
     }
 
     async function startCollection() {
+      if (isCollecting || controlTransition) return;
       if (!ensureSecureContext()) return;
+      controlTransition = 'starting';
+      syncControlButtons();
 
       sessionId = generateSessionId();
       predCount = 0;
@@ -771,23 +1156,32 @@
       document.getElementById('predCount').textContent = '0';
       document.getElementById('buffer').textContent = '0 m';
       document.getElementById('currentLink').textContent = '—';
+      resetTraversalProgress();
 
       const motionReady = await startAccelerometer();
       if (!motionReady) {
         log('Continuing without motion data.');
+        updateCollectionState('GPS-only mode', 'No accelerometer — accuracy reduced');
+        setReadiness('motionState', 'GPS only', 'warn');
+        setStatusDetail('Collection started without motion input.', 'Prediction quality may be lower because accelerometer features are missing.');
       }
       startGPS();
       connectWebSocket();
       sampleInterval = window.setInterval(captureSample, 1000);
       bulkTimer = window.setInterval(sendBulkIngest, BULK_SEND_MS);
 
-      document.getElementById('startBtn').hidden = true;
-      document.getElementById('stopBtn').hidden = false;
+      isCollecting = true;
+      controlTransition = null;
+      syncControlButtons();
       setStatus('warn', 'Waiting');
+      setStatusDetail('Collection started. Waiting for GPS and enough traversal distance to produce the first prediction.', `Bulk upload runs every ${BULK_INTERVAL_SEC} seconds while the WebSocket listens for live predictions.`);
       log(`Collection started — 1 Hz capture, bulk send every ${BULK_INTERVAL_SEC}s.`);
     }
 
     function stopCollection() {
+      if (!isCollecting || controlTransition) return;
+      controlTransition = 'stopping';
+      syncControlButtons();
       if (gpsWatchId !== null) {
         navigator.geolocation.clearWatch(gpsWatchId);
         gpsWatchId = null;
@@ -806,6 +1200,10 @@
         ws.close();
         ws = null;
       }
+      if (wsHeartbeat) {
+        clearInterval(wsHeartbeat);
+        wsHeartbeat = null;
+      }
       if (motionHandler) {
         window.removeEventListener('devicemotion', motionHandler);
         motionHandler = null;
@@ -814,17 +1212,35 @@
         window.removeEventListener('deviceorientation', orientationHandler);
         orientationHandler = null;
       }
-      document.getElementById('startBtn').hidden = false;
-      document.getElementById('stopBtn').hidden = true;
+      resetTraversalProgress();
       updateCollectionState('Idle', 'No active session');
       setStatus('', 'Inactive');
+      setReadiness('gpsState', 'Waiting');
+      setReadiness('socketState', 'Offline');
+      setStatusDetail('Collection stopped. You can review the last metrics or start a new session.', 'No active capture is running.');
+      isCollecting = false;
+      controlTransition = null;
+      syncControlButtons();
       log('Collection stopped.');
     }
 
-    document.getElementById('startBtn').addEventListener('click', startCollection);
-    document.getElementById('stopBtn').addEventListener('click', stopCollection);
+    document.querySelectorAll('.control-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        if (isCollecting) {
+          stopCollection();
+        } else {
+          void startCollection();
+        }
+      });
+    });
     updateCollectionState('Idle', 'No active session');
     setStatus('', 'Inactive');
+    setReadiness('secureState', window.isSecureContext || location.hostname === '127.0.0.1' || location.hostname === 'localhost' ? 'Ready' : 'HTTPS required', window.isSecureContext || location.hostname === '127.0.0.1' || location.hostname === 'localhost' ? 'ok' : 'error');
+    setReadiness('motionState', 'Pending');
+    setReadiness('gpsState', 'Waiting');
+    setReadiness('socketState', 'Offline');
+    setStatusDetail('Start collection after confirming HTTPS, motion permission, GPS lock, and live server connectivity.', 'No checks completed yet.');
+    syncControlButtons();
   </script>
 </body>
 </html>

@@ -39,9 +39,25 @@ _MATCH_SKIP_DISTANCE_M = 30.0  # skip GIS matching if moved less than this
 # Link-based accumulation settings
 _MIN_TRAVERSAL_DISTANCE_M = float(os.environ.get("MIN_TRAVERSAL_DISTANCE_M", "1000"))
 _TARGET_TRAVERSAL_DISTANCE_M = float(os.environ.get("TARGET_TRAVERSAL_DISTANCE_M", "1000"))
-_MIN_TRAVERSAL_RECORDS = int(os.environ.get("MIN_TRAVERSAL_RECORDS", "100"))
+_MIN_TRAVERSAL_RECORDS = int(os.environ.get("MIN_TRAVERSAL_RECORDS", "50"))
 _LINK_EXIT_TIMEOUT = int(os.environ.get("LINK_EXIT_TIMEOUT", "120"))
 _STICKY_LINK_COUNT = 1  # consecutive matches to new link before switching
+
+
+def _match_to_meta(match) -> "LinkMeta":
+    """Convert a GIS match result to a LinkMeta dict."""
+    return {
+        "link_id": match.link_id,
+        "road_name": match.road_name,
+        "geometry_geojson": match.geometry_geojson,
+        "center_lat": match.center_lat,
+        "center_lon": match.center_lon,
+        "source": match.source,
+        "road_rank": match.road_rank,
+        "link_length_m": match.link_length_m,
+        "lanes": match.lanes,
+        "max_spd": match.max_spd,
+    }
 
 
 @lru_cache(maxsize=1)
@@ -358,9 +374,17 @@ class LinkBuffer:
             # No match — still accumulate FCD
             self.accumulated_records.append(fcd)
 
-        # Check if target distance reached (including single long links)
-        if completed is None and self.accumulated_distance_m >= _MIN_TRAVERSAL_DISTANCE_M:
-            if len(self.accumulated_records) >= _MIN_TRAVERSAL_RECORDS:
+        # Check if target distance reached, OR enough records accumulated
+        if completed is None:
+            dist_ok = self.accumulated_distance_m >= _MIN_TRAVERSAL_DISTANCE_M
+            records_ok = len(self.accumulated_records) >= _MIN_TRAVERSAL_RECORDS
+            if dist_ok and records_ok:
+                completed = self._complete_traversal()
+            elif records_ok and self.accumulated_distance_m > 0:
+                # Distance didn't reach target but we have enough data
+                # Ensure current link is in accumulated_links
+                if not self.accumulated_links and self.current_link_meta:
+                    self.accumulated_links = [self.current_link_meta]
                 completed = self._complete_traversal()
 
         return fcd, matched_link, completed
@@ -394,18 +418,7 @@ class LinkBuffer:
         match = matcher.match(lat=record.lat, lon=record.lon, heading=record.heading)
         if match is None:
             return None
-        return {
-            "link_id": match.link_id,
-            "road_name": match.road_name,
-            "geometry_geojson": match.geometry_geojson,
-            "center_lat": match.center_lat,
-            "center_lon": match.center_lon,
-            "source": match.source,
-            "road_rank": match.road_rank,
-            "link_length_m": match.link_length_m,
-            "lanes": match.lanes,
-            "max_spd": match.max_spd,
-        }
+        return _match_to_meta(match)
 
     def _should_rematch(self, lat: float, lon: float) -> bool:
         if self._last_match_lat is None or self._last_match_lon is None:
@@ -436,6 +449,13 @@ class LinkBuffer:
 
     def _complete_traversal(self) -> LinkTraversal:
         """Package accumulated data into a completed traversal."""
+        logger.debug(
+            "_complete_traversal: links=%d, records=%d, dist=%.0f, current=%s",
+            len(self.accumulated_links),
+            len(self.accumulated_records),
+            self.accumulated_distance_m,
+            self.current_link_id,
+        )
         traversal: LinkTraversal = {
             "link_ids": [lm.get("link_id", "") for lm in self.accumulated_links],
             "link_metas": list(self.accumulated_links),
@@ -723,6 +743,18 @@ async def ingest(record: IngestRecord, request: Request) -> IngestResponse:
         ensemble_density = None
         ensemble_count = None
         completed_link_ids = None
+
+        if traversal is not None:
+            # Ensure link_metas is populated — fallback to fresh GIS match
+            if not traversal["link_metas"]:
+                fallback_link = matched_link
+                if not fallback_link and matcher and record.lat and record.lon:
+                    fb_match = matcher.match(lat=record.lat, lon=record.lon)
+                    if fb_match:
+                        fallback_link = _match_to_meta(fb_match)
+                if fallback_link:
+                    traversal["link_metas"] = [fallback_link]
+                    traversal["link_ids"] = [fallback_link.get("link_id", "")]
 
         if traversal is not None and registry is not None:
             prediction = sessions.predict_traversal(traversal, record.session_id, registry)

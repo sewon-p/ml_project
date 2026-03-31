@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ML Pipeline Dashboard v0.4.2</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
   :root {
@@ -14,7 +17,6 @@
     --muted: #8D99AE;
     --accent: #EF233C;
     --accent2: #2B2D42;
-    --danger: #b91c1c;
     --success: #15803d;
     --warn: #c2410c;
     --ink-soft: rgba(43, 45, 66, 0.72);
@@ -38,6 +40,15 @@
   h3 { font-size: 0.95rem; margin-bottom: 8px; font-weight: 700; }
 
   .grid { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
+  .grid.scenario-mode {
+    grid-template-columns: 1fr;
+  }
+  .grid.scenario-mode .dashboard-right {
+    display: none;
+  }
+  .grid.scenario-mode .dashboard-left {
+    max-width: none;
+  }
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -68,18 +79,33 @@
 
   /* Tabs */
   .tab-bar {
-    display: flex; gap: 0; margin-bottom: 16px;
-    border-bottom: 2px solid var(--border);
+    display: flex; gap: 6px; margin-bottom: 16px;
+    flex-wrap: wrap;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.74);
   }
   .tab-btn {
-    padding: 10px 20px; border: none; background: transparent;
-    color: var(--muted); font-size: 0.88rem; font-weight: 700;
+    padding: 10px 16px; border: none; background: transparent;
+    color: var(--muted); font-size: 0.86rem; font-weight: 700;
     font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-    cursor: pointer; border-bottom: 2px solid transparent;
-    margin-bottom: -2px; transition: all 0.15s;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    flex: 1 1 180px;
+    min-width: 0;
   }
-  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active {
+    color: var(--text);
+    background: rgba(239, 35, 60, 0.10);
+    box-shadow: inset 0 0 0 1px rgba(239, 35, 60, 0.18);
+  }
+  .tab-btn:hover { color: var(--text); background: rgba(43, 45, 66, 0.05); }
+  .tab-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(239, 35, 60, 0.10);
+  }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
@@ -111,14 +137,185 @@
   .btn-primary { background: var(--accent); color: #fff; }
   .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(239, 35, 60, 0.18); }
   .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; transform: none; box-shadow: none; }
-  .btn-danger { background: var(--danger); color: #fff; }
-  .btn-danger:hover { transform: translateY(-2px); }
+  .btn-danger {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+  .btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(239, 35, 60, 0.18);
+  }
   .btn-sm { padding: 5px 12px; font-size: 0.8rem; border-radius: 8px; }
   .btn-outline {
     background: transparent; border: 2px solid var(--border); color: var(--muted);
   }
   .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
   .btn-group { display: flex; gap: 8px; margin-top: 4px; }
+  .btn-group-wrap { flex-wrap: wrap; }
+
+  .inline-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .option-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 16px;
+    font-size: 0.82rem;
+    margin-bottom: 12px;
+  }
+  .option-grid.scrollable {
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .inline-muted {
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .inline-strong {
+    color: var(--accent2);
+  }
+  .field-card {
+    margin: 4px 0 4px 28px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.72);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .field-card-title {
+    font-size: 0.85em;
+    color: var(--accent2);
+    margin-bottom: 4px;
+    font-weight: 700;
+  }
+  .field-card-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 0.9em;
+  }
+  .config-details {
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.62);
+  }
+  .config-details summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    font-weight: 700;
+    color: var(--accent2);
+  }
+  .config-details summary::-webkit-details-marker { display: none; }
+  .config-details .summary-meta {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .config-details-body {
+    padding: 0 14px 14px;
+  }
+  .config-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .config-header h3 {
+    margin-bottom: 0;
+  }
+  .status-card {
+    display: grid;
+    gap: 14px;
+  }
+  .status-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .status-kicker {
+    font-size: 0.78rem;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    color: var(--accent);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+  .status-title {
+    font-size: 1rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+  .status-copy {
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+  }
+  .status-banner {
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 0.86rem;
+    border: 1px solid var(--border);
+    background: rgba(141, 153, 174, 0.08);
+    color: var(--accent2);
+  }
+  .status-banner.info {
+    background: rgba(141, 153, 174, 0.08);
+    color: var(--accent2);
+  }
+  .status-banner.success {
+    background: rgba(21, 128, 61, 0.08);
+    border-color: rgba(21, 128, 61, 0.18);
+    color: var(--success);
+  }
+  .status-banner.warn {
+    background: rgba(194, 65, 12, 0.08);
+    border-color: rgba(194, 65, 12, 0.18);
+    color: var(--warn);
+  }
+  .status-banner.error {
+    background: rgba(239, 35, 60, 0.08);
+    border-color: rgba(239, 35, 60, 0.18);
+    color: var(--accent);
+  }
+  .status-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .status-metric {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.72);
+  }
+  .status-metric-label {
+    font-size: 0.74rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    margin-bottom: 6px;
+  }
+  .status-metric-value {
+    font-size: 0.95rem;
+    font-weight: 800;
+  }
+  .run-actions {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
 
   /* Progress */
   .progress-section { margin-bottom: 16px; }
@@ -130,20 +327,23 @@
     height: 100%; background: var(--accent); border-radius: 4px;
     transition: width 0.5s ease;
   }
-  .progress-bar-fill.error { background: var(--danger); }
+  .progress-bar-fill.error { background: var(--accent); }
   .progress-info {
     display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--muted);
     font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
   }
   .status-badge {
-    display: inline-block; padding: 2px 10px; border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px; border-radius: 8px;
     font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
     font-size: 0.8rem; font-weight: 700;
   }
   .badge-running { background: rgba(239, 35, 60, 0.10); color: var(--accent); }
   .badge-idle { background: rgba(141, 153, 174, 0.15); color: var(--muted); }
   .badge-done { background: rgba(21, 128, 61, 0.12); color: var(--success); }
-  .badge-error { background: rgba(185, 28, 28, 0.12); color: var(--danger); }
+  .badge-error { background: rgba(239, 35, 60, 0.12); color: var(--accent); }
 
   /* Log */
   .log-box {
@@ -181,20 +381,35 @@
   .asset-item .meta { font-size: 0.78rem; color: var(--muted); margin-top: 2px; font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; }
 
   /* Run history */
-  .run-list { max-height: 300px; overflow-y: auto; }
+  .run-list {
+    display: grid;
+    gap: 8px;
+  }
   .run-item {
     background: rgba(255, 255, 255, 0.65);
     border: 1px solid var(--border);
     border-radius: 14px;
     padding: 12px;
-    margin-bottom: 8px;
+    display: grid;
+    gap: 12px;
+  }
+  .run-top {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    gap: 12px;
   }
   .run-item .run-info { flex: 1; }
   .run-item .run-id { font-weight: 700; font-size: 0.9rem; }
   .run-item .run-meta { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .run-eval-panel {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+  .run-eval-panel.open {
+    display: block;
+  }
   .run-status {
     display: inline-block; padding: 1px 8px; border-radius: 8px;
     font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
@@ -202,14 +417,21 @@
   }
   .run-status.completed { background: rgba(21, 128, 61, 0.12); color: var(--success); }
   .run-status.running { background: rgba(239, 35, 60, 0.10); color: var(--accent); }
-  .run-status.failed { background: rgba(185, 28, 28, 0.12); color: var(--danger); }
+  .run-status.failed { background: rgba(239, 35, 60, 0.12); color: var(--accent); }
   .run-status.pending { background: rgba(141, 153, 174, 0.15); color: var(--muted); }
   .run-status.cancelled { background: rgba(194, 65, 12, 0.12); color: var(--warn); }
 
   .spinner {
-    display: inline-block; width: 14px; height: 14px;
-    border: 2px solid var(--border); border-top-color: var(--accent);
-    border-radius: 50%; animation: spin 0.8s linear infinite;
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(141, 153, 174, 0.28);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    will-change: transform;
+    transform: translateZ(0);
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   .timer {
@@ -222,7 +444,80 @@
   }
 
   /* Eval results */
-  .eval-model { margin-bottom: 20px; }
+  .eval-list {
+    display: grid;
+    gap: 10px;
+  }
+  .eval-item {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.72);
+    overflow: hidden;
+  }
+  .eval-item summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+  }
+  .eval-item summary::-webkit-details-marker { display: none; }
+  .eval-summary-copy {
+    min-width: 0;
+    display: grid;
+    gap: 4px;
+  }
+  .eval-summary-title {
+    color: var(--accent2);
+    font-size: 0.95rem;
+    font-weight: 800;
+    line-height: 1.3;
+  }
+  .eval-summary-sub {
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  }
+  .eval-summary-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .eval-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(239, 35, 60, 0.08);
+    color: var(--accent2);
+    font-size: 0.74rem;
+    font-weight: 700;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  }
+  .eval-chevron {
+    width: 14px;
+    height: 14px;
+    border-right: 2px solid var(--accent);
+    border-bottom: 2px solid var(--accent);
+    transform: rotate(45deg);
+    transition: transform 0.18s ease;
+    flex: 0 0 auto;
+    margin-left: 4px;
+  }
+  .eval-item[open] .eval-chevron {
+    transform: rotate(225deg);
+  }
+  .eval-body {
+    padding: 0 16px 16px;
+    border-top: 1px solid var(--border);
+  }
+  .eval-model {
+    padding-top: 14px;
+  }
   .eval-model h3 { color: var(--accent2); margin-bottom: 8px; }
   .metrics-table {
     width: 100%; border-collapse: collapse; margin-bottom: 12px;
@@ -247,36 +542,114 @@
   }
   .scatter-container canvas { display: block; }
 
+  @media (max-width: 760px) {
+    .eval-item summary {
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .eval-summary-metrics {
+      justify-content: flex-start;
+    }
+  }
+
   /* Scenario Config tab */
   .sc-section { margin-bottom: 16px; }
   .sc-section h3 { color: var(--accent2); margin-bottom: 8px; font-size: 0.95rem; font-weight: 700; }
+  .sc-section,
+  .sc-details {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.68);
+    padding: 14px;
+  }
   .sc-row {
     display: grid;
-    grid-template-columns: 160px 90px 70px 70px 70px 70px;
-    gap: 6px;
-    align-items: center;
-    margin-bottom: 6px;
+    grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+    gap: 12px 14px;
+    align-items: start;
+    margin-bottom: 10px;
     font-size: 0.85rem;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.82);
   }
-  .sc-row label { color: var(--muted); font-size: 0.82rem; margin-bottom: 0; }
+  .sc-row-label,
+  .sc-row-controls,
+  .sc-row-controls > * { min-width: 0; }
+  .sc-row-label {
+    display: grid;
+    gap: 6px;
+    padding-top: 2px;
+  }
+  .sc-row-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--accent2);
+    line-height: 1.3;
+  }
+  .sc-row-meta {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(239, 35, 60, 0.08);
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .sc-row-note {
+    color: var(--muted);
+    font-size: 0.78rem;
+    line-height: 1.45;
+  }
+  .sc-field {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+  .sc-field-label {
+    color: var(--muted);
+    font-size: 0.72rem;
+    margin-bottom: 0;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    overflow-wrap: anywhere;
+  }
+  .sc-row-controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .sc-row-controls.normal-mode {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
   .sc-row input, .sc-row select {
-    padding: 5px 6px; font-size: 0.82rem; margin-bottom: 0;
+    width: 100%;
+    padding: 8px 9px; font-size: 0.82rem; margin-bottom: 0;
   }
   .sc-row .sc-extra { display: none; }
   .sc-row .sc-extra.visible { display: block; }
-  .sc-fixed { color: var(--muted); font-size: 0.85rem; padding: 4px 0; }
-  .sc-derived { color: var(--muted); font-size: 0.82rem; font-style: italic; padding: 4px 0; }
+  .sc-fixed { color: var(--muted); font-size: 0.85rem; padding: 2px 0 10px; }
+  .sc-derived { color: var(--muted); font-size: 0.82rem; font-style: italic; padding: 8px 2px 2px; }
   .sc-header {
     display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; flex-wrap: wrap;
     margin-bottom: 12px;
   }
   .sc-header h2 { margin-bottom: 0; }
   details.sc-details { margin-bottom: 12px; }
   details.sc-details summary {
     cursor: pointer; font-weight: 700; color: var(--accent2);
-    font-size: 0.95rem; padding: 6px 0;
+    font-size: 0.95rem; padding: 2px 0 10px;
   }
-  .sc-check-group { display: flex; gap: 12px; align-items: center; margin-bottom: 6px; }
+  .sc-check-group { display: flex; gap: 12px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
   .sc-check-group label {
     display: flex; align-items: center; gap: 4px;
     color: var(--text); font-size: 0.85rem; margin-bottom: 0;
@@ -286,6 +659,55 @@
 
   @media (max-width: 980px) {
     .grid { grid-template-columns: 1fr; }
+    .status-metrics { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 760px) {
+    .sc-row {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .sc-row-label {
+      padding-top: 0;
+    }
+    .inline-split,
+    .option-grid {
+      grid-template-columns: 1fr;
+    }
+    .status-card-head,
+    .config-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .sc-row-controls,
+    .sc-row-controls.normal-mode {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .tab-btn { flex-basis: 100%; }
+    .sc-row-controls,
+    .sc-row-controls.normal-mode { grid-template-columns: 1fr; }
+    .sc-header .btn { width: 100%; }
+    .sc-check-group { gap: 8px 12px; }
+    .btn-group {
+      flex-direction: column;
+    }
+    .run-item {
+      flex-direction: column;
+      gap: 10px;
+    }
+    .run-top {
+      flex-direction: column;
+    }
+    .run-actions {
+      width: 100%;
+      justify-content: stretch;
+    }
+    .run-actions .btn {
+      width: 100%;
+    }
   }
 </style>
 </head>
@@ -298,13 +720,13 @@
   <span class="status-badge badge-idle" id="statusBadge">Idle</span>
 </h1>
 
-<div class="grid">
+<div class="grid" id="dashboardGrid">
   <!-- LEFT: Controls -->
-  <div>
+  <div class="dashboard-left">
     <!-- Common Settings -->
     <div class="card">
       <h2>Common Settings</h2>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+      <div class="inline-split">
         <div>
           <label>CPU Workers (Simulation)</label>
           <select id="maxWorkers">
@@ -322,6 +744,41 @@
         </div>
       </div>
       <div class="hint" id="coreHint"></div>
+    </div>
+
+    <div class="card status-card" aria-live="polite">
+      <div class="status-card-head">
+        <div>
+          <div class="status-kicker">Runtime Status</div>
+          <div class="status-title" id="statusTitle">Ready to run</div>
+          <p class="status-copy" id="statusCopy">Choose a mode, review the config, then start the pipeline.</p>
+        </div>
+        <span class="status-badge badge-idle" id="statusCardBadge">Idle</span>
+      </div>
+      <div class="status-banner info" id="statusBanner">No pipeline is running. The current page is editable.</div>
+      <div class="progress-section">
+        <div class="progress-info">
+          <span id="progressLabel">Waiting...</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
+        </div>
+      </div>
+      <div class="status-metrics">
+        <div class="status-metric">
+          <div class="status-metric-label">Mode</div>
+          <div class="status-metric-value" id="statusMode">Scratch</div>
+        </div>
+        <div class="status-metric">
+          <div class="status-metric-label">Current Step</div>
+          <div class="status-metric-value" id="statusStep">Waiting</div>
+        </div>
+        <div class="status-metric">
+          <div class="status-metric-label">Elapsed</div>
+          <div class="status-metric-value" id="elapsedTimer">00:00</div>
+        </div>
+      </div>
     </div>
 
     <!-- Mode Tabs -->
@@ -352,9 +809,9 @@
             <span class="step-num">3</span> Feature Extraction</label>
           <label><input type="checkbox" value="residuals" checked>
             <span class="step-num">4</span> FD Residual Calc</label>
-          <div id="fdModelSection" style="margin: 4px 0 4px 28px; padding: 6px 10px; background: var(--bg-card); border-radius: 6px; border: 1px solid var(--border);">
-            <div style="font-size: 0.85em; color: var(--text-secondary); margin-bottom: 4px;">FD Model</div>
-            <div style="display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.9em;">
+          <div id="fdModelSection" class="field-card">
+            <div class="field-card-title">FD Model</div>
+            <div class="field-card-row">
               <label><input type="radio" name="fdModel" value="greenshields"> Greenshields</label>
               <label><input type="radio" name="fdModel" value="greenberg"> Greenberg</label>
               <label><input type="radio" name="fdModel" value="underwood" checked> Underwood</label>
@@ -382,12 +839,18 @@
         </div>
 
         <div id="featureSelectionSection">
-          <h3 style="display:flex; align-items:center; justify-content:space-between;">
-            Feature Selection
-            <button class="btn btn-outline btn-sm" onclick="toggleAllFeatures('scratch')">Select All / Deselect All</button>
-          </h3>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 16px; font-size:0.82rem; max-height:280px; overflow-y:auto; margin-bottom:12px;">
-            <div>
+          <details class="config-details">
+            <summary>
+              <span>Feature Selection</span>
+              <span class="summary-meta" id="scratchFeatureCount">31 selected</span>
+            </summary>
+            <div class="config-details-body">
+              <div class="config-header">
+                <h3>Feature Selection</h3>
+                <button class="btn btn-outline btn-sm" type="button" onclick="toggleAllFeatures('scratch')">Select All / Deselect All</button>
+              </div>
+              <div class="option-grid scrollable">
+                <div>
               <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Speed</div>
               <div class="checkbox-group" style="margin-bottom:4px;">
                 <label><input type="checkbox" class="feat-cb" value="speed_mean" checked> speed_mean</label>
@@ -447,32 +910,42 @@
                 <label><input type="checkbox" class="feat-cb" value="num_lanes" checked> num_lanes</label>
                 <label><input type="checkbox" class="feat-cb" value="speed_limit" checked> speed_limit</label>
               </div>
+                </div>
+              </div>
             </div>
-          </div>
+          </details>
         </div>
 
         <div id="windowFeatureSection">
-          <h3 style="display:flex; align-items:center; justify-content:space-between;">
-            Window Features <span style="font-size:0.75rem; color:var(--muted); font-weight:400;">(Window CNN-1D / LSTM)</span>
-            <button class="btn btn-outline btn-sm" onclick="toggleAllFeatures('window')">Select All / Deselect All</button>
-          </h3>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 16px; font-size:0.82rem; margin-bottom:12px;">
-            <div class="checkbox-group" style="margin-bottom:4px;">
+          <details class="config-details">
+            <summary>
+              <span>Window Features</span>
+              <span class="summary-meta" id="scratchWindowFeatureCount">8 selected</span>
+            </summary>
+            <div class="config-details-body">
+              <div class="config-header">
+                <h3>Window Features <span class="inline-muted">(Window CNN-1D / LSTM)</span></h3>
+                <button class="btn btn-outline btn-sm" type="button" onclick="toggleAllFeatures('window')">Select All / Deselect All</button>
+              </div>
+              <div class="option-grid">
+                <div class="checkbox-group" style="margin-bottom:4px;">
               <label><input type="checkbox" class="winfeat-cb" value="speed_mean" checked> speed_mean</label>
               <label><input type="checkbox" class="winfeat-cb" value="speed_std" checked> speed_std</label>
               <label><input type="checkbox" class="winfeat-cb" value="speed_min" checked> speed_min</label>
               <label><input type="checkbox" class="winfeat-cb" value="ax_std" checked> ax_std</label>
-            </div>
-            <div class="checkbox-group" style="margin-bottom:4px;">
+                </div>
+                <div class="checkbox-group" style="margin-bottom:4px;">
               <label><input type="checkbox" class="winfeat-cb" value="brake_time_ratio" checked> brake_time_ratio</label>
               <label><input type="checkbox" class="winfeat-cb" value="stop_time_ratio" checked> stop_time_ratio</label>
               <label><input type="checkbox" class="winfeat-cb" value="slow_duration_ratio" checked> slow_duration_ratio</label>
               <label><input type="checkbox" class="winfeat-cb" value="vy_energy" checked> vy_energy</label>
+                </div>
+              </div>
             </div>
-          </div>
+          </details>
         </div>
 
-        <div class="btn-group">
+        <div class="btn-group btn-group-wrap">
           <button class="btn btn-primary" id="btnRunScratch" onclick="runFromScratch()">Run</button>
           <button class="btn btn-danger" id="btnCancel" onclick="cancelPipeline()" style="display:none">Cancel</button>
           <button class="btn btn-outline" id="btnForceReset" onclick="forceReset()" style="display:none">Force Reset</button>
@@ -497,7 +970,7 @@
 
         <div id="dataFilterSection" style="display:none; margin-top:12px;">
           <h3>Data Filters</h3>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="inline-split" style="gap:12px;">
             <div>
               <label style="margin-bottom:4px;">Lanes</label>
               <div class="checkbox-group" id="filterLanes"></div>
@@ -526,12 +999,18 @@
             </div>
           </div>
           <div id="resumeFeatureSection" style="display:none;">
-            <h3 style="display:flex; align-items:center; justify-content:space-between;">
-              Feature Selection
-              <button class="btn btn-outline btn-sm" onclick="toggleAllFeatures('resume')">Select All / Deselect All</button>
-            </h3>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 16px; font-size:0.82rem; max-height:280px; overflow-y:auto; margin-bottom:12px;">
-              <div>
+            <details class="config-details">
+              <summary>
+                <span>Feature Selection</span>
+                <span class="summary-meta" id="resumeFeatureCount">31 selected</span>
+              </summary>
+              <div class="config-details-body">
+                <div class="config-header">
+                  <h3>Feature Selection</h3>
+                  <button class="btn btn-outline btn-sm" type="button" onclick="toggleAllFeatures('resume')">Select All / Deselect All</button>
+                </div>
+                <div class="option-grid scrollable">
+                  <div>
                 <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Speed</div>
                 <div class="checkbox-group" style="margin-bottom:4px;">
                   <label><input type="checkbox" class="resume-feat-cb" value="speed_mean" checked> speed_mean</label>
@@ -591,31 +1070,41 @@
                   <label><input type="checkbox" class="resume-feat-cb" value="num_lanes" checked> num_lanes</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="speed_limit" checked> speed_limit</label>
                 </div>
+                  </div>
+                </div>
               </div>
-            </div>
+            </details>
           </div>
           <div id="resumeWindowFeatureSection" style="display:none;">
-            <h3 style="display:flex; align-items:center; justify-content:space-between;">
-              Window Features <span style="font-size:0.75rem; color:var(--muted); font-weight:400;">(Window CNN-1D / LSTM)</span>
-              <button class="btn btn-outline btn-sm" onclick="toggleAllFeatures('resume-window')">Select All / Deselect All</button>
-            </h3>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 16px; font-size:0.82rem; margin-bottom:12px;">
-              <div class="checkbox-group" style="margin-bottom:4px;">
+            <details class="config-details">
+              <summary>
+                <span>Window Features</span>
+                <span class="summary-meta" id="resumeWindowFeatureCount">8 selected</span>
+              </summary>
+              <div class="config-details-body">
+                <div class="config-header">
+                  <h3>Window Features <span class="inline-muted">(Window CNN-1D / LSTM)</span></h3>
+                  <button class="btn btn-outline btn-sm" type="button" onclick="toggleAllFeatures('resume-window')">Select All / Deselect All</button>
+                </div>
+                <div class="option-grid">
+                  <div class="checkbox-group" style="margin-bottom:4px;">
                 <label><input type="checkbox" class="resume-winfeat-cb" value="speed_mean" checked> speed_mean</label>
                 <label><input type="checkbox" class="resume-winfeat-cb" value="speed_std" checked> speed_std</label>
                 <label><input type="checkbox" class="resume-winfeat-cb" value="speed_min" checked> speed_min</label>
                 <label><input type="checkbox" class="resume-winfeat-cb" value="ax_std" checked> ax_std</label>
-              </div>
-              <div class="checkbox-group" style="margin-bottom:4px;">
+                  </div>
+                  <div class="checkbox-group" style="margin-bottom:4px;">
                 <label><input type="checkbox" class="resume-winfeat-cb" value="brake_time_ratio" checked> brake_time_ratio</label>
                 <label><input type="checkbox" class="resume-winfeat-cb" value="stop_time_ratio" checked> stop_time_ratio</label>
                 <label><input type="checkbox" class="resume-winfeat-cb" value="slow_duration_ratio" checked> slow_duration_ratio</label>
                 <label><input type="checkbox" class="resume-winfeat-cb" value="vy_energy" checked> vy_energy</label>
+                  </div>
+                </div>
               </div>
-            </div>
+            </details>
           </div>
         </div>
-        <div class="btn-group">
+        <div class="btn-group btn-group-wrap">
           <button class="btn btn-primary" id="btnRunResume" onclick="runResume()" disabled>Run</button>
           <button class="btn btn-danger" id="btnCancelResume" onclick="cancelPipeline()" style="display:none">Cancel</button>
           <button class="btn btn-outline" id="btnForceResetResume" onclick="forceReset()" style="display:none">Force Reset</button>
@@ -682,34 +1171,16 @@
     <!-- Progress -->
     <div class="card" id="progressCard" style="display:none">
       <h2>Progress</h2>
-      <div class="progress-section">
-        <div class="progress-info">
-          <span id="progressLabel">Waiting...</span>
-          <span id="progressPct">0%</span>
-        </div>
-        <div class="progress-bar-bg">
-          <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
-        </div>
-      </div>
-      <div style="text-align:center; margin: 12px 0;">
-        <div class="timer" id="elapsedTimer">00:00</div>
-        <div style="font-size:0.8rem; color:var(--muted)">Elapsed</div>
-      </div>
+      <p class="hint">Detailed run state is mirrored in the runtime card above.</p>
     </div>
   </div>
 
   <!-- RIGHT: Log + Run History -->
-  <div>
+  <div class="dashboard-right">
     <!-- Log -->
     <div class="card">
       <h2>Execution Log</h2>
       <div class="log-box" id="logBox">Logs will appear here when the pipeline runs.</div>
-    </div>
-
-    <!-- Eval Results -->
-    <div class="card" id="evalCard" style="display:none">
-      <h2>Evaluation Results</h2>
-      <div id="evalContent"></div>
     </div>
 
     <!-- Run History -->
@@ -728,13 +1199,49 @@ const $$ = (sel) => document.querySelectorAll(sel);
 
 // --- Tab switching ---
 let scenarioDefaultsLoaded = false;
+let currentTab = 'scratch';
+
+function setDashboardNotice(message, tone = 'info') {
+  const banner = $('#statusBanner');
+  if (!banner) return;
+  banner.className = `status-banner ${tone}`;
+  banner.textContent = message;
+}
+
+function updateStatusMode(tab) {
+  const labels = {
+    scratch: 'Scratch',
+    resume: 'Resume',
+    scenario: 'Scenario',
+  };
+  $('#statusMode').textContent = labels[tab] || 'Scratch';
+}
+
+function syncFeatureCount(selector, targetId) {
+  const all = [...document.querySelectorAll(selector)];
+  const target = document.getElementById(targetId);
+  if (!target || all.length === 0) return;
+  const checked = all.filter((input) => input.checked).length;
+  target.textContent = `${checked} selected`;
+}
+
+function syncAllFeatureCounts() {
+  syncFeatureCount('.feat-cb', 'scratchFeatureCount');
+  syncFeatureCount('.winfeat-cb', 'scratchWindowFeatureCount');
+  syncFeatureCount('.resume-feat-cb', 'resumeFeatureCount');
+  syncFeatureCount('.resume-winfeat-cb', 'resumeWindowFeatureCount');
+}
+
 function switchTab(tab) {
+  currentTab = tab;
   $$('.tab-btn').forEach(b => b.classList.remove('active'));
   $$('.tab-panel').forEach(p => p.classList.remove('active'));
   const tabs = { scratch: 0, resume: 1, scenario: 2 };
   const idx = tabs[tab] ?? 0;
   $$('.tab-btn')[idx].classList.add('active');
   $(`#tab-${tab}`).classList.add('active');
+  $('#dashboardGrid').classList.toggle('scenario-mode', tab === 'scenario');
+  updateStatusMode(tab);
   // Auto-load scenario defaults on first open
   if (tab === 'scenario' && !scenarioDefaultsLoaded) {
     loadScenarioDefaults();
@@ -754,7 +1261,10 @@ $('#numProbes').addEventListener('input', updateTotal);
 // Toggle model type section based on train checkbox
 function updateModelTypeVisibility() {
   const trainChecked = !!$('#scratchSteps input[value="train"]:checked');
+  const residualChecked = !!$('#scratchSteps input[value="residuals"]:checked');
   $('#modelTypeSection').style.display = trainChecked ? 'block' : 'none';
+  $('#fdModelSection').style.display = residualChecked ? 'block' : 'none';
+  $('#statusStep').textContent = trainChecked ? 'Model setup' : 'Scenario setup';
 }
 $$('#scratchSteps input[type="checkbox"]').forEach(cb =>
   cb.addEventListener('change', updateModelTypeVisibility)
@@ -784,6 +1294,9 @@ function fmtTime(sec) {
 }
 function esc(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function domId(value) {
+  return String(value).replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
 // --- Asset browser for resume mode ---
@@ -958,6 +1471,8 @@ function toggleAllFeatures(mode) {
   const all = [...document.querySelectorAll(cls)];
   const allChecked = all.every(c => c.checked);
   all.forEach(c => c.checked = !allChecked);
+  syncAllFeatureCounts();
+  setDashboardNotice(allChecked ? 'Cleared all items in the current feature group.' : 'Selected all items in the current feature group.', 'info');
 }
 
 function hasWindowModel(selector) {
@@ -986,6 +1501,7 @@ function updateFeatureSections() {
   const rwfs = document.getElementById('resumeWindowFeatureSection');
   if (rfs) rfs.style.display = resumeTabular ? 'block' : 'none';
   if (rwfs) rwfs.style.display = resumeWindow ? 'block' : 'none';
+  syncAllFeatureCounts();
 }
 
 // --- Model types ---
@@ -996,9 +1512,13 @@ function getModelTypes() {
 // --- Run from scratch ---
 async function runFromScratch() {
   const steps = [...$$('#scratchSteps input:checked')].map(c => c.value);
-  if (steps.length === 0) { alert('Please select at least one step.'); return; }
+  if (steps.length === 0) {
+    setDashboardNotice('Select at least one pipeline step before running.', 'warn');
+    return;
+  }
   if (steps.includes('train') && getModelTypes().length === 0) {
-    alert('Please select at least one model to train.'); return;
+    setDashboardNotice('Select at least one model before starting training.', 'warn');
+    return;
   }
 
   const fdModelEl = document.querySelector('input[name="fdModel"]:checked');
@@ -1025,14 +1545,21 @@ async function runFromScratch() {
 
 // --- Run resume ---
 async function runResume() {
-  if (!selectedAsset) { alert('Please select an asset.'); return; }
+  if (!selectedAsset) {
+    setDashboardNotice('Select a source asset before running in resume mode.', 'warn');
+    return;
+  }
 
   const steps = [...$$('#resumeSteps input:checked')].map(c => c.value);
-  if (steps.length === 0) { alert('Please select at least one step.'); return; }
+  if (steps.length === 0) {
+    setDashboardNotice('Select at least one step before running resume mode.', 'warn');
+    return;
+  }
 
   const resumeModels = [...$$('#resumeModelTypes input:checked')].map(c => c.value);
   if ((steps.includes('train') || steps.includes('evaluate')) && resumeModels.length === 0) {
-    alert('Please select at least one model.'); return;
+    setDashboardNotice('Select at least one model for the selected resume steps.', 'warn');
+    return;
   }
 
   const resumeFdEl = document.querySelector('input[name="resumeFdModel"]:checked');
@@ -1055,28 +1582,40 @@ async function runResume() {
 
 // --- Common pipeline start ---
 async function startPipeline(body) {
-  const res = await fetch('/api/run', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(body),
-  });
-  const d = await res.json();
-  if (d.error) { alert(d.error); return; }
+  try {
+    const res = await fetch('/api/run', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    });
+    const d = await res.json();
+    if (d.error) {
+      setDashboardNotice(d.error, 'error');
+      return;
+    }
 
-  $('#progressCard').style.display = 'block';
-  startLogStream();
-  pollId = setInterval(pollStatus, 1000);
-  pollStatus();
+    $('#progressCard').style.display = 'block';
+    $('#statusTitle').textContent = 'Pipeline running';
+    $('#statusCopy').textContent = 'Status, logs, and run history will update automatically while the pipeline runs.';
+    setDashboardNotice('Pipeline started successfully. Streaming live updates now.', 'success');
+    startLogStream();
+    pollId = setInterval(pollStatus, 1000);
+    pollStatus();
+  } catch (e) {
+    setDashboardNotice('Failed to start the pipeline. Check the API server and try again.', 'error');
+  }
 }
 
 // --- Cancel / Force Reset ---
 async function cancelPipeline() {
   if (!confirm('Cancel the pipeline?')) return;
   await fetch('/api/cancel', { method: 'POST' });
+  setDashboardNotice('Cancellation requested. Waiting for the worker to stop.', 'warn');
 }
 async function forceReset() {
   if (!confirm('Force reset: Use when the process has died but the state is stuck. Reset?')) return;
   await fetch('/api/force-reset', { method: 'POST' });
+  setDashboardNotice('Force reset requested. Refreshing pipeline state.', 'warn');
   pollStatus();
   refreshRuns();
 }
@@ -1096,10 +1635,16 @@ async function pollStatus() {
     if (d.running) {
       dot.className = 'dot';
       badge.className = 'status-badge badge-running';
-      badge.innerHTML = '<span class="spinner"></span> Running';
+      $('#statusCardBadge').className = 'status-badge badge-running';
+      if (!badge.querySelector('.spinner')) badge.innerHTML = '<span class="spinner"></span><span>Running</span>';
+      if (!$('#statusCardBadge').querySelector('.spinner')) $('#statusCardBadge').innerHTML = '<span class="spinner"></span><span>Running</span>';
       progCard.style.display = 'block';
       disableRunButtons(true);
       showCancelButtons(true);
+      $('#statusTitle').textContent = 'Pipeline running';
+      $('#statusCopy').textContent = 'Logs and evaluation output will populate automatically as each step completes.';
+      $('#statusStep').textContent = d.current_step || 'Running';
+      setDashboardNotice('Pipeline is active. Avoid changing config until it finishes or is cancelled.', 'info');
 
       const pct = d.total_steps > 0 ? Math.round((d.step_index - 1) / d.total_steps * 100) : 0;
       $('#progressLabel').textContent = `${d.step_index}/${d.total_steps} — ${d.current_step}`;
@@ -1111,22 +1656,40 @@ async function pollStatus() {
       dot.className = 'dot off';
       disableRunButtons(false);
       showCancelButtons(false);
+      $('#statusCardBadge').className = 'status-badge badge-idle';
+      $('#statusCardBadge').textContent = 'Idle';
 
       if (d.error) {
         badge.className = 'status-badge badge-error';
         badge.textContent = 'Error';
+        $('#statusCardBadge').className = 'status-badge badge-error';
+        $('#statusCardBadge').textContent = 'Error';
         $('#progressBar').className = 'progress-bar-fill error';
         $('#progressBar').style.width = '100%';
         $('#progressLabel').textContent = d.error;
+        $('#statusTitle').textContent = 'Pipeline stopped with an error';
+        $('#statusCopy').textContent = 'Review the log panel and adjust the failing stage before trying again.';
+        $('#statusStep').textContent = 'Attention needed';
+        setDashboardNotice(d.error, 'error');
       } else if (d.elapsed > 0) {
         badge.className = 'status-badge badge-done';
         badge.textContent = 'Done';
+        $('#statusCardBadge').className = 'status-badge badge-done';
+        $('#statusCardBadge').textContent = 'Done';
         $('#progressBar').style.width = '100%';
         $('#progressLabel').textContent = 'Done';
         $('#progressPct').textContent = '100%';
+        $('#statusTitle').textContent = 'Last run completed';
+        $('#statusCopy').textContent = 'You can review results, inspect the logs, or launch another run.';
+        $('#statusStep').textContent = 'Completed';
+        setDashboardNotice('Pipeline completed successfully.', 'success');
       } else {
         badge.className = 'status-badge badge-idle';
         badge.textContent = 'Idle';
+        $('#statusTitle').textContent = 'Ready to run';
+        $('#statusCopy').textContent = 'Choose a mode, review the config, then start the pipeline.';
+        $('#statusStep').textContent = currentTab === 'scenario' ? 'Scenario setup' : 'Waiting';
+        setDashboardNotice('No pipeline is running. The current page is editable.', 'info');
       }
 
       $('#elapsedTimer').textContent = fmtTime(d.elapsed);
@@ -1134,10 +1697,9 @@ async function pollStatus() {
       if (pollId && !d.running) {
         clearInterval(pollId);
         pollId = null;
-        refreshRuns();
+        await refreshRuns();
         if (logEventSource) { logEventSource.close(); logEventSource = null; }
-        // Auto-load eval results
-        if (d.run_id) loadEvalResults(d.run_id);
+        if (d.run_id) await loadEvalResults(d.run_id);
       }
     }
 
@@ -1147,6 +1709,11 @@ async function pollStatus() {
     }
   } catch (e) {
     console.error('Poll error:', e);
+    $('#statusCardBadge').className = 'status-badge badge-error';
+    $('#statusCardBadge').textContent = 'Offline';
+    $('#statusTitle').textContent = 'Status unavailable';
+    $('#statusCopy').textContent = 'The page could not reach the dashboard API. Existing controls may be stale.';
+    setDashboardNotice('Could not fetch pipeline status. Check whether the local dashboard server is running.', 'error');
   }
 }
 
@@ -1254,25 +1821,31 @@ async function refreshRuns() {
         if (fp.length > 0) filterLine = 'Filter: ' + fp.join(' · ');
       }
 
+      const panelId = `evalPanel_${domId(r.run_id)}`;
+      const buttonId = `evalBtn_${domId(r.run_id)}`;
       const deleteBtn = isLegacy ? '' :
         `<button class="btn btn-danger btn-sm" onclick="deleteRun('${r.run_id}')">Delete</button>`;
-      const evalBtn = `<button class="btn btn-outline btn-sm" onclick="loadEvalResults('${r.run_id}')" style="margin-right:4px">Results</button>`;
+      const evalBtn = `<button class="btn btn-outline btn-sm" id="${buttonId}" aria-expanded="false" aria-controls="${panelId}" onclick="loadEvalResults('${r.run_id}', this)">Results</button>`;
 
-      return `<div class="run-item">
-        <div class="run-info">
-          <div class="run-id">${esc(label)} <span class="run-status ${statusCls}">${statusCls}</span></div>
-          <div class="run-meta">${esc(modeLabel)} | ${esc(r.created || '')}${r.num_scenarios ? ' | ' + r.num_scenarios + ' scenarios' : ''}</div>
-          ${scLine ? `<div class="run-meta" style="color:var(--accent2)">${esc(scLine)}</div>` : ''}
-          ${filterLine ? `<div class="run-meta" style="color:var(--warn)">${esc(filterLine)}</div>` : ''}
-          <div class="run-meta">${esc(assetStr)}</div>
-          ${r.completed_steps && r.completed_steps.length > 0 ?
-            `<div class="run-meta">Done: ${r.completed_steps.join(' → ')}</div>` : ''}
+      return `<div class="run-item" id="run_${domId(r.run_id)}">
+        <div class="run-top">
+          <div class="run-info">
+            <div class="run-id">${esc(label)} <span class="run-status ${statusCls}">${statusCls}</span></div>
+            <div class="run-meta">${esc(modeLabel)} | ${esc(r.created || '')}${r.num_scenarios ? ' | ' + r.num_scenarios + ' scenarios' : ''}</div>
+            ${scLine ? `<div class="run-meta" style="color:var(--accent2)">${esc(scLine)}</div>` : ''}
+            ${filterLine ? `<div class="run-meta" style="color:var(--warn)">${esc(filterLine)}</div>` : ''}
+            <div class="run-meta">${esc(assetStr)}</div>
+            ${r.completed_steps && r.completed_steps.length > 0 ?
+              `<div class="run-meta">Done: ${r.completed_steps.join(' → ')}</div>` : ''}
+          </div>
+          <div class="run-actions">${evalBtn}${deleteBtn}</div>
         </div>
-        <div>${evalBtn}${deleteBtn}</div>
+        <div class="run-eval-panel" id="${panelId}"></div>
       </div>`;
     }).join('');
   } catch (e) {
     console.error('Run list error:', e);
+    setDashboardNotice('Could not load run history.', 'error');
   }
 }
 
@@ -1281,47 +1854,108 @@ async function deleteRun(runId) {
   try {
     const res = await fetch(`/api/runs/${runId}`, { method: 'DELETE' });
     const d = await res.json();
-    if (d.error) { alert(d.error); return; }
+    if (d.error) {
+      setDashboardNotice(d.error, 'error');
+      return;
+    }
+    setDashboardNotice(`Deleted run ${runId}.`, 'success');
     refreshRuns();
   } catch (e) {
-    alert('Delete failed: ' + e.message);
+    setDashboardNotice(`Delete failed: ${e.message}`, 'error');
   }
 }
 
 // --- Eval Results ---
-async function loadEvalResults(runId) {
+async function loadEvalResults(runId, triggerEl = null) {
   try {
+    const panel = document.getElementById(`evalPanel_${domId(runId)}`);
+    const button = triggerEl || document.getElementById(`evalBtn_${domId(runId)}`);
+    if (!panel) return;
+
+    const isOpen = panel.classList.contains('open');
+    if (isOpen && panel.dataset.runId === runId) {
+      panel.classList.remove('open');
+      panel.innerHTML = '';
+      if (button) {
+        button.textContent = 'Results';
+        button.setAttribute('aria-expanded', 'false');
+      }
+      return;
+    }
+
+    document.querySelectorAll('.run-eval-panel.open').forEach((openPanel) => {
+      openPanel.classList.remove('open');
+      openPanel.innerHTML = '';
+    });
+    document.querySelectorAll('.run-actions .btn[aria-controls]').forEach((btn) => {
+      btn.textContent = 'Results';
+      btn.setAttribute('aria-expanded', 'false');
+    });
+
     const res = await fetch(`/api/eval/${runId}`);
     const data = await res.json();
-    if (!data.results || data.results.length === 0) return;
+    if (!data.results || data.results.length === 0) {
+      panel.classList.add('open');
+      panel.dataset.runId = runId;
+      panel.innerHTML = '<div class="run-meta" style="padding-top:4px;">No evaluation results available for this run yet.</div>';
+      if (button) {
+        button.textContent = 'Hide';
+        button.setAttribute('aria-expanded', 'true');
+      }
+      return;
+    }
 
-    const card = $('#evalCard');
-    const content = $('#evalContent');
-    card.style.display = 'block';
-    content.innerHTML = '';
+    panel.classList.add('open');
+    panel.dataset.runId = runId;
+    panel.innerHTML = '<div class="eval-list"></div>';
+    const list = panel.querySelector('.eval-list');
 
     data.results.forEach((r, idx) => {
       const m = r.metrics;
-      const div = document.createElement('div');
-      div.className = 'eval-model';
-      div.innerHTML = `
-        <h3>${r.model_type.toUpperCase()} — ${r.target} (n=${r.n_test})</h3>
-        <table class="metrics-table">
-          <tr><th>Metric</th><th>Value</th></tr>
-          <tr><td>RMSE</td><td class="val">${m.rmse ?? '-'}</td></tr>
-          <tr><td>MAE</td><td class="val">${m.mae ?? '-'}</td></tr>
-          <tr><td>MAPE</td><td class="val">${m.mape != null ? (m.mape * 100).toFixed(1) + '%' : '-'}</td></tr>
-          <tr><td>R²</td><td class="val">${m.r2 ?? '-'}</td></tr>
-        </table>
-        <div class="scatter-container">
-          <canvas id="scatter_${idx}" width="360" height="360"></canvas>
+      const details = document.createElement('details');
+      details.className = 'eval-item';
+      if (idx === 0) details.open = true;
+      details.innerHTML = `
+        <summary>
+          <div class="eval-summary-copy">
+            <div class="eval-summary-title">${r.model_type.toUpperCase()} — ${r.target}</div>
+            <div class="eval-summary-sub">n=${r.n_test} test samples</div>
+          </div>
+          <div class="eval-summary-metrics">
+            <span class="eval-chip">R² ${m.r2 ?? '-'}</span>
+            <span class="eval-chip">RMSE ${m.rmse ?? '-'}</span>
+            <span class="eval-chip">MAE ${m.mae ?? '-'}</span>
+          </div>
+          <span class="eval-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="eval-body">
+          <div class="eval-model">
+            <h3>${r.model_type.toUpperCase()} — ${r.target} (n=${r.n_test})</h3>
+            <table class="metrics-table">
+              <tr><th>Metric</th><th>Value</th></tr>
+              <tr><td>RMSE</td><td class="val">${m.rmse ?? '-'}</td></tr>
+              <tr><td>MAE</td><td class="val">${m.mae ?? '-'}</td></tr>
+              <tr><td>MAPE</td><td class="val">${m.mape != null ? (m.mape * 100).toFixed(1) + '%' : '-'}</td></tr>
+              <tr><td>R²</td><td class="val">${m.r2 ?? '-'}</td></tr>
+            </table>
+            <div class="scatter-container">
+              <canvas id="scatter_${domId(runId)}_${idx}" width="360" height="360"></canvas>
+            </div>
+          </div>
         </div>
       `;
-      content.appendChild(div);
+      list.appendChild(details);
+
+      details.addEventListener('toggle', () => {
+        if (!details.open) return;
+        list.querySelectorAll('.eval-item').forEach((item) => {
+          if (item !== details) item.open = false;
+        });
+      });
 
       // Draw scatter plot
       if (r.scatter) {
-        requestAnimationFrame(() => drawScatter(`scatter_${idx}`, r.scatter.actual, r.scatter.predicted, r.target));
+        requestAnimationFrame(() => drawScatter(`scatter_${domId(runId)}_${idx}`, r.scatter.actual, r.scatter.predicted, r.target));
       }
 
       // Draw feature importance bar chart
@@ -1329,13 +1963,19 @@ async function loadEvalResults(runId) {
         const fiDiv = document.createElement('div');
         fiDiv.className = 'scatter-container';
         fiDiv.style.marginTop = '12px';
-        fiDiv.innerHTML = `<canvas id="fi_${idx}" width="480" height="400"></canvas>`;
-        div.appendChild(fiDiv);
-        requestAnimationFrame(() => drawFeatureImportance(`fi_${idx}`, r.feature_importance));
+        fiDiv.innerHTML = `<canvas id="fi_${domId(runId)}_${idx}" width="480" height="400"></canvas>`;
+        details.querySelector('.eval-model').appendChild(fiDiv);
+        requestAnimationFrame(() => drawFeatureImportance(`fi_${domId(runId)}_${idx}`, r.feature_importance));
       }
     });
+    if (button) {
+      button.textContent = 'Hide';
+      button.setAttribute('aria-expanded', 'true');
+    }
+    panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   } catch (e) {
     console.error('Eval load error:', e);
+    setDashboardNotice(`Could not load evaluation results: ${e.message}`, 'error');
   }
 }
 
@@ -1511,26 +2151,61 @@ function renderParamRow(key, label, cfg) {
   const mean = cfg.mean ?? '';
   const std = cfg.std ?? '';
   const showExtra = dist === 'normal' ? 'visible' : '';
+  const profile = key.startsWith('passenger_')
+    ? 'Passenger'
+    : key.startsWith('truck_')
+      ? 'Truck'
+      : 'Global';
+  const note = dist === 'normal'
+    ? 'Uses min/max bounds plus mean and standard deviation.'
+    : 'Uses only minimum and maximum values for sampling.';
 
   container.innerHTML = `
     <div class="sc-row">
-      <label>${esc(label)}</label>
-      <select id="sc_dist_${key}" onchange="onDistChange('${key}')">
-        <option value="uniform" ${dist==='uniform'?'selected':''}>Uniform</option>
-        <option value="normal" ${dist==='normal'?'selected':''}>Normal</option>
-      </select>
-      <input type="number" id="sc_min_${key}" value="${mn}" step="any" placeholder="min">
-      <input type="number" id="sc_max_${key}" value="${mx}" step="any" placeholder="max">
-      <input type="number" id="sc_mean_${key}" value="${mean}" step="any" placeholder="mean"
-        class="sc-extra ${showExtra}">
-      <input type="number" id="sc_std_${key}" value="${std}" step="any" placeholder="std"
-        class="sc-extra ${showExtra}">
+      <div class="sc-row-label">
+        <div class="sc-row-meta">${esc(profile)}</div>
+        <div class="sc-row-title">${esc(label)}</div>
+        <div class="sc-row-note">${esc(note)}</div>
+      </div>
+      <div class="sc-row-controls ${dist === 'normal' ? 'normal-mode' : ''}">
+        <div class="sc-field">
+          <label class="sc-field-label" for="sc_dist_${key}">Distribution</label>
+          <select id="sc_dist_${key}" onchange="onDistChange('${key}')">
+            <option value="uniform" ${dist==='uniform'?'selected':''}>Uniform</option>
+            <option value="normal" ${dist==='normal'?'selected':''}>Normal</option>
+          </select>
+        </div>
+        <div class="sc-field">
+          <label class="sc-field-label" for="sc_min_${key}">Minimum</label>
+          <input type="number" id="sc_min_${key}" value="${mn}" step="any" placeholder="min">
+        </div>
+        <div class="sc-field">
+          <label class="sc-field-label" for="sc_max_${key}">Maximum</label>
+          <input type="number" id="sc_max_${key}" value="${mx}" step="any" placeholder="max">
+        </div>
+        <div class="sc-field sc-extra ${showExtra}">
+          <label class="sc-field-label" for="sc_mean_${key}">Mean</label>
+          <input type="number" id="sc_mean_${key}" value="${mean}" step="any" placeholder="mean">
+        </div>
+        <div class="sc-field sc-extra ${showExtra}">
+          <label class="sc-field-label" for="sc_std_${key}">Std Dev</label>
+          <input type="number" id="sc_std_${key}" value="${std}" step="any" placeholder="std">
+        </div>
+      </div>
     </div>`;
 }
 
 function onDistChange(key) {
   const dist = $(`#sc_dist_${key}`).value;
   const row = $(`#scRow_${key}`);
+  const controls = row.querySelector('.sc-row-controls');
+  controls.classList.toggle('normal-mode', dist === 'normal');
+  const note = row.querySelector('.sc-row-note');
+  if (note) {
+    note.textContent = dist === 'normal'
+      ? 'Uses min/max bounds plus mean and standard deviation.'
+      : 'Uses only minimum and maximum values for sampling.';
+  }
   row.querySelectorAll('.sc-extra').forEach(el => {
     el.classList.toggle('visible', dist === 'normal');
   });
@@ -1605,32 +2280,55 @@ populateScenarioFields(SCENARIO_FALLBACK);  // Render all param rows immediately
 refreshRuns();
 updateTotal();
 pollStatus();
+updateStatusMode(currentTab);
+syncAllFeatureCounts();
 
 // Toggle feature sections based on selected models
 document.querySelectorAll('#modelTypes input, #resumeModelTypes input').forEach(cb => {
   cb.addEventListener('change', updateFeatureSections);
 });
 updateFeatureSections();
+document.querySelectorAll('.feat-cb, .winfeat-cb, .resume-feat-cb, .resume-winfeat-cb').forEach(cb => {
+  cb.addEventListener('change', syncAllFeatureCounts);
+});
 
 // Cloud environment detection — show read-only overlay
 (async () => {
   try {
     const r = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     if (r.status === 403) {
+      setDashboardNotice('Hosted mode is read-only. Clone locally to run training jobs.', 'warn');
+      const overlayKey = 'ml_pipeline_hosted_overlay_dismissed';
+      if (sessionStorage.getItem(overlayKey) === '1') return;
+
       const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(43,45,66,0.36);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;';
       overlay.innerHTML = `
-        <div style="position:fixed;inset:0;z-index:9999;background:rgba(43,45,66,0.55);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;">
-          <div style="background:#fff;border-radius:20px;padding:36px 44px;max-width:460px;text-align:center;box-shadow:0 24px 48px rgba(0,0,0,0.18);">
-            <div style="font-size:2.4rem;margin-bottom:12px;">🔒</div>
-            <h2 style="margin:0 0 10px;font-size:1.3rem;color:#2B2D42;">Cloud Environment — Read Only</h2>
-            <p style="color:#8D99AE;font-size:0.95rem;line-height:1.6;margin:0 0 20px;">
-              ML Pipeline execution is disabled on the hosted server.<br>
-              Clone the repo and run locally to train models.
-            </p>
-            <a href="/about" style="display:inline-block;padding:12px 24px;background:#EF233C;color:#fff;border-radius:14px;font-weight:700;text-decoration:none;">Back to About</a>
+        <div role="dialog" aria-modal="true" aria-labelledby="hostedOverlayTitle" style="position:relative;background:rgba(255,255,255,0.97);border:1px solid rgba(141,153,174,0.22);border-radius:20px;padding:32px 32px 28px;max-width:480px;width:min(100%,480px);text-align:center;box-shadow:0 24px 48px rgba(0,0,0,0.14);">
+          <button type="button" id="dismissHostedOverlay" aria-label="Close notice" style="position:absolute;top:14px;right:14px;width:36px;height:36px;border:none;border-radius:999px;background:rgba(43,45,66,0.06);color:#2B2D42;font-size:1rem;font-weight:700;cursor:pointer;">×</button>
+          <div style="font-size:2rem;margin-bottom:10px;">Server mode</div>
+          <h2 id="hostedOverlayTitle" style="margin:0 0 10px;font-size:1.3rem;color:#2B2D42;">This dashboard is view-only on the hosted server.</h2>
+          <p style="color:#5E677A;font-size:0.95rem;line-height:1.6;margin:0 0 20px;">
+            You can inspect configs and run history here, but training and execution controls do not run on the server.
+            Clone the repo and open this dashboard locally if you want to launch jobs.
+          </p>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <a href="/about" style="display:inline-flex;align-items:center;justify-content:center;padding:12px 20px;background:#EF233C;color:#fff;border-radius:14px;font-weight:700;text-decoration:none;">Back to About</a>
+            <button type="button" id="continueHostedOverlay" style="display:inline-flex;align-items:center;justify-content:center;padding:12px 20px;background:transparent;color:#2B2D42;border:1px solid rgba(141,153,174,0.28);border-radius:14px;font-weight:700;cursor:pointer;">Continue browsing</button>
           </div>
         </div>`;
       document.body.appendChild(overlay);
+
+      const dismissOverlay = () => {
+        sessionStorage.setItem(overlayKey, '1');
+        overlay.remove();
+      };
+
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) dismissOverlay();
+      });
+      overlay.querySelector('#dismissHostedOverlay').addEventListener('click', dismissOverlay);
+      overlay.querySelector('#continueHostedOverlay').addEventListener('click', dismissOverlay);
     }
   } catch (e) {}
 })();

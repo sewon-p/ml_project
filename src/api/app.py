@@ -257,6 +257,11 @@ async def about_page() -> FileResponse:
     return _static_page("portfolio.html")
 
 
+@app.get("/portfolio", include_in_schema=False)
+async def legacy_portfolio_page() -> RedirectResponse:
+    return RedirectResponse(url="/about")
+
+
 @app.get("/dashboard", include_in_schema=False)
 async def dashboard_page() -> FileResponse:
     return _static_page("console-dashboard.html")

@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UrbanFlow Link Map</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="/static/site.css">
   <link
@@ -85,6 +88,16 @@
       transition: all 0.2s ease;
     }
 
+    .history-item .muted,
+    .drawer .muted,
+    .section-offset-tight .muted {
+      margin: 8px 0 0;
+    }
+
+    .drawer-title {
+      margin: 0 0 4px;
+    }
+
     .history-top,
     .row-between {
       display: flex;
@@ -108,6 +121,180 @@
       font-weight: 700;
     }
 
+    .legend-chip.low { background: #15803d; }
+    .legend-chip.moderate { background: #b45309; }
+    .legend-chip.heavy { background: #c2410c; }
+    .legend-chip.severe { background: #ef233c; }
+
+    .status-panel {
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.82);
+      display: grid;
+      gap: 10px;
+    }
+
+    .status-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+      padding: 0 10px;
+      border-radius: 999px;
+      font: 700 0.76rem/1 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    }
+
+    .status-badge.idle {
+      background: rgba(94, 103, 122, 0.12);
+      color: var(--muted);
+    }
+
+    .status-badge.live {
+      background: rgba(239, 35, 60, 0.1);
+      color: var(--accent);
+    }
+
+    .status-badge.error {
+      background: rgba(239, 35, 60, 0.1);
+      color: var(--accent);
+    }
+
+    .status-copy {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+    }
+
+    .status-note {
+      margin: 0;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .history-summary {
+      padding: 18px 20px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #2B2D42 0%, #3d3f5c 100%);
+      color: #fff;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 12px rgba(43, 45, 66, 0.25);
+    }
+
+    .history-summary-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .history-summary-title {
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
+
+    .history-summary-badge {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .history-summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .history-summary-label {
+      font-size: 0.72rem;
+      opacity: 0.7;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .history-summary-value {
+      font-size: 1.6rem;
+      font-weight: 800;
+    }
+
+    .history-summary-unit {
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .history-separator {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      padding: 8px 0 4px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 28px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .chip.probe-count {
+      background: rgba(99, 102, 241, 0.92);
+    }
+
+    .chip.cf-inline {
+      min-height: unset;
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .detail-metric-value {
+      font-size: 1.1rem;
+    }
+
+    .section-offset-tight {
+      margin-top: -4px;
+    }
+
+    .empty {
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px dashed var(--border);
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .drawer.loading {
+      opacity: 0.72;
+    }
+
+    .history-item.flash {
+      background: rgba(239, 35, 60, 0.08);
+      border-color: rgba(239, 35, 60, 0.2);
+    }
+
     @media (max-width: 1080px) {
       .map-layout {
         grid-template-columns: 1fr;
@@ -118,6 +305,26 @@
       #map {
         min-height: 560px;
       }
+
+      .drawer {
+        top: auto;
+        right: 12px;
+        left: 12px;
+        bottom: 12px;
+        width: auto;
+        max-height: 52vh;
+        overflow-y: auto;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .legend {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .history-summary-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -125,15 +332,14 @@
   <div class="shell">
     <header class="topbar">
       <div class="brand">
-        <div class="brand-mark">UF</div>
         <div class="brand-copy">
-          <div class="brand-title">UrbanFlow Console</div>
+          <div class="brand-title">Urban<span class="accent">Flow</span></div>
           <div class="brand-subtitle">Link-level monitoring map</div>
         </div>
         <a class="brand-shortcut" href="/ml-pipeline/">ML Pipeline</a>
       </div>
       <nav class="nav">
-        <a class="nav-link" href="/portfolio">About</a>
+        <a class="nav-link" href="/about">About</a>
         <a class="nav-link" href="/dashboard">Dashboard</a>
         <a class="nav-link active" href="/map">Map</a>
         <a class="nav-link" href="/mobile">Mobile</a>
@@ -163,10 +369,19 @@
           </div>
 
           <div class="legend">
-            <div class="legend-chip" style="background:#15803d;">Low</div>
-            <div class="legend-chip" style="background:#b45309;">Moderate</div>
-            <div class="legend-chip" style="background:#c2410c;">Heavy</div>
-            <div class="legend-chip" style="background:#b91c1c;">Severe</div>
+            <div class="legend-chip low">Low</div>
+            <div class="legend-chip moderate">Moderate</div>
+            <div class="legend-chip heavy">Heavy</div>
+            <div class="legend-chip severe">Severe</div>
+          </div>
+
+          <div class="status-panel" aria-live="polite">
+            <div class="status-head">
+              <p class="kicker">Live Status</p>
+              <span class="status-badge idle" id="mapStatusBadge">Idle</span>
+            </div>
+            <p class="status-copy" id="mapStatusCopy">Load the latest link layer and select a road to inspect its history.</p>
+            <p class="status-note" id="mapStatusNote">No refresh in progress.</p>
           </div>
 
           <div class="metric-grid">
@@ -176,14 +391,14 @@
             </div>
             <div class="metric">
               <span class="metric-label">Last refresh</span>
-              <div class="metric-value" id="refreshedAt" style="font-size:1.1rem;">-</div>
+              <div class="metric-value detail-metric-value" id="refreshedAt">-</div>
             </div>
           </div>
 
-          <div style="margin-top:-4px;">
+          <div class="section-offset-tight">
             <p class="kicker">Selected Link</p>
-            <h2 id="selectedTitle" style="margin-bottom:4px;">Choose a link</h2>
-            <p class="muted" id="selectedMeta" style="margin-bottom:0;">Click a highlighted link on the map to open its history.</p>
+            <h2 id="selectedTitle" class="drawer-title">Choose a link</h2>
+            <p class="muted" id="selectedMeta">Click a highlighted link on the map to open its history.</p>
           </div>
           <div id="historyContainer" class="history-list">
             <div class="empty">No link selected yet.</div>
@@ -194,7 +409,7 @@
           <div id="map"></div>
           <div id="detailDrawer" class="drawer hidden">
             <div class="row-between">
-              <h3 id="drawerTitle" style="margin:0;">Prediction detail</h3>
+              <h3 id="drawerTitle" class="drawer-title">Prediction detail</h3>
               <button class="btn secondary" id="closeDrawer" type="button">Close</button>
             </div>
             <p class="muted" id="drawerMeta">Select a timestamp from the left panel.</p>
@@ -233,9 +448,26 @@
     const linkLayerGroup = L.layerGroup().addTo(map);
     const linkLookup = new Map();
     let selectedLinkId = null;
+    let latestLinksRequestId = 0;
+    let latestHistoryRequestId = 0;
+    let isRefreshing = false;
+
+    function setMapStatus(tone, copy, note) {
+      const badge = document.getElementById('mapStatusBadge');
+      const copyEl = document.getElementById('mapStatusCopy');
+      const noteEl = document.getElementById('mapStatusNote');
+      badge.className = `status-badge ${tone}`;
+      badge.textContent = tone === 'live' ? 'Live' : tone === 'error' ? 'Error' : 'Idle';
+      copyEl.textContent = copy;
+      noteEl.textContent = note;
+    }
+
+    function setDrawerLoading(isLoading) {
+      document.getElementById('detailDrawer').classList.toggle('loading', isLoading);
+    }
 
     function densityColor(density) {
-      if (density >= 80) return '#b91c1c';
+      if (density >= 80) return '#ef233c';
       if (density >= 50) return '#c2410c';
       if (density >= 25) return '#b45309';
       return '#15803d';
@@ -283,24 +515,31 @@
       document.getElementById('drawerBody').innerHTML = cards.map(([label, value]) => `
         <div class="metric">
           <span class="metric-label">${label}</span>
-          <div class="metric-value" style="font-size:1.1rem;">${value}</div>
+          <div class="metric-value detail-metric-value">${value}</div>
         </div>
       `).join('');
       document.getElementById('detailDrawer').classList.remove('hidden');
     }
 
     async function loadPredictionDetail(predictionId) {
-      const response = await fetch(`/map/predictions/${predictionId}`);
-      if (!response.ok) throw new Error(`Failed to load prediction detail (${response.status})`);
-      const detail = await response.json();
-      renderDrawer(detail);
+      setDrawerLoading(true);
+      try {
+        const response = await fetch(`/map/predictions/${predictionId}`);
+        if (!response.ok) throw new Error(`Failed to load prediction detail (${response.status})`);
+        const detail = await response.json();
+        renderDrawer(detail);
+      } finally {
+        setDrawerLoading(false);
+      }
     }
 
     async function loadHistory(linkId) {
+      const requestId = ++latestHistoryRequestId;
       selectedLinkId = linkId;
       const response = await fetch(`/map/links/${encodeURIComponent(linkId)}/history?limit=30`);
       if (!response.ok) throw new Error(`Failed to load history (${response.status})`);
       const payload = await response.json();
+      if (requestId !== latestHistoryRequestId) return;
 
       document.getElementById('selectedTitle').textContent = payload.link.road_name || payload.link.link_id;
       const linkLen = payload.link.link_length_m ? ` · ${payload.link.link_length_m.toFixed(0)}m` : '';
@@ -313,20 +552,20 @@
       // Show ensemble summary — prominent card
       if (payload.ensemble && payload.ensemble.probe_count > 0) {
         const ensDiv = document.createElement('div');
-        ensDiv.style.cssText = 'padding:18px 20px; border-radius:16px; background:linear-gradient(135deg, #2B2D42 0%, #3d3f5c 100%); color:#fff; margin-bottom:12px; box-shadow:0 4px 12px rgba(43,45,66,0.25);';
+        ensDiv.className = 'history-summary';
         ensDiv.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-weight:800; font-size:1.1rem;">Ensemble Result</span>
-            <span style="background:rgba(255,255,255,0.2); padding:4px 10px; border-radius:8px; font-size:0.75rem; font-weight:700;">${payload.ensemble.probe_count} probe${payload.ensemble.probe_count > 1 ? 's' : ''} · CF-weighted</span>
+          <div class="history-summary-head">
+            <span class="history-summary-title">Ensemble Result</span>
+            <span class="history-summary-badge">${payload.ensemble.probe_count} probe${payload.ensemble.probe_count > 1 ? 's' : ''} · CF-weighted</span>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="history-summary-grid">
             <div>
-              <div style="font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em;">Density</div>
-              <div style="font-size:1.6rem; font-weight:800;">${payload.ensemble.ensemble_density.toFixed(1)} <span style="font-size:0.8rem; font-weight:500;">veh/km/lane</span></div>
+              <div class="history-summary-label">Density</div>
+              <div class="history-summary-value">${payload.ensemble.ensemble_density.toFixed(1)} <span class="history-summary-unit">veh/km/lane</span></div>
             </div>
             <div>
-              <div style="font-size:0.72rem; opacity:0.7; text-transform:uppercase; letter-spacing:0.08em;">Flow</div>
-              <div style="font-size:1.6rem; font-weight:800;">${payload.ensemble.ensemble_flow.toFixed(0)} <span style="font-size:0.8rem; font-weight:500;">veh/h</span></div>
+              <div class="history-summary-label">Flow</div>
+              <div class="history-summary-value">${payload.ensemble.ensemble_flow.toFixed(0)} <span class="history-summary-unit">veh/h</span></div>
             </div>
           </div>
         `;
@@ -334,7 +573,7 @@
 
         // Separator
         const sep = document.createElement('div');
-        sep.style.cssText = 'font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; font-weight:700; padding:8px 0 4px;';
+        sep.className = 'history-separator';
         sep.textContent = 'Individual probe predictions';
         container.appendChild(sep);
       }
@@ -343,29 +582,32 @@
         const button = document.createElement('button');
         button.className = 'history-item';
         const cfBadge = item.cf_weight != null
-          ? `<span style="font-size:0.72rem;color:#888;margin-left:4px;">CF ${item.cf_weight.toFixed(2)}</span>`
+          ? `<span class="chip cf-inline">CF ${item.cf_weight.toFixed(2)}</span>`
           : '';
         button.innerHTML = `
           <div class="history-top">
             <strong>${formatTime(item.observed_at)}</strong>
-            <span class="chip" style="background:${densityColor(item.density)}; color:#fff;">${densityLabel(item.density)}</span>
+            <span class="chip" style="background:${densityColor(item.density)};">${densityLabel(item.density)}</span>
           </div>
-          <p class="muted" style="margin:8px 0 0;">Density ${item.density.toFixed(2)} veh/km/lane · Flow ${item.flow.toFixed(1)} veh/h${cfBadge}</p>
+          <p class="muted">Density ${item.density.toFixed(2)} veh/km/lane · Flow ${item.flow.toFixed(1)} veh/h${cfBadge}</p>
         `;
         button.addEventListener('click', () => loadPredictionDetail(item.prediction_id));
         container.appendChild(button);
       });
+      prevHistoryCount = payload.history.length;
+      setMapStatus('live', 'Link history loaded successfully.', `Selected ${payload.link.link_id}. Updated ${formatTime(payload.history[0]?.observed_at || Date.now())}.`);
     }
 
     function showError(error) {
       document.getElementById('historyContainer').innerHTML = `<div class="empty">${error.message}</div>`;
+      setMapStatus('error', 'Map data could not be refreshed.', error.message);
     }
 
     function bindLayer(layer, item) {
       const pred = item.latest_prediction;
       const ens = item.ensemble;
       const probeTag = ens && ens.probe_count > 1
-        ? `<span style="background:#6366f1;color:#fff;padding:2px 8px;border-radius:99px;font-size:0.75rem;font-weight:700;margin-left:6px;">${ens.probe_count} probes</span>`
+        ? `<span class="chip probe-count">${ens.probe_count} probes</span>`
         : '';
       const densityVal = ens ? ens.ensemble_density : pred.density;
       const densityLine = ens && ens.probe_count > 1
@@ -383,49 +625,61 @@
     let initialLoadDone = false;
 
     async function loadLatestLinks() {
-      const response = await fetch('/map/links/latest?limit=1000');
-      if (!response.ok) throw new Error(`Failed to load links (${response.status})`);
-      const items = await response.json();
-      linkLayerGroup.clearLayers();
-      linkLookup.clear();
+      const requestId = ++latestLinksRequestId;
+      isRefreshing = true;
+      document.getElementById('refreshBtn').disabled = true;
+      setMapStatus('idle', 'Refreshing the latest link layer.', 'Waiting for the map API to return the newest snapshot.');
+      try {
+        const response = await fetch('/map/links/latest?limit=1000');
+        if (!response.ok) throw new Error(`Failed to load links (${response.status})`);
+        const items = await response.json();
+        if (requestId !== latestLinksRequestId) return;
+        linkLayerGroup.clearLayers();
+        linkLookup.clear();
 
-      const bounds = [];
-      items.forEach((item) => {
-        const geometry = safeGeometry(item.link);
-        if (!geometry) return;
-        const displayDensity = item.ensemble && item.ensemble.probe_count > 1
-          ? item.ensemble.ensemble_density
-          : item.latest_prediction.density;
-        const layer = L.geoJSON(geometry, {
-          style: {
-            color: densityColor(displayDensity),
-            weight: item.ensemble && item.ensemble.probe_count > 1 ? 7 : 5,
-            opacity: 0.9
-          }
+        const bounds = [];
+        items.forEach((item) => {
+          const geometry = safeGeometry(item.link);
+          if (!geometry) return;
+          const displayDensity = item.ensemble && item.ensemble.probe_count > 1
+            ? item.ensemble.ensemble_density
+            : item.latest_prediction.density;
+          const layer = L.geoJSON(geometry, {
+            style: {
+              color: densityColor(displayDensity),
+              weight: item.ensemble && item.ensemble.probe_count > 1 ? 7 : 5,
+              opacity: 0.9
+            }
+          });
+          layer.addTo(linkLayerGroup);
+          layer.eachLayer((child) => bindLayer(child, item));
+          const layerBounds = layer.getBounds();
+          if (layerBounds.isValid()) bounds.push(layerBounds);
+          linkLookup.set(item.link.link_id, layer);
         });
-        layer.addTo(linkLayerGroup);
-        layer.eachLayer((child) => bindLayer(child, item));
-        const layerBounds = layer.getBounds();
-        if (layerBounds.isValid()) bounds.push(layerBounds);
-        linkLookup.set(item.link.link_id, layer);
-      });
 
-      document.getElementById('loadedCount').textContent = String(items.length);
-      document.getElementById('refreshedAt').textContent = new Date().toLocaleTimeString('en-US');
+        document.getElementById('loadedCount').textContent = String(items.length);
+        document.getElementById('refreshedAt').textContent = new Date().toLocaleTimeString('en-US');
+        setMapStatus('live', 'Latest layer refreshed.', `${items.length} links loaded from the newest map snapshot.`);
 
-      // Only fit bounds on first load — preserve user's zoom/pan on polls
-      if (!initialLoadDone) {
-        initialLoadDone = true;
-        if (bounds.length) {
-          const merged = bounds.reduce((acc, cur) => acc.extend(cur), bounds[0]);
-          map.fitBounds(merged.pad(0.08));
-        } else {
-          map.setView(CONFIG.seoulCenter, CONFIG.seoulZoom);
+        // Only fit bounds on first load — preserve user's zoom/pan on polls
+        if (!initialLoadDone) {
+          initialLoadDone = true;
+          if (bounds.length) {
+            const merged = bounds.reduce((acc, cur) => acc.extend(cur), bounds[0]);
+            map.fitBounds(merged.pad(0.08));
+          } else {
+            map.setView(CONFIG.seoulCenter, CONFIG.seoulZoom);
+          }
         }
-      }
 
-      if (selectedLinkId && linkLookup.has(selectedLinkId)) {
-        loadHistory(selectedLinkId).catch(showError);
+        if (selectedLinkId && linkLookup.has(selectedLinkId)) {
+          loadHistory(selectedLinkId).catch(showError);
+        } else {
+        }
+      } finally {
+        isRefreshing = false;
+        document.getElementById('refreshBtn').disabled = false;
       }
     }
 
@@ -445,11 +699,14 @@
     let prevHistoryCount = 0;
     async function pollUpdates() {
       try {
+        if (isRefreshing) return;
         await loadLatestLinks();
         if (selectedLinkId) {
+          const requestId = ++latestHistoryRequestId;
           const res = await fetch(`/map/links/${encodeURIComponent(selectedLinkId)}/history?limit=30`);
           if (res.ok) {
             const payload = await res.json();
+            if (requestId !== latestHistoryRequestId) return;
             const newCount = payload.history.length;
             if (newCount !== prevHistoryCount) {
               prevHistoryCount = newCount;
@@ -457,9 +714,8 @@
               // Flash effect on new entry
               const firstItem = document.querySelector('#historyContainer .history-item');
               if (firstItem) {
-                firstItem.style.transition = 'background 0.5s';
-                firstItem.style.background = 'rgba(239,35,60,0.12)';
-                setTimeout(() => { firstItem.style.background = ''; }, 1500);
+                firstItem.classList.add('flash');
+                setTimeout(() => { firstItem.classList.remove('flash'); }, 1500);
               }
             }
           }

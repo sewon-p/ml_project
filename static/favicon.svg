@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#EDF2F4"/>
+  <text x="12" y="26" font-family="Pretendard, system-ui, -apple-system, sans-serif" font-size="15" font-weight="800" fill="#2B2D42" letter-spacing="-0.6">Urban</text>
+  <text x="12" y="46" font-family="Pretendard, system-ui, -apple-system, sans-serif" font-size="19" font-weight="900" fill="#EF233C" letter-spacing="-0.9">Flow</text>
+  <rect x="12" y="52" width="22" height="2.5" rx="1.25" fill="#2B2D42" opacity="0.18"/>
+</svg>
