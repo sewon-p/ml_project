@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch the UrbanFlow console on port 8000."""
+"""Launch the ProbeDensity console on port 8000."""
 
 from __future__ import annotations
 

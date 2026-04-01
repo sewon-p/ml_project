@@ -2,7 +2,7 @@
 
 ## Service Layout
 
-- `8000 /dashboard`: UrbanFlow Console
+- `8000 /dashboard`: ProbeDensity Console
 - `8000 /map`: link map
 - `8000 /mobile`: mobile ingest UI
 - `8000 /ml-pipeline/`: ML Pipeline

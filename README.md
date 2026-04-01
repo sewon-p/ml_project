@@ -1,8 +1,8 @@
-# UrbanFlow — Traffic Density Estimation from Probe Vehicles
+# ProbeDensity — Traffic Density Estimation from Probe Vehicles
 
 Predict how congested a road is using only smartphone sensor data from vehicles driving on it.
 
-UrbanFlow is an end-to-end traffic density estimation system that turns GPS + accelerometer trajectories from probe vehicles into per-link density estimates. It combines simulation-trained ML (XGBoost on 31 car-following features) with multi-probe Bayesian ensemble, and serves predictions through a real-time pipeline deployed on Seoul's arterial road network (2.2K MOCT standard links).
+ProbeDensity is an end-to-end traffic density estimation system that turns GPS + accelerometer trajectories from probe vehicles into per-link density estimates. Its main contribution is two-stage: first, a CF-weighted softmax ensemble that defines how multiple probes should be combined when they observe the same 1 km slice; second, a link-level fusion system that makes that idea deployable once real probes arrive with different start/end points across variable-length road links.
 
 **[Live Demo](https://traffic-estimator-gcbqhrztha-du.a.run.app/)** · **[API Docs](https://traffic-estimator-gcbqhrztha-du.a.run.app/docs)** · **[Map](https://traffic-estimator-gcbqhrztha-du.a.run.app/map)** · **[ML Pipeline](https://traffic-estimator-gcbqhrztha-du.a.run.app/ml-pipeline/)**
 
@@ -17,6 +17,7 @@ UrbanFlow is an end-to-end traffic density estimation system that turns GPS + ac
 - [What This Project Does](#what-this-project-does)
 - [Problem](#problem)
 - [System Architecture](#system-architecture)
+- [ML Pipeline Workbench](#ml-pipeline-workbench)
 - [ML Approach](#ml-approach)
 - [Backend and Data Engineering](#backend-and-data-engineering)
 - [Lessons Learned](#lessons-learned)
@@ -31,8 +32,10 @@ UrbanFlow is an end-to-end traffic density estimation system that turns GPS + ac
 1. **Generates labeled traffic data** — 35K SUMO scenarios × 5 probes = 176K samples of 6-channel trajectories (VX, VY, AX, AY, speed, brake)
 2. **Engineers 31 features** from car-following theory — speed statistics, acceleration patterns, braking behavior, lateral dynamics, time-series properties
 3. **Trains and compares 6 model families** — XGBoost, LightGBM, LSTM, CNN-1D, GPR, FD baselines under the same pipeline
-4. **Serves link-level predictions** — FastAPI, GIS link matching (2.2K Seoul arterial links), multi-probe ensemble, PostgreSQL, Kafka/Pub-Sub, Leaflet map
-5. **Multi-probe ensemble** — CF-weighted Bayesian aggregation of predictions per road link within a 15-minute rolling window
+4. **Defines a CF-weighted softmax fusion rule** — when probes observe the same 1 km slice, car-following intensity determines how strongly each probe should influence the joint estimate
+5. **Builds a link-level fusion system for deployment** — when probes do not share the same traversal boundaries, the system predicts per probe first and then aggregates unequal traversals at the road-link level
+6. **Wraps the offline workflow in a dashboard** — scenario generation, feature toggles, model selection, run history, scatter plots, and feature-importance inspection in one GUI
+7. **Serves link-level predictions** — FastAPI, GIS link matching (2.2K Seoul arterial links), rolling link ensembles, PostgreSQL, Kafka/Pub-Sub, Leaflet map
 
 Solo end-to-end project: simulation → ML → backend → deployment.
 
@@ -42,7 +45,7 @@ Traffic density — vehicles per kilometer — is the fundamental measure of roa
 
 Probe vehicles (taxis, ride-hails, smartphones) are everywhere, but a single probe only observes its own trajectory. The core challenge: **can you estimate how many vehicles surround a probe, using only its speed, acceleration, and braking patterns?**
 
-Systematic experiments across 6 model families confirmed that single-probe accuracy plateaus at R²≈0.45–0.50 regardless of algorithm. This motivated the shift to multi-probe fusion: combining 5 probes via CF-weighted Bayesian ensemble improved R² to 0.67 — a +47% gain that no single-model optimization could achieve.
+Systematic experiments across 6 model families confirmed that single-probe accuracy plateaus around R²≈0.45 regardless of algorithm. This motivated the shift to multi-probe fusion, but the project ultimately split that problem into two different settings: an aligned research setting where probes share the same 1 km slice, and a deployed road-network setting where probes rarely share identical start/end boundaries. The important result is not just "ensemble helps," but how much of the theoretical gain survives after introducing a deployable link-level fusion layer.
 
 ---
 
@@ -120,11 +123,34 @@ sequenceDiagram
 
 ### Key Design Decisions
 
-**Link-based inference (not time-based)**: The system accumulates FCD as the probe traverses consecutive road links, triggering prediction at **1km+ distance** — not after a fixed time window. Seoul arterial links average 80–120m, so the system chains ~10 consecutive links per prediction.
+**Link-based inference (not time-based)**: The system accumulates FCD as the probe traverses consecutive road links, triggering prediction at **1km+ distance** — not after a fixed time window. Because the deployment uses secondary arterial links and above, average link length is roughly **650 m**, so the system usually chains only about **2 consecutive links** per prediction.
 
-**Client sends raw, server does everything**: Smartphone buffers 30s of raw GPS+accel locally, sends bulk. No fusion or ML on device. Server-side Kalman filter, GIS matching (auto-detects speed limit and lanes), feature extraction, inference, and ensemble.
+**Thin client, centralized processing (with tradeoffs)**: The phone buffers about 30s of raw GPS+accelerometer data and uploads it in bulk, while the server handles Kalman fusion, GIS matching, feature extraction, inference, and ensemble logic. This keeps map logic and model updates in one place instead of duplicating them across devices, but it also makes the system more dependent on backend availability and network delivery.
 
-**Multi-probe Bayesian ensemble**: When multiple probes traverse the same link within 15 minutes, predictions are combined using CF-weighted softmax — probes in active car-following get higher weight because their trajectories carry more density information.
+**Two-stage multi-probe design**: The research version assumes probes observe the same 1 km slice and applies CF-weighted softmax fusion as the theoretical upper bound. The deployed version cannot assume that alignment, so it first predicts density for each traversal and then aggregates those unequal traversals at the road-link level inside a rolling window.
+
+---
+
+## ML Pipeline Workbench
+
+The offline workflow is not just script-driven. I built an ML pipeline dashboard so experiment work is manageable from one place: generate scenarios, resume from saved assets, adjust scenario distributions, choose feature sets, pick model families, and inspect evaluation output after training.
+
+The GUI matters because this project has many interacting choices that are painful to juggle by hand. A run may change scenario counts, probes per scenario, FD residual settings, handcrafted feature groups, window features, and training models all at once. The dashboard turns those into a reproducible workbench instead of a long sequence of shell commands and config edits.
+
+It also acts as an analysis surface after training:
+
+- **From Scratch / Resume / Scenario Config** tabs cover new runs, partial reruns, and distribution-level scenario control.
+- **Feature selection controls** let experiments include or exclude the 31 handcrafted features and window features without changing code.
+- **Model selection** supports direct comparison across XGBoost, LightGBM, CNN-1D, LSTM, and window models.
+- **Run history and inline results** keep completed runs explorable inside the UI.
+- **Evaluation views** show per-model metrics, actual-vs-predicted scatter plots, and feature-importance charts so failure modes are easier to inspect.
+
+<p align="center">
+  <img src="docs/images/ml-pipeline.png" width="48%" alt="ML pipeline dashboard with inline evaluation results, scatter plot, and feature importance">
+  <img src="docs/images/ml-pipeline-Scennario.png" width="48%" alt="ML pipeline scenario configuration dashboard with network, demand, and vehicle parameter controls">
+</p>
+
+On the hosted server the dashboard is intentionally view-only, but locally it is the main interface for running and analyzing the ML pipeline.
 
 ---
 
@@ -145,7 +171,7 @@ sequenceDiagram
 
 ### Results
 
-**Multi-probe penetration rate** (1km, XGBoost, CF-weighted):
+**Aligned same-slice upper bound** (1km, XGBoost, ideal multi-probe setting):
 
 | N (probes) | R² | MAE (veh/km/lane) | vs baseline |
 |------------|-----|-------------------|-------------|
@@ -154,13 +180,18 @@ sequenceDiagram
 | 3 | 0.604 | 2.00 | +32% |
 | 5 | **0.671** | **1.80** | **+47%** |
 
-MAE=1.80 means **1–2 vehicles per km per lane** error — approaching fixed loop-detector noise (±1–3 veh/km/lane).
+MAE=1.80 means **1–2 vehicles per km per lane** error — approaching fixed loop-detector noise (±1–3 veh/km/lane). This table is the aligned upper bound: probes are assumed to describe the same observation slice.
 
 **Observation length** (N=5): 250m → R²=0.615, 500m → 0.647, 750m → 0.665, 1km → 0.671.
 
-**Ensemble methods** (N=5): simple mean 0.601, CF-weighted 0.611, **Bayesian+CF 0.622**.
+**Deployed link-level fusion** (N=5): simple mean 0.601, **CF-weighted softmax 0.622**.
 
-**Model comparison** (single probe): FD baseline <0, GPR 0.41, LSTM/CNN-1D 0.45, **XGBoost/LightGBM 0.50** → production.
+The gap between **0.671** and **0.622** is the gap between two different problems:
+
+- **0.671**: ideal same-slice fusion, where probes can be aligned to the same 1 km segment
+- **0.622**: deployable fusion, where probes arrive on different link chains and must be combined after per-probe prediction
+
+**Model comparison** (single probe): FD baseline <0, GPR 0.41, LSTM/CNN-1D/XGBoost clustered around **0.44-0.46** → production.
 
 <p align="center">
   <img src="docs/images/probe_count_vs_r2.png" width="70%" alt="Probe count vs R²">
@@ -254,7 +285,7 @@ w_i = \frac{\exp(\text{cf}_i)}{\sum_j \exp(\text{cf}_j)} \quad \text{(softmax)}
 \hat{k}_{\text{ensemble}} = \sum_i w_i \cdot \hat{k}_i
 ```
 
-Car-following intensity determines how much to trust each probe. Probes in active car-following carry more density information → higher weight. Bayesian variant uses CF-informed observation uncertainty for sequential updating (R²=0.622 vs simple mean 0.601).
+Car-following intensity determines how much to trust each probe. Probes in active car-following carry more density information → higher weight via softmax (R²=0.622 vs simple mean 0.601).
 
 ### Sensor Fusion
 
@@ -264,10 +295,12 @@ Car-following intensity determines how much to trust each probe. Probes in activ
 
 ## Lessons Learned
 
-- **Domain-engineered features outperform deep learning on tabular traffic data.** XGBoost with 31 hand-crafted features (R²=0.50) consistently beat LSTM and CNN-1D on raw 6-channel timeseries (R²=0.45). Feature design grounded in car-following theory mattered more than model complexity.
-- **Single-probe density estimation has a structural ceiling around R²≈0.50.** Tested across XGBoost, LightGBM, LSTM, CNN-1D, GPR (4 kernels), window features, and density weighting — all converged to the same limit. The FD free-flow branch is degenerate: speed carries no density signal when all vehicles travel at free-flow speed.
-- **Multi-probe feature-level ensemble breaks the ceiling, but route alignment is required.** N=5 probes on the same segment: R²=0.67 (feature ensemble) vs R²=0.62 (prediction ensemble). In production, probes take different routes, making feature ensemble impractical. The Bayesian prediction ensemble recovers 93% of the theoretical gain without route constraints.
-- **Observation distance matters more than observation time.** Switching from fixed 300-second windows to distance-based 1 km link traversals improved feature quality and aligned the system with real road network geometry (MOCT standard node-link). Seoul arterial links average 189 m, requiring LinkBuffer accumulation across multiple links.
+- **The main contribution is two-stage, not one-stage.** The project first defines a CF-weighted softmax upper bound for aligned probes, then builds a link-level fusion system that preserves most of that gain once probes no longer share the same traversal boundaries.
+- **Single-probe density estimation has a structural ceiling around R²≈0.45.** Tested across XGBoost, LightGBM, LSTM, CNN-1D, GPR (4 kernels), window features, and density weighting — all converged to roughly the same limit. The FD free-flow branch is degenerate: speed carries no density signal when all vehicles travel at free-flow speed.
+- **R²=0.67 and R²=0.62 are different settings, not just different scores.** The 0.67 result comes from aligned same-slice fusion; the 0.62 result comes from the deployable system after unequal traversals are mapped onto a shared road-link aggregation layer.
+- **One road link is still shorter than the target observation unit.** Because the deployment uses secondary arterial links and above, average link length is roughly **650 m**. That is much longer than small urban segments, but still short of the system's 1 km prediction unit, so the deployed pipeline usually chains about **2 links** before making one density estimate.
+- **The implementation problem was fusion of unequal traversal windows.** Real probes do not begin and end their useful 1 km observation at the same place, so the deployable algorithm had to predict first and fuse second instead of directly averaging aligned samples.
+- **If inter-vehicle gap becomes an input, accuracy should jump much more sharply.** In the aligned multi-probe study, **XGBoost (31 features + CF)** rises from **0.641 → 0.752 → 0.801 → 0.848**. The important point is not just "more probes," but that better-aligned vehicles reveal spacing structure. If a connected-vehicle setup exposed headway or gap directly, the model would no longer need to infer that information indirectly from trajectory shape alone.
 - **Simulation produces almost no congestion without bottlenecks.** Only 48 of 176K samples showed v_ratio < 0.4. The single straight-link SUMO setup cannot generate realistic stop-and-go waves. Future work requires multi-link networks with lane drops, signals, and merge sections.
 
 ---

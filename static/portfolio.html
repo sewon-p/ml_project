@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UrbanFlow — Traffic Density Estimation from Probe Vehicles</title>
+  <title>ProbeDensity — Traffic Density Estimation from Probe Vehicles</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="icon" type="image/png" href="/static/favicon.png">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
@@ -201,13 +201,15 @@
       font: 800 clamp(28px, 4vw, 46px)/1.1 var(--sans);
       letter-spacing: -0.04em;
       margin-bottom: 16px;
-      max-width: 760px;
+      max-width: none;
+      text-wrap: balance;
     }
 
     .section-copy {
-      max-width: 760px;
+      max-width: none;
       color: var(--ink-soft);
       font-size: 1.06rem;
+      text-wrap: pretty;
     }
 
     .section-copy+.section-copy {
@@ -352,12 +354,268 @@
       margin-top: 28px;
     }
 
+    .narrative-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
+      gap: clamp(22px, 2.7vw, 34px);
+      align-items: stretch;
+    }
+
+    .section-shell {
+      margin-top: 28px;
+    }
+
+    .problem-layout {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .problem-story {
+      position: relative;
+      height: 100%;
+      display: grid;
+      gap: 26px;
+      padding: 30px;
+      border-radius: 30px;
+      border: 1px solid rgba(94, 103, 122, 0.14);
+      background:
+        radial-gradient(circle at top right, rgba(239, 35, 60, 0.09), transparent 32%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(247, 249, 252, 0.92));
+      box-shadow: 0 18px 40px rgba(43, 45, 66, 0.07);
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .problem-story::before {
+      content: '';
+      position: absolute;
+      top: 22px;
+      left: 0;
+      width: 4px;
+      height: 108px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(239, 35, 60, 0.88), rgba(239, 35, 60, 0.16));
+    }
+
+    .problem-story > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .problem-kicker {
+      font: 700 13px/1 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .problem-hook {
+      max-width: 16ch;
+      font: 900 clamp(30px, 4.1vw, 52px)/0.98 var(--sans);
+      letter-spacing: -0.05em;
+      color: var(--dark);
+    }
+
+    .problem-hook span {
+      color: var(--accent);
+    }
+
+    .problem-summary {
+      max-width: 62ch;
+      color: var(--ink-soft);
+      font-size: 1.02rem;
+      line-height: 1.74;
+    }
+
+    .problem-points {
+      display: grid;
+      gap: 14px;
+    }
+
+    .problem-point {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 14px;
+      align-items: start;
+      padding-top: 14px;
+      border-top: 1px solid rgba(94, 103, 122, 0.14);
+    }
+
+    .problem-point-index {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      background: rgba(239, 35, 60, 0.08);
+      border: 1px solid rgba(239, 35, 60, 0.16);
+      color: var(--accent);
+      font: 700 11px/1 var(--mono);
+      letter-spacing: 0.08em;
+    }
+
+    .problem-point-copy strong {
+      display: block;
+      margin-bottom: 5px;
+      font: 800 16px/1.3 var(--sans);
+      letter-spacing: -0.02em;
+      color: var(--dark);
+    }
+
+    .problem-point-copy span {
+      color: var(--ink-soft);
+      font-size: 0.95rem;
+      line-height: 1.68;
+    }
+
+    .problem-proof {
+      display: grid;
+      gap: 14px;
+      height: 100%;
+    }
+
+    .problem-proof-lead {
+      padding: 24px 24px 22px;
+      border-radius: 26px;
+      border: 1px solid rgba(239, 35, 60, 0.18);
+      background:
+        radial-gradient(circle at top right, rgba(239, 35, 60, 0.14), transparent 34%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 246, 247, 0.94));
+      box-shadow: 0 18px 40px rgba(43, 45, 66, 0.07);
+    }
+
+    .problem-proof-title {
+      margin-top: 10px;
+      font: 800 clamp(24px, 2.4vw, 34px)/1.02 var(--sans);
+      letter-spacing: -0.04em;
+      color: var(--dark);
+      max-width: 12ch;
+    }
+
+    .problem-proof-copy {
+      margin-top: 10px;
+      color: var(--ink-soft);
+      font-size: 0.95rem;
+      line-height: 1.66;
+      max-width: 34ch;
+    }
+
+    .problem-proof-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .problem-proof-card {
+      min-height: 0;
+      padding: 18px 18px 20px;
+      border-radius: 22px;
+      border: 1px solid var(--surface-border);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 8px 24px rgba(43, 45, 66, 0.05);
+    }
+
+    .problem-proof-card.is-highlight {
+      grid-column: 1 / -1;
+      background:
+        radial-gradient(circle at top right, rgba(239, 35, 60, 0.14), transparent 30%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(251, 244, 246, 0.94));
+      border-color: rgba(239, 35, 60, 0.18);
+    }
+
+    .problem-proof-value {
+      margin-top: 8px;
+      font: 900 clamp(28px, 2.8vw, 42px)/0.95 var(--sans);
+      letter-spacing: -0.05em;
+      color: var(--dark);
+    }
+
+    .problem-proof-card strong {
+      display: block;
+      margin-top: 8px;
+      font: 800 16px/1.3 var(--sans);
+      letter-spacing: -0.02em;
+      color: var(--dark);
+    }
+
+    .problem-proof-card span {
+      display: block;
+      margin-top: 6px;
+      color: var(--ink-soft);
+      font-size: 0.88rem;
+      line-height: 1.62;
+    }
+
+    .narrative-body {
+      min-width: 0;
+      display: grid;
+      gap: 18px;
+      align-content: start;
+    }
+
+    .story-panel {
+      position: relative;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 18px;
+      padding: 24px 26px;
+      border-radius: 22px;
+      border: 1px solid rgba(94, 103, 122, 0.14);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 8px 24px rgba(43, 45, 66, 0.05);
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .story-panel::before {
+      content: '';
+      position: absolute;
+      top: 20px;
+      left: 0;
+      width: 3px;
+      height: 72px;
+      border-radius: 999px;
+      background: rgba(239, 35, 60, 0.72);
+    }
+
+    .story-panel > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .narrative-body .section-copy {
+      max-width: none;
+      line-height: 1.7;
+    }
+
+    .narrative-body .section-copy + .section-copy {
+      margin-top: 14px;
+    }
+
+    .narrative-body .panel-heading {
+      margin-bottom: 18px;
+    }
+
+    .narrative-aside {
+      min-width: 0;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+      height: 100%;
+    }
+
     .panel {
       background: rgba(255, 255, 255, 0.92);
       border: 1px solid var(--surface-border);
       border-radius: 22px;
-      padding: 24px;
-      box-shadow: 0 8px 24px rgba(43, 45, 66, 0.06);
+      padding: 22px;
+      box-shadow: 0 8px 24px rgba(43, 45, 66, 0.05);
     }
 
     .panel p+p {
@@ -367,9 +625,557 @@
     .mini-list {
       display: grid;
       gap: 12px;
+      align-content: start;
+    }
+
+    .mini-list.compact-two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+    }
+
+    .problem-insights {
+      height: auto;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .problem-insight {
+      padding: 20px 22px;
+      border-radius: 22px;
+      border: 1px solid var(--surface-border);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 8px 24px rgba(43, 45, 66, 0.05);
+      min-height: 168px;
+    }
+
+    .problem-insight .metric-label {
+      margin-bottom: 10px;
+      color: var(--muted);
+    }
+
+    .problem-insight strong {
+      display: block;
+      margin-bottom: 8px;
+      font: 800 16px/1.32 var(--sans);
+      letter-spacing: -0.02em;
+      color: var(--dark);
+      text-wrap: balance;
+    }
+
+    .problem-insight span {
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.72;
+      text-wrap: pretty;
+    }
+
+    .approach-copy-box {
+      margin-top: 20px;
+      padding: 24px 26px;
+      border-radius: 22px;
+      border: 1px solid var(--surface-border);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 8px 24px rgba(43, 45, 66, 0.05);
+    }
+
+    .approach-copy-box .metric-label {
+      margin-bottom: 12px;
+    }
+
+    .approach-copy-lead {
+      max-width: none;
+      margin-bottom: 14px;
+      font: 800 clamp(22px, 2.6vw, 30px)/1.18 var(--sans);
+      letter-spacing: -0.03em;
+      color: var(--dark);
+      text-wrap: balance;
+    }
+
+    .approach-copy-box .section-copy {
+      max-width: none;
+      font-size: 1.02rem;
+      line-height: 1.76;
+    }
+
+    .approach-copy-box .section-copy + .section-copy {
+      margin-top: 18px;
+    }
+
+    .problem-copy-lead {
+      max-width: none;
+      margin-bottom: 14px;
+      font: 800 clamp(22px, 2.5vw, 30px)/1.18 var(--sans);
+      letter-spacing: -0.03em;
+      color: var(--dark);
+      text-wrap: balance;
+    }
+
+    .panel-copy-lead {
+      max-width: none;
+      margin-bottom: 14px;
+      font: 800 clamp(22px, 2.5vw, 30px)/1.18 var(--sans);
+      letter-spacing: -0.03em;
+      color: var(--dark);
+      text-wrap: balance;
+    }
+
+    .pipeline-aside {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .pipeline-top {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .pipeline-summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+      align-items: stretch;
+    }
+
+    .shell-subgrid {
+      margin-top: 22px;
+    }
+
+    .pipeline-preview {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+      border-radius: 22px;
+      border: 1px solid var(--surface-border);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 8px 24px rgba(43, 45, 66, 0.05);
+      transition: transform 0.22s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.22s cubic-bezier(0.25, 1, 0.5, 1), border-color 0.22s ease;
+    }
+
+    .pipeline-preview:hover {
+      transform: translateY(-2px);
+      border-color: rgba(239, 35, 60, 0.24);
+      box-shadow: 0 14px 28px rgba(43, 45, 66, 0.08);
+    }
+
+    .pipeline-preview img {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      object-position: top center;
+      background: rgba(237, 242, 244, 0.82);
+    }
+
+    .pipeline-preview-copy {
+      flex: 1;
+      padding: 14px 16px 18px;
+    }
+
+    .pipeline-preview-title {
+      font: 800 14px/1.3 var(--sans);
+      letter-spacing: -0.02em;
+      color: var(--dark);
+      text-wrap: balance;
+    }
+
+    .pipeline-preview-desc {
+      margin-top: 6px;
+      color: var(--ink-soft);
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+
+    .pipeline-preview-link {
+      margin-top: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent);
+      font: 700 11px/1 var(--mono);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .pipeline-preview-link::after {
+      content: '↗';
+      transition: transform 0.18s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .pipeline-preview:hover .pipeline-preview-link::after {
+      transform: translate(2px, -2px);
+    }
+
+    .pipeline-preview-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
+
+    .pipeline-summary .card {
+      height: 100%;
+      margin-bottom: 0;
+    }
+
+    .approach-shell {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .approach-intro {
+      display: grid;
+      gap: 18px;
+      padding: 28px 30px;
+      border-radius: 30px;
+      border: 1px solid rgba(94, 103, 122, 0.14);
+      background:
+        radial-gradient(circle at top right, rgba(43, 45, 66, 0.06), transparent 34%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(247, 249, 252, 0.92));
+      box-shadow: 0 18px 40px rgba(43, 45, 66, 0.07);
+    }
+
+    .approach-lead {
+      max-width: 18ch;
+      font: 900 clamp(30px, 3.8vw, 50px)/0.98 var(--sans);
+      letter-spacing: -0.05em;
+      color: var(--dark);
+    }
+
+    .approach-lead span {
+      color: var(--accent);
+    }
+
+    .approach-intro .section-copy {
+      max-width: 64ch;
+      margin: 0;
+      line-height: 1.72;
+    }
+
+    .approach-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .approach-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: rgba(43, 45, 66, 0.05);
+      border: 1px solid rgba(94, 103, 122, 0.14);
+      color: var(--dark);
+      font: 700 11px/1 var(--mono);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .approach-proof {
+      display: grid;
+      gap: 18px;
+      align-content: start;
+      padding: 28px;
+      border-radius: 30px;
+      color: rgba(247, 249, 252, 0.96);
+      background:
+        radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 28%),
+        radial-gradient(circle at 18% 16%, rgba(239, 35, 60, 0.26), transparent 22%),
+        linear-gradient(140deg, #232838, #30374c 56%, #3a2730 100%);
+      box-shadow: 0 24px 54px rgba(43, 45, 66, 0.18);
+    }
+
+    .approach-proof .metric-label {
+      color: rgba(247, 249, 252, 0.64);
+    }
+
+    .approach-proof-title {
+      font: 900 clamp(30px, 3vw, 42px)/0.95 var(--sans);
+      letter-spacing: -0.05em;
+      max-width: 10ch;
+    }
+
+    .approach-proof-copy {
+      color: rgba(247, 249, 252, 0.82);
+      line-height: 1.66;
+      max-width: 34ch;
+    }
+
+    .approach-proof-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .approach-proof-metric {
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .approach-proof-metric strong {
+      display: block;
+      font: 800 22px/1 var(--sans);
+      letter-spacing: -0.03em;
+    }
+
+    .approach-proof-metric span {
+      display: block;
+      margin-top: 6px;
+      color: rgba(247, 249, 252, 0.72);
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+
+    .approach-flow {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: 0.92fr 1.16fr 0.92fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .approach-step {
+      position: relative;
+      padding: 22px 22px 24px;
+      border-radius: 24px;
+      border: 1px solid rgba(94, 103, 122, 0.14);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 10px 28px rgba(43, 45, 66, 0.06);
+    }
+
+    .approach-step.is-emphasis {
+      background:
+        radial-gradient(circle at top right, rgba(239, 35, 60, 0.12), transparent 28%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(251, 244, 246, 0.94));
+      border-color: rgba(239, 35, 60, 0.2);
+      box-shadow: 0 18px 40px rgba(43, 45, 66, 0.08);
+      transform: translateY(-8px);
+    }
+
+    .approach-step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      background: rgba(43, 45, 66, 0.06);
+      color: var(--dark);
+      font: 700 11px/1 var(--mono);
+      letter-spacing: 0.08em;
+    }
+
+    .approach-step.is-emphasis .approach-step-number {
+      background: rgba(239, 35, 60, 0.1);
+      color: var(--accent);
+    }
+
+    .approach-step-title {
+      margin-top: 18px;
+      font: 800 24px/1.05 var(--sans);
+      letter-spacing: -0.04em;
+      color: var(--dark);
+      max-width: 12ch;
+    }
+
+    .approach-step-copy {
+      margin-top: 10px;
+      color: var(--ink-soft);
+      font-size: 0.95rem;
+      line-height: 1.68;
+    }
+
+    .approach-step-note {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(94, 103, 122, 0.14);
+      color: var(--muted);
+      font: 700 11px/1.5 var(--mono);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .pipeline-shell {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: minmax(0, 0.96fr) minmax(320px, 1.04fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .pipeline-command {
+      display: grid;
+      gap: 18px;
+      padding: 30px;
+      border-radius: 30px;
+      color: rgba(247, 249, 252, 0.96);
+      background:
+        radial-gradient(circle at top right, rgba(239, 35, 60, 0.18), transparent 28%),
+        radial-gradient(circle at 16% 18%, rgba(255, 255, 255, 0.08), transparent 22%),
+        linear-gradient(145deg, #242738, #2e3346 56%, #35242b 100%);
+      box-shadow: 0 26px 60px rgba(43, 45, 66, 0.18);
+    }
+
+    .pipeline-command .panel-heading {
+      margin: 0;
+      color: rgba(247, 249, 252, 0.68);
+    }
+
+    .pipeline-shell-title {
+      max-width: 12ch;
+      font: 900 clamp(32px, 4vw, 50px)/0.96 var(--sans);
+      letter-spacing: -0.05em;
+    }
+
+    .pipeline-command-copy {
+      max-width: 36ch;
+      color: rgba(247, 249, 252, 0.84);
+      line-height: 1.7;
+    }
+
+    .pipeline-bullets {
+      display: grid;
+      gap: 12px;
+    }
+
+    .pipeline-bullet {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .pipeline-bullet-index {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      background: rgba(239, 35, 60, 0.16);
+      color: rgba(247, 249, 252, 0.96);
+      font: 700 10px/1 var(--mono);
+      letter-spacing: 0.08em;
+    }
+
+    .pipeline-bullet strong {
+      display: block;
+      font: 800 15px/1.35 var(--sans);
+      color: rgba(247, 249, 252, 0.96);
+    }
+
+    .pipeline-bullet span {
+      display: block;
+      margin-top: 4px;
+      color: rgba(247, 249, 252, 0.72);
+      font-size: 0.9rem;
+      line-height: 1.56;
+    }
+
+    .pipeline-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .pipeline-meta span {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: rgba(247, 249, 252, 0.82);
+      font: 700 10px/1 var(--mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .pipeline-preview-hero {
+      min-height: 100%;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 253, 0.94));
+      box-shadow: 0 18px 40px rgba(43, 45, 66, 0.08);
+    }
+
+    .pipeline-preview-topline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .pipeline-preview-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: rgba(239, 35, 60, 0.08);
+      border: 1px solid rgba(239, 35, 60, 0.16);
+      color: var(--accent);
+      font: 700 10px/1 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .pipeline-rail {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .pipeline-rail-item {
+      padding: 16px 18px 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(94, 103, 122, 0.14);
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 10px 26px rgba(43, 45, 66, 0.05);
+    }
+
+    .pipeline-rail-label {
+      color: var(--accent);
+      font: 700 11px/1 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .pipeline-rail-title {
+      margin-top: 10px;
+      font: 800 18px/1.16 var(--sans);
+      letter-spacing: -0.03em;
+      color: var(--dark);
+    }
+
+    .pipeline-rail-copy {
+      margin-top: 8px;
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+      line-height: 1.62;
     }
 
     .mini-item {
+      height: 100%;
       padding: 14px 16px;
       border-radius: 16px;
       background: rgba(255, 255, 255, 0.92);
@@ -399,17 +1205,17 @@
       background: rgba(255, 255, 255, 0.92);
       border: 1px solid var(--surface-border);
       border-radius: 22px;
-      padding: 22px;
-      box-shadow: 0 8px 24px rgba(43, 45, 66, 0.06);
+      padding: 20px 20px 22px;
+      box-shadow: 0 8px 24px rgba(43, 45, 66, 0.05);
       text-decoration: none;
       overflow-wrap: anywhere;
       transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
     }
 
     .card:hover {
-      transform: translateY(-3px);
-      border-color: rgba(239, 35, 60, 0.38);
-      box-shadow: 0 24px 44px rgba(43, 45, 66, 0.09);
+      transform: translateY(-2px);
+      border-color: rgba(239, 35, 60, 0.26);
+      box-shadow: 0 14px 28px rgba(43, 45, 66, 0.08);
     }
 
     .mermaid-wrap {
@@ -519,25 +1325,411 @@
     .card-title {
       margin-top: 10px;
       font: 800 16px/1.3 var(--sans);
+      text-wrap: balance;
     }
 
     .card-title-sm {
       margin-top: 8px;
       font: 700 14px/1.4 var(--sans);
+      text-wrap: balance;
     }
 
     .card-desc {
       margin-top: 6px;
       color: var(--ink-soft);
       font-size: 0.85rem;
+      text-wrap: pretty;
+    }
+
+    .explore-shell {
+      position: relative;
+      margin-top: 28px;
+      padding: 34px;
+      border-radius: 34px;
+      border: 1px solid rgba(94, 103, 122, 0.14);
+      background:
+        radial-gradient(circle at top right, rgba(239, 35, 60, 0.16), transparent 24%),
+        radial-gradient(circle at bottom left, rgba(43, 45, 66, 0.07), transparent 28%),
+        linear-gradient(135deg, rgba(247, 249, 252, 0.98), rgba(255, 255, 255, 0.9));
+      box-shadow: 0 28px 60px rgba(43, 45, 66, 0.08);
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .explore-shell::before {
+      content: '';
+      position: absolute;
+      inset: 18px;
+      border-radius: 26px;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .explore-intro {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) auto;
+      gap: 18px;
+      align-items: end;
+    }
+
+    .explore-copy {
+      max-width: 620px;
+      color: var(--ink-soft);
+      margin-top: 12px;
+    }
+
+    .explore-callout {
+      justify-self: end;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: rgba(43, 45, 66, 0.06);
+      border: 1px solid rgba(94, 103, 122, 0.14);
+      color: var(--dark);
+      font: 700 11px/1 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .explore-callout::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px rgba(239, 35, 60, 0.12);
+      animation: calloutPulse 1.8s ease-out infinite;
+    }
+
+    .explore-layout {
+      margin-top: 30px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.14fr) minmax(0, 1fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .explore-hero {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 320px;
+      padding: 28px;
+      border-radius: 30px;
+      text-decoration: none;
+      color: rgba(247, 249, 252, 0.98);
+      background:
+        radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 18% 18%, rgba(239, 35, 60, 0.28), transparent 28%),
+        linear-gradient(135deg, #242738, #31364c 58%, #3b2b34 100%);
+      box-shadow: 0 26px 60px rgba(43, 45, 66, 0.22);
+      overflow: hidden;
+      transition: transform 0.22s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.22s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .explore-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(120deg, transparent 18%, rgba(255, 255, 255, 0.07) 38%, transparent 58%),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 72px);
+      mix-blend-mode: screen;
+      opacity: 0.54;
+      transform: translateX(-16%);
+      transition: transform 0.42s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.42s ease;
+      pointer-events: none;
+    }
+
+    .explore-hero:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 34px 72px rgba(43, 45, 66, 0.28);
+    }
+
+    .explore-hero:hover::before {
+      transform: translateX(0);
+      opacity: 0.72;
+    }
+
+    .explore-hero-head,
+    .explore-hero-foot {
+      position: relative;
+      z-index: 1;
+    }
+
+    .explore-hero-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .explore-hero .metric-label {
+      color: rgba(247, 249, 252, 0.68);
+      margin-bottom: 10px;
+    }
+
+    .explore-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: rgba(247, 249, 252, 0.94);
+      font: 700 10px/1 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .explore-hero-title {
+      font: 900 clamp(28px, 3vw, 42px)/0.95 var(--sans);
+      letter-spacing: -0.04em;
+      max-width: 360px;
+    }
+
+    .explore-hero-copy {
+      position: relative;
+      z-index: 1;
+      margin-top: 18px;
+      max-width: 430px;
+      color: rgba(247, 249, 252, 0.84);
+      font-size: 1rem;
+    }
+
+    .explore-lane {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .explore-lane span {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: rgba(247, 249, 252, 0.86);
+      font: 600 11px/1 var(--mono);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .explore-lane span::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      margin-right: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.78);
+    }
+
+    .explore-hero-foot {
+      margin-top: 28px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .explore-hero-note {
+      max-width: 300px;
+      color: rgba(247, 249, 252, 0.66);
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+
+    .explore-hero-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: rgba(247, 249, 252, 0.98);
+      font: 800 13px/1 var(--sans);
+      letter-spacing: 0.01em;
+    }
+
+    .explore-hero-cta::after {
+      content: '↗';
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      transition: transform 0.22s cubic-bezier(0.25, 1, 0.5, 1), background 0.22s ease;
+    }
+
+    .explore-hero:hover .explore-hero-cta::after {
+      transform: translate(2px, -2px);
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .explore-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .interface-card {
+      --interface-accent: var(--accent);
+      position: relative;
+      min-height: 150px;
+      padding: 22px;
+      border-radius: 24px;
+      border: 1px solid rgba(94, 103, 122, 0.12);
+      background:
+        radial-gradient(circle at top right, color-mix(in srgb, var(--interface-accent) 12%, white), transparent 28%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(251, 252, 255, 0.92));
+      text-decoration: none;
+      color: inherit;
+      overflow: hidden;
+      transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s cubic-bezier(0.25, 1, 0.5, 1), border-color 0.2s ease;
+    }
+
+    .interface-card::before {
+      content: '';
+      position: absolute;
+      inset: auto 22px 18px;
+      height: 2px;
+      background: linear-gradient(90deg, color-mix(in srgb, var(--interface-accent) 64%, white), transparent);
+      opacity: 0.56;
+      transform-origin: left center;
+      transform: scaleX(0.42);
+      transition: transform 0.22s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.22s ease;
+    }
+
+    .interface-card:hover {
+      transform: translateY(-5px);
+      border-color: color-mix(in srgb, var(--interface-accent) 28%, rgba(94, 103, 122, 0.14));
+      box-shadow: 0 22px 44px rgba(43, 45, 66, 0.11);
+    }
+
+    .interface-card:hover::before {
+      transform: scaleX(1);
+      opacity: 0.9;
+    }
+
+    .interface-card-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .interface-dot {
+      flex: 0 0 auto;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--interface-accent);
+      box-shadow: 0 0 0 8px color-mix(in srgb, var(--interface-accent) 14%, transparent);
+    }
+
+    .interface-title {
+      margin-top: 12px;
+      font: 800 22px/1.06 var(--sans);
+      letter-spacing: -0.03em;
+    }
+
+    .interface-desc {
+      margin-top: 8px;
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+      line-height: 1.62;
+    }
+
+    .interface-meta {
+      margin-top: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .interface-meta span {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(43, 45, 66, 0.05);
+      color: var(--dark);
+      font: 700 10px/1 var(--mono);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .interface-docs {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: end;
+    }
+
+    .interface-docs .interface-desc {
+      max-width: 600px;
+    }
+
+    .interface-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--dark);
+      font: 800 12px/1 var(--sans);
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    .interface-link::after {
+      content: '→';
+      transition: transform 0.18s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .interface-card:hover .interface-link::after {
+      transform: translateX(3px);
+    }
+
+    .interface-map {
+      --interface-accent: #ef233c;
+    }
+
+    .interface-mobile {
+      --interface-accent: #2b8a6e;
+    }
+
+    .interface-docs {
+      --interface-accent: #495374;
+    }
+
+    @keyframes calloutPulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      55% {
+        transform: scale(1.14);
+        opacity: 0.84;
+      }
     }
 
     /* ── Responsive grid classes ── */
     .cards-four {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 18px;
-      margin-top: 28px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
     }
 
     .cards-three {
@@ -679,9 +1871,508 @@
       font-size: 0.92rem;
     }
 
+    .stage-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 18px;
+      align-items: stretch;
+    }
+
+    .stage-card {
+      height: 100%;
+      padding: 18px;
+      border-radius: 18px;
+      border: 1px solid var(--surface-border);
+      background: rgba(43, 45, 66, 0.03);
+    }
+
+    .stage-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      color: var(--accent);
+      font: 700 11px/1 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .stage-title {
+      font-size: 1rem;
+      font-weight: 800;
+      line-height: 1.35;
+      letter-spacing: -0.02em;
+    }
+
+    .stage-copy {
+      margin-top: 8px;
+      color: var(--ink-soft);
+      font-size: 0.94rem;
+    }
+
+    .stage-chip {
+      display: inline-flex;
+      align-items: center;
+      margin-top: 14px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(239, 35, 60, 0.08);
+      color: var(--accent);
+      font: 700 11px/1 var(--mono);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .fusion-demo {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .fusion-panel {
+      position: relative;
+      height: 100%;
+      padding: 18px;
+      border-radius: 20px;
+      border: 1px solid var(--surface-border);
+      background:
+        radial-gradient(circle at top right, rgba(239, 35, 60, 0.06), transparent 36%),
+        rgba(255, 255, 255, 0.92);
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(43, 45, 66, 0.05);
+    }
+
+    .fusion-panel h4 {
+      font-size: 0.98rem;
+      line-height: 1.35;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+
+    .fusion-panel p {
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+      margin-bottom: 14px;
+    }
+
+    .fusion-ruler,
+    .fusion-bar {
+      position: relative;
+    }
+
+    .fusion-ruler {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+      margin-left: 78px;
+      margin-bottom: 8px;
+    }
+
+    .fusion-ruler span {
+      display: inline-flex;
+      justify-content: center;
+      color: var(--muted);
+      font: 700 10px/1 var(--mono);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .fusion-row {
+      display: grid;
+      grid-template-columns: 68px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .fusion-row:last-of-type {
+      margin-bottom: 0;
+    }
+
+    .fusion-label {
+      color: var(--dark);
+      font: 700 11px/1 var(--mono);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .fusion-bar {
+      display: block;
+      height: 26px;
+      padding: 0;
+      border-radius: 999px;
+      border: 1px solid rgba(94, 103, 122, 0.18);
+      margin-left: 0;
+      background:
+        repeating-linear-gradient(90deg,
+          rgba(43, 45, 66, 0.06) 0,
+          rgba(43, 45, 66, 0.06) calc(20% - 4px),
+          rgba(255, 255, 255, 0.0) calc(20% - 4px),
+          rgba(255, 255, 255, 0.0) 20%);
+      overflow: hidden;
+    }
+
+    .fusion-window {
+      position: absolute;
+      top: 4px;
+      bottom: 4px;
+      left: var(--from-left, 24%);
+      width: var(--window-width, 28%);
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(239, 35, 60, 0.22), rgba(239, 35, 60, 0.46));
+      box-shadow: 0 8px 22px rgba(239, 35, 60, 0.18);
+      opacity: 0.14;
+      will-change: opacity, box-shadow;
+    }
+
+    .fusion-window.secondary {
+      background: linear-gradient(90deg, rgba(43, 45, 66, 0.18), rgba(43, 45, 66, 0.34));
+      box-shadow: 0 8px 22px rgba(43, 45, 66, 0.12);
+    }
+
+    .fusion-window::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+      pointer-events: none;
+    }
+
+    .fusion-edge {
+      position: absolute;
+      top: -12px;
+      bottom: -12px;
+      width: 2px;
+      border-radius: 999px;
+      background: rgba(239, 35, 60, 0.4);
+      opacity: 0.9;
+      pointer-events: none;
+    }
+
+    .fusion-edge.end {
+      right: 0;
+      background: rgba(239, 35, 60, 0.72);
+    }
+
+    .fusion-edge.start {
+      left: 0;
+      background: rgba(94, 103, 122, 0.28);
+    }
+
+    .fusion-window.secondary .fusion-edge.end {
+      background: rgba(43, 45, 66, 0.58);
+    }
+
+    .fusion-window.secondary .fusion-edge.start {
+      background: rgba(94, 103, 122, 0.24);
+    }
+
+    .fusion-car {
+      position: absolute;
+      top: 50%;
+      left: 2%;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 3px solid rgba(239, 35, 60, 0.9);
+      box-shadow: 0 8px 18px rgba(239, 35, 60, 0.16);
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      will-change: left, transform;
+    }
+
+    .fusion-car.secondary {
+      border-color: rgba(43, 45, 66, 0.82);
+      box-shadow: 0 8px 18px rgba(43, 45, 66, 0.14);
+    }
+
+    .fusion-window.segment-1 {
+      left: 2%;
+    }
+
+    .fusion-window.segment-2 {
+      left: 30%;
+    }
+
+    .fusion-window.segment-3 {
+      left: 58%;
+    }
+
+    .fusion-window.shift-1 {
+      left: 10%;
+    }
+
+    .fusion-window.shift-2 {
+      left: 38%;
+    }
+
+    .fusion-window.shift-3 {
+      left: 66%;
+    }
+
+    .fusion-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: rgba(43, 45, 66, 0.06);
+      border: 1px solid var(--surface-border);
+      color: var(--dark);
+      font: 700 11px/1 var(--mono);
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .fusion-flow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 16px;
+      flex-wrap: nowrap;
+      min-width: 0;
+    }
+
+    .fusion-flow .fusion-chip {
+      min-height: 30px;
+      padding: 0 10px;
+      font-size: 10px;
+      letter-spacing: 0.03em;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .fusion-arrow {
+      position: relative;
+      width: 28px;
+      height: 2px;
+      background: rgba(94, 103, 122, 0.36);
+      flex: 0 0 auto;
+      transform-origin: left center;
+    }
+
+    .fusion-arrow::after {
+      content: '';
+      position: absolute;
+      right: -1px;
+      top: 50%;
+      width: 7px;
+      height: 7px;
+      border-top: 2px solid rgba(94, 103, 122, 0.5);
+      border-right: 2px solid rgba(94, 103, 122, 0.5);
+      transform: translateY(-50%) rotate(45deg);
+    }
+
+    .fusion-result {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px;
+      border-radius: 14px;
+      background: rgba(239, 35, 60, 0.08);
+      border: 1px solid rgba(239, 35, 60, 0.18);
+      color: var(--accent);
+      font: 800 11px/1.1 var(--mono);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      flex: 0 0 auto;
+      will-change: transform, opacity;
+    }
+
+    .deployed-panel .fusion-flow {
+      gap: 6px;
+    }
+
+    .deployed-panel .fusion-flow .fusion-chip {
+      padding: 0 8px;
+      font-size: 9px;
+      letter-spacing: 0.02em;
+    }
+
+    .deployed-panel .fusion-result {
+      padding: 8px 10px;
+      font-size: 10px;
+      letter-spacing: 0.02em;
+    }
+
+    .fusion-footnote {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+
+    .two-stage-explainer .accordion-body > * {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    .two-stage-explainer[open] .accordion-body > * {
+      animation: stageReveal 440ms var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1)) forwards;
+    }
+
+    .two-stage-explainer[open] .stage-card:nth-child(2) {
+      animation-delay: 80ms;
+    }
+
+    .two-stage-explainer[open] .fusion-demo {
+      animation-delay: 120ms;
+    }
+
+    .two-stage-explainer[open] .fusion-car {
+      animation: carTravel 5.2s linear infinite;
+    }
+
+    .two-stage-explainer[open] .segment-1 {
+      animation: segmentHit1 5.2s linear infinite;
+    }
+
+    .two-stage-explainer[open] .segment-2 {
+      animation: segmentHit2 5.2s linear infinite;
+    }
+
+    .two-stage-explainer[open] .segment-3 {
+      animation: segmentHit3 5.2s linear infinite;
+    }
+
+    .two-stage-explainer[open] .shift-1 {
+      animation: segmentHitShift1 5.2s linear infinite;
+    }
+
+    .two-stage-explainer[open] .shift-2 {
+      animation: segmentHitShift2 5.2s linear infinite;
+    }
+
+    .two-stage-explainer[open] .shift-3 {
+      animation: segmentHitShift3 5.2s linear infinite;
+    }
+
+    .two-stage-explainer[open] .deployed-panel .fusion-chip,
+    .two-stage-explainer[open] .deployed-panel .fusion-result {
+      animation: chipPulse 5.8s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+    }
+
+    .two-stage-explainer[open] .deployed-panel .fusion-arrow {
+      animation: arrowPulse 5.8s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+    }
+
+    @keyframes stageReveal {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes segmentHit1 {
+      0%, 8%, 26%, 100% {
+        opacity: 0.14;
+      }
+      14%, 22% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes segmentHit2 {
+      0%, 36%, 54%, 100% {
+        opacity: 0.14;
+      }
+      42%, 50% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes segmentHit3 {
+      0%, 64%, 82%, 100% {
+        opacity: 0.14;
+      }
+      70%, 78% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes segmentHitShift1 {
+      0%, 16%, 34%, 100% {
+        opacity: 0.14;
+      }
+      22%, 30% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes segmentHitShift2 {
+      0%, 44%, 62%, 100% {
+        opacity: 0.14;
+      }
+      50%, 58% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes segmentHitShift3 {
+      0%, 72%, 90%, 100% {
+        opacity: 0.14;
+      }
+      78%, 86% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes carTravel {
+      0% {
+        left: 2%;
+      }
+      18% {
+        left: 16%;
+      }
+      46% {
+        left: 44%;
+      }
+      74% {
+        left: 72%;
+      }
+      100% {
+        left: 98%;
+      }
+    }
+
+    @keyframes chipPulse {
+      0%, 24%, 100% {
+        transform: scale(0.98);
+        opacity: 0.72;
+      }
+      36%, 58% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    @keyframes arrowPulse {
+      0%, 24%, 100% {
+        opacity: 0.3;
+        transform: scaleX(0.88);
+      }
+      36%, 58% {
+        opacity: 1;
+        transform: scaleX(1);
+      }
+    }
+
     .nav-links a:focus-visible,
     .btn:focus-visible,
     .card:focus-visible,
+    .explore-hero:focus-visible,
+    .interface-card:focus-visible,
     .accordion summary:focus-visible,
     .section-nav a:focus-visible,
     footer a:focus-visible {
@@ -698,13 +2389,53 @@
     @media (max-width: 980px) {
 
       .hero-layout,
+      .problem-layout,
       .overview-grid,
-      .cards {
+      .narrative-grid,
+      .cards,
+      .approach-shell,
+      .approach-flow,
+      .explore-layout,
+      .pipeline-shell,
+      .pipeline-rail,
+      .pipeline-top,
+      .pipeline-summary {
+        grid-template-columns: 1fr;
+      }
+
+      .mini-list.compact-two {
+        grid-template-columns: 1fr;
+      }
+
+      .problem-insights {
+        grid-template-columns: 1fr;
+        grid-auto-rows: auto;
+      }
+
+      .explore-intro,
+      .explore-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .explore-callout {
+        justify-self: start;
+      }
+
+      .explore-hero {
+        min-height: 0;
+      }
+
+      .interface-docs {
         grid-template-columns: 1fr;
       }
 
       .cards-four {
         grid-template-columns: repeat(2, 1fr);
+      }
+
+      .stage-grid,
+      .fusion-demo {
+        grid-template-columns: 1fr;
       }
 
       .cicd-grid {
@@ -804,6 +2535,70 @@
         width: 100%;
       }
 
+      .problem-story,
+      .approach-intro,
+      .approach-proof,
+      .pipeline-command {
+        padding: 24px 20px;
+      }
+
+      .approach-copy-box {
+        padding: 20px;
+      }
+
+      .problem-hook,
+      .approach-lead,
+      .pipeline-shell-title {
+        max-width: none;
+      }
+
+      .problem-point {
+        grid-template-columns: 1fr;
+      }
+
+      .problem-point-index {
+        min-width: 34px;
+        width: 34px;
+        height: 34px;
+      }
+
+      .problem-proof-grid,
+      .approach-proof-metrics,
+      .pipeline-rail {
+        grid-template-columns: 1fr;
+      }
+
+      .approach-step {
+        padding: 20px 18px 22px;
+      }
+
+      .explore-shell {
+        padding: 24px 18px;
+        border-radius: 28px;
+      }
+
+      .explore-hero {
+        padding: 22px;
+      }
+
+      .explore-hero-head,
+      .explore-hero-foot {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .explore-hero-title {
+        font-size: clamp(26px, 10vw, 36px);
+      }
+
+      .explore-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .interface-docs {
+        grid-column: auto;
+      }
+
       .cards-four,
       .cards-three,
       .cicd-grid {
@@ -812,6 +2607,23 @@
 
       .grid-two {
         grid-template-columns: 1fr;
+      }
+
+      .fusion-ruler,
+      .fusion-bar {
+        margin-left: 0;
+      }
+
+      .fusion-flow {
+        flex-wrap: wrap;
+      }
+
+      .fusion-row {
+        grid-template-columns: 1fr;
+      }
+
+      .fusion-chip {
+        justify-self: start;
       }
 
       .accordion summary {
@@ -828,6 +2640,23 @@
       }
     }
 
+    @media (prefers-reduced-motion: reduce) {
+      .two-stage-explainer .accordion-body > *,
+      .two-stage-explainer[open] .accordion-body > *,
+      .two-stage-explainer[open] .ideal-panel .fusion-window,
+      .two-stage-explainer[open] .deployed-panel .fusion-window,
+      .two-stage-explainer[open] .fusion-car,
+      .two-stage-explainer[open] .ideal-panel .fusion-edge,
+      .two-stage-explainer[open] .deployed-panel .fusion-edge,
+      .two-stage-explainer[open] .deployed-panel .fusion-chip,
+      .two-stage-explainer[open] .deployed-panel .fusion-result,
+      .two-stage-explainer[open] .deployed-panel .fusion-arrow {
+        animation: none !important;
+        opacity: 1;
+        transform: none;
+      }
+    }
+
     /* ── Accordion for Engineering Detail ── */
     .accordion {
       margin-top: 22px;
@@ -839,11 +2668,14 @@
       border-radius: 22px;
       box-shadow: 0 8px 24px rgba(43, 45, 66, 0.06);
       margin-bottom: 14px;
-      transition: border-color 0.18s;
+      overflow: hidden;
+      transition: border-color 0.18s, box-shadow 0.18s ease, background-color 0.18s ease;
     }
 
     .accordion details[open] {
       border-color: rgba(192, 31, 51, 0.25);
+      background: rgba(255, 255, 255, 0.98);
+      box-shadow: 0 14px 32px rgba(43, 45, 66, 0.08);
     }
 
     .accordion summary {
@@ -856,6 +2688,14 @@
       letter-spacing: -0.01em;
       list-style: none;
       user-select: none;
+      transition: background-color 0.18s ease, padding 0.18s ease, border-color 0.18s ease;
+    }
+
+    .accordion details[open] summary {
+      padding-top: 20px;
+      padding-bottom: 16px;
+      background: linear-gradient(180deg, rgba(239, 35, 60, 0.05), rgba(255, 255, 255, 0));
+      border-bottom: 1px solid rgba(94, 103, 122, 0.12);
     }
 
     .accordion summary::-webkit-details-marker {
@@ -886,8 +2726,26 @@
       letter-spacing: 0.04em;
     }
 
+    .accordion summary .summary-title {
+      min-width: 0;
+      text-wrap: balance;
+    }
+
     .accordion .accordion-body {
       padding: 0 24px 24px;
+    }
+
+    .accordion-lead {
+      margin: 2px 0 18px;
+      color: var(--ink-soft);
+      font-size: 0.98rem;
+      line-height: 1.68;
+      text-wrap: pretty;
+    }
+
+    .accordion-lead strong {
+      color: var(--dark);
+      font-weight: 800;
     }
 
     /* ── Section anchor nav ── */
@@ -954,11 +2812,12 @@
     <a class="skip-link" href="#mainContent">Skip to content</a>
 
     <nav class="top-nav" aria-label="Primary">
-      <div class="brand">Urban<span>Flow</span></div>
+      <div class="brand">Probe<span>Density</span></div>
       <ul class="nav-links">
         <li><a class="active" href="/about" aria-current="page">About</a></li>
         <li><a href="#hero">Overview</a></li>
         <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#pipeline">Pipeline</a></li>
         <li><a href="#results">Results</a></li>
         <li><a href="#explore">Explore</a></li>
       </ul>
@@ -975,6 +2834,7 @@
       <a href="#approach">Approach</a>
       <a href="#architecture">Architecture</a>
       <a href="#realtime">Real-Time</a>
+      <a href="#pipeline">Pipeline</a>
       <a href="#results">Results</a>
       <a href="#engineering">Engineering</a>
       <a href="#lessons">Lessons</a>
@@ -987,18 +2847,16 @@
       <section id="hero">
         <div class="hero-layout">
           <div>
-            <div class="hero-chip">End-to-End Data & ML Pipeline · Traffic Domain</div>
-            <h1 class="hero-title">Data pipeline for <em>traffic density estimation</em></h1>
+            <div class="hero-chip">ProbeDensity · End-to-End ML System</div>
+            <h1 class="hero-title">Traffic density estimation <em>from probe vehicles</em></h1>
             <p class="hero-sub">
-              An end-to-end data and ML system that ingests raw mobile telemetry (GPS + accelerometer),
-              engineers domain-specific features from car-following theory, trains and serves density
-              predictions, and aggregates multi-probe results via streaming ensemble — deployed on
-              real Seoul road geometry with async APIs, SQL persistence, and cloud infrastructure.
+              ProbeDensity estimates road congestion using only smartphone GPS and accelerometer data
+              collected from vehicles on the road. It turns probe trajectories into link-level
+              traffic density predictions through a full simulation-to-serving pipeline.
             </p>
             <p class="hero-sub hero-subtle">
-              Covers the full data lifecycle: simulation-based dataset generation → feature engineering
-              → model comparison (6 families) → real-time ingestion → spatial matching → ensemble
-              aggregation → storage and visualization. Solo end-to-end.
+              The project covers simulation-based data generation, feature engineering, model comparison,
+              real-time ingestion, spatial matching, multi-probe ensemble, storage, and live visualization.
             </p>
             <div class="hero-actions">
               <a class="btn btn-primary" href="/dashboard">Open Live Console</a>
@@ -1016,10 +2874,10 @@
                   config-driven versioned runs.</div>
               </div>
               <div class="metric">
-                <div class="metric-label">Multi-Probe Ensemble</div>
-                <div class="metric-value">CF-Weighted Bayesian</div>
-                <div class="metric-copy">Car-following intensity determines probe trustworthiness. 15-min rolling window
-                  per link.</div>
+                <div class="metric-label">Core Contribution</div>
+                <div class="metric-value">Two-Stage Multi-Probe Design</div>
+                <div class="metric-copy">CF-weighted softmax fusion defines the aligned upper bound, then a link-level
+                  fusion layer makes that idea deployable on real roads with mismatched traversals.</div>
               </div>
               <div class="metric">
                 <div class="metric-label">Deployment Architecture</div>
@@ -1048,19 +2906,21 @@
       <section id="problem">
         <div class="eyebrow">The Problem</div>
         <h2 class="section-title">Why is this hard?</h2>
-        <div class="overview-grid">
-          <div class="panel">
+        <div class="problem-layout">
+          <div class="story-panel">
+            <div class="metric-label">Core Challenge</div>
+            <p class="problem-copy-lead">
+              One vehicle only reveals a fragment of the surrounding traffic state.
+            </p>
             <p class="section-copy">
               Traffic density — vehicles per kilometer — is the fundamental measure of road congestion.
               But measuring it traditionally requires <strong>loop detectors, cameras, or radar</strong> embedded in the
-              road,
-              which are expensive and cover only major corridors.
+              road, which are expensive and cover only major corridors.
             </p>
             <p class="section-copy">
               Probe vehicles (taxis, ride-hails, smartphones) are everywhere, but each probe only sees
               <strong>its own trajectory</strong>. A car driving at 50 km/h could be in light traffic or moderate
-              traffic —
-              the speed alone doesn't tell you. The FD (Fundamental Diagram) speed-density relationship is
+              traffic — the speed alone doesn't tell you. The FD (Fundamental Diagram) speed-density relationship is
               <strong>degenerate in the free-flow regime</strong>: many densities map to nearly the same speed.
             </p>
             <p class="section-copy">
@@ -1068,25 +2928,26 @@
               braking frequency, speed oscillations — break through that degeneracy?
             </p>
           </div>
-          <div class="mini-list">
-            <div class="mini-item">
+          <div class="problem-insights">
+            <div class="problem-insight">
+              <div class="metric-label">Observation</div>
               <strong>Single probe = partial observation</strong>
-              <span>One trajectory is a noisy sample of the traffic stream. Systematic tests across 6 model families
-                confirmed single-probe accuracy plateaus.</span>
+              <span>One trajectory is a noisy sample of the traffic stream. Systematic tests across 6 model families confirmed single-probe accuracy plateaus.</span>
             </div>
-            <div class="mini-item">
+            <div class="problem-insight">
+              <div class="metric-label">Breakthrough</div>
               <strong>Multi-probe → +47% improvement</strong>
-              <span>Combining 5 probes via CF-weighted ensemble breaks through the single-probe ceiling (R² 0.46 →
-                0.67).</span>
+              <span>Combining 5 probes via CF-weighted ensemble breaks through the single-probe ceiling (R² 0.46 → 0.67).</span>
             </div>
-            <div class="mini-item">
+            <div class="problem-insight">
+              <div class="metric-label">Deployment</div>
               <strong>Route mismatch in real deployment</strong>
-              <span>Probes take different paths. Feature-level fusion requires same segment → prediction-level Bayesian
-                ensemble as practical compromise.</span>
+              <span>Probes do not share identical 1 km start/end boundaries in deployment. That forced a second contribution: a link-level fusion system that aggregates mismatched traversals after per-probe prediction.</span>
             </div>
-            <div class="mini-item">
-              <strong>Observation length matters</strong>
-              <span>250m→1km improves accuracy. System chains consecutive links to reach 1km before predicting.</span>
+            <div class="problem-insight">
+              <div class="metric-label">Constraint</div>
+              <strong>One road link is usually too short to predict from</strong>
+              <span>Because deployment uses secondary arterial links and above, average link length is roughly 650 m. That is still shorter than the 1 km observation unit, so the system usually chains about 2 consecutive links, then makes one density prediction for that accumulated traversal.</span>
             </div>
           </div>
         </div>
@@ -1096,22 +2957,26 @@
       <section id="approach">
         <div class="eyebrow">Approach</div>
         <h2 class="section-title">Car-following theory meets gradient boosting</h2>
-        <p class="section-copy">
-          Car-following models (IDM, Newell) tell us that a vehicle's acceleration depends on
-          its spacing and relative speed to the leader. Higher density means more frequent interactions,
-          which leave measurable fingerprints in the trajectory: more braking events, higher acceleration
-          variance, speed oscillations. We engineer 31 features that capture these patterns and train
-          XGBoost to map them to density.
-        </p>
-        <p class="section-copy">
-          31 features engineered from car-following theory: speed statistics, acceleration patterns,
-          braking frequency, stop duration, lateral dynamics, FFT, and sample entropy.
-          Features are registered via decorator pattern and selected through YAML config — experiments
-          can toggle features without code changes.
-          Multiple probes on the same road are combined via <strong>CF-weighted Bayesian ensemble</strong>
-          within a 15-minute rolling window. Probes exhibiting car-following behavior receive higher
-          ensemble weight because their trajectories carry more density information.
-        </p>
+        <div class="approach-copy-box">
+          <div class="metric-label">Core Idea</div>
+          <p class="approach-copy-lead">
+            Speed alone is ambiguous. Density shows up more clearly in <strong>interaction patterns</strong>.
+          </p>
+          <p class="section-copy">
+            Car-following models such as IDM and Newell suggest that a vehicle's acceleration depends on
+            spacing and relative speed to the leader. As density rises, those interactions become more frequent
+            and leave visible traces in the trajectory: more braking events, higher acceleration variance,
+            stronger speed oscillations, and longer stop behavior.
+          </p>
+          <p class="section-copy">
+            The system converts those signals into <strong>31 engineered features</strong> spanning speed statistics,
+            acceleration patterns, braking, stops, lateral dynamics, FFT, and sample entropy, then trains
+            <strong>XGBoost</strong> to map them to density. On top of that, the multi-probe contribution works in
+            two stages: <strong>CF-weighted softmax weighting</strong> for aligned same-slice probes, and a
+            <strong>link-level fusion system</strong> that keeps the method usable when real probes arrive with
+            mismatched traversal boundaries.
+          </p>
+        </div>
         <div class="cards-four">
           <div class="card">
             <div class="metric-label">Accumulation</div>
@@ -1119,19 +2984,19 @@
             <p class="card-desc">Chain consecutive road links until 1 km, then extract features and predict.</p>
           </div>
           <div class="card">
-            <div class="metric-label">Ensemble</div>
-            <p class="card-title">CF-Weighted Bayesian</p>
-            <p class="card-desc">Car-following probes trusted more than free-driving probes.</p>
+            <div class="metric-label">Stage 1</div>
+            <p class="card-title">CF-Weighted Softmax</p>
+            <p class="card-desc">Theoretical upper bound when multiple probes observe the same 1 km slice.</p>
           </div>
           <div class="card">
-            <div class="metric-label">Comparison</div>
-            <p class="card-title">6 Model Families</p>
-            <p class="card-desc">XGBoost, LightGBM, LSTM, CNN-1D, GPR, FD baselines under same pipeline.</p>
+            <div class="metric-label">Stage 2</div>
+            <p class="card-title">Link-Level Fusion Layer</p>
+            <p class="card-desc">Deployment-safe aggregation for probes with different traversal boundaries.</p>
           </div>
           <div class="card">
-            <div class="metric-label">Interpretability</div>
-            <p class="card-title">SHAP Analysis</p>
-            <p class="card-desc">speed_mean, ax_std, brake_ratio dominate importance ranking.</p>
+            <div class="metric-label">Gap</div>
+            <p class="card-title">0.67 Ideal vs 0.62 Deployed</p>
+            <p class="card-desc">Most of the theoretical gain survives after introducing route-aware fusion logic.</p>
           </div>
         </div>
       </section>
@@ -1222,6 +3087,58 @@ sequenceDiagram
         </div>
       </section>
 
+      <!-- ─── PIPELINE WORKBENCH ─── -->
+      <section id="pipeline">
+        <div class="eyebrow">ML Pipeline Workbench</div>
+        <h2 class="section-title">A GUI to run experiments, compare models, and inspect failures</h2>
+        <p class="section-copy">
+          The offline pipeline is not just a pile of scripts. I built a dashboard so experiment work becomes practical:
+          generate scenarios, tune feature groups, choose model families, resume from saved assets, and inspect
+          evaluation output without manually rewriting configs for every run.
+        </p>
+        <div class="section-shell">
+          <div class="pipeline-top">
+            <div class="narrative-body story-panel">
+              <div class="panel-heading">Why The GUI Matters</div>
+              <p class="panel-copy-lead">
+                The research needed an operating surface, not a pile of scripts.
+              </p>
+              <p class="section-copy">
+                The project has many interacting knobs: scenario count, probes per scenario, feature subsets, FD
+                residual options, model families, and evaluation targets. The dashboard turns those into a repeatable
+                experiment surface instead of a fragile command sequence.
+              </p>
+              <p class="section-copy">
+                It also makes analysis faster after training. Each run keeps its own history, evaluation card, scatter
+                plot, and feature-importance view, so model behavior is inspectable instead of buried in output files.
+              </p>
+            </div>
+            <a class="pipeline-preview narrative-aside" href="/ml-pipeline/">
+              <img src="/static/ml-pipeline-preview.png" alt="ML pipeline dashboard preview with run history, scatter plot, and feature importance">
+              <div class="pipeline-preview-copy">
+                <div class="metric-label">Workbench Preview</div>
+                <div class="pipeline-preview-title">One place for setup, training, and evaluation review</div>
+                <p class="pipeline-preview-desc">Scenario controls stay on the left, while completed runs reopen with inline metrics, scatter plots, and feature importance.</p>
+                <span class="pipeline-preview-link">Open pipeline</span>
+                <p class="pipeline-preview-note">Hosted server is view-only. Local runs unlock training and execution.</p>
+              </div>
+            </a>
+          </div>
+          <div class="pipeline-summary shell-subgrid">
+            <div class="card">
+              <div class="metric-label">Configure</div>
+              <p class="card-title-sm">Scenario setup and resumable runs</p>
+              <p class="card-desc">Generate from scratch, resume from scenarios, FCD, features, or saved models, and tune demand, lanes, speed limits, and vehicle distributions without hand-editing configs.</p>
+            </div>
+            <div class="card">
+              <div class="metric-label">Inspect</div>
+              <p class="card-title-sm">Inline evaluation and model diagnostics</p>
+              <p class="card-desc">Open run history, compare per-model metrics, read actual-vs-predicted scatter plots, and inspect feature importance from the same dashboard after training.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ─── RESULTS ─── -->
       <section id="results">
         <div class="eyebrow">Results</div>
@@ -1280,7 +3197,7 @@ sequenceDiagram
           <div class="card">
             <div class="metric-label">Observation length</div>
             <p class="card-title-sm">1 km threshold</p>
-            <p class="card-desc">System chains short urban links (~80–120 m average) to reach 1 km for stable features.</p>
+            <p class="card-desc">System usually chains about 2 road links because deployed links average roughly 650 m.</p>
           </div>
           <div class="card">
             <div class="metric-label">CF-weighted ensemble</div>
@@ -1299,8 +3216,9 @@ sequenceDiagram
 
           <!-- Data Pipeline & Dataset -->
           <details>
-            <summary>Data Pipeline & ML Dataset <span class="summary-sub">176K samples · 31 features · GroupKFold</span></summary>
+            <summary><span class="summary-title">Data Pipeline & ML Dataset</span><span class="summary-sub">176K samples · 31 features · GroupKFold</span></summary>
             <div class="accordion-body">
+              <p class="accordion-lead"><strong>From simulation to training set:</strong> 35K SUMO scenarios become 176K probe trajectories, then flow through feature extraction and leakage-safe validation.</p>
               <div class="overview-grid">
                 <div>
                   <p class="section-copy">
@@ -1357,8 +3275,9 @@ sequenceDiagram
 
           <!-- Real-Time Streaming -->
           <details>
-            <summary>Real-Time Streaming & Ingestion <span class="summary-sub">Kalman → GIS → LinkBuffer → Fan-out</span></summary>
+            <summary><span class="summary-title">Real-Time Streaming & Ingestion</span><span class="summary-sub">Kalman → GIS → LinkBuffer → Fan-out</span></summary>
             <div class="accordion-body">
+              <p class="accordion-lead"><strong>Serving path:</strong> buffered phone telemetry is fused, matched, accumulated, scored, then fanned out without making any one downstream dependency a blocker.</p>
               <div class="overview-grid">
                 <div>
                   <p class="section-copy">
@@ -1420,8 +3339,9 @@ sequenceDiagram
 
           <!-- Database Schema -->
           <details>
-            <summary>Database Schema & Ensemble Logic <span class="summary-sub">async SQLAlchemy · 5 ORM models · 15-min window</span></summary>
+            <summary><span class="summary-title">Database Schema & Ensemble Logic</span><span class="summary-sub">async SQLAlchemy · 5 ORM models · 15-min window</span></summary>
             <div class="accordion-body">
+              <p class="accordion-lead"><strong>Storage model:</strong> per-probe predictions stay preserved, while each road link keeps a rolling ensemble record that opens, updates, freezes, and expires.</p>
               <p class="section-copy">
                 Async SQLAlchemy + asyncpg with 5 ORM models. <strong>EnsembleResult</strong> tracks multi-probe aggregation
                 per link with a 15-minute rolling window (HCM analysis period).
@@ -1445,8 +3365,9 @@ flowchart LR
 
           <!-- CF Ensemble -->
           <details data-math-root>
-            <summary>CF-Weighted Bayesian Ensemble <span class="summary-sub">softmax weighting · R² = 0.622</span></summary>
+            <summary><span class="summary-title">Stage 1 · CF-Weighted Softmax Ensemble</span><span class="summary-sub">same-slice theory · upper bound R² = 0.67</span></summary>
             <div class="accordion-body">
+              <p class="accordion-lead"><strong>Theory layer:</strong> when probes observe the same slice, stronger car-following behavior means lower uncertainty and more influence on the fused estimate.</p>
               <div class="formula-card">
                 $$\text{cf}_i = \sigma_{a_x} + r_{\text{brake}} + \text{CV}_{\text{speed}}$$
                 $$w_i = \frac{\exp(\text{cf}_i)}{\sum_j \exp(\text{cf}_j)} \quad \text{(softmax)}$$
@@ -1457,17 +3378,167 @@ flowchart LR
                 probes actively following a leader carry more density information than free-driving probes.
               </p>
               <p class="section-copy copy-spaced">
-                <strong>Bayesian variant:</strong> sequential update where each probe's observation uncertainty
-                $\sigma_{\text{obs}} \propto e^{-\text{cf}}$ — higher CF intensity → lower uncertainty → more trusted.
-                Prior from previous link estimate or global mean. Tested R² = 0.622 vs simple mean 0.601.
+                In the aligned experiment, this weighting defines the <strong>theoretical multi-probe upper bound</strong>:
+                if several probes cover the same 1 km slice, richer car-following probes should influence the combined
+                estimate more strongly than free-driving probes.
               </p>
+              <p class="section-copy copy-spaced">
+                <strong>Softmax weighting:</strong> each probe's CF score passes through a softmax
+                $w_i = \exp(\text{cf}_i) / \sum_j \exp(\text{cf}_j)$ — higher CF intensity → higher weight → more trusted.
+                The weighting rule is the theoretical ingredient; the next problem is making it work once probes no
+                longer share the same start/end boundaries.
+              </p>
+            </div>
+          </details>
+
+          <details class="two-stage-explainer">
+            <summary><span class="summary-title">Stage 2 · Link-Level Fusion for Mismatched Traversals</span><span class="summary-sub">deployment system · R² = 0.62</span></summary>
+            <div class="accordion-body">
+              <p class="accordion-lead"><strong>Deployment layer:</strong> once probes stop sharing identical 1 km cuts, the system predicts each traversal first and fuses them later at the road-link level.</p>
+              <div class="stage-grid">
+                <div class="stage-card">
+                  <div class="stage-kicker">Step 1 · Theory</div>
+                  <div class="stage-title">Same 1 km slice + CF-weighted softmax fusion gives the ideal gain.</div>
+                  <p class="stage-copy">
+                    In the controlled experiment, multiple probes are aligned to the same observation segment.
+                    That makes feature-level or perfectly aligned prediction fusion possible, and the best case
+                    reaches <strong>R² = 0.67</strong>.
+                  </p>
+                  <div class="stage-chip">Aligned segment upper bound</div>
+                </div>
+                <div class="stage-card">
+                  <div class="stage-kicker">Step 2 · Deployment</div>
+                  <div class="stage-title">Real probes cut their 1 km measurement window at different points on the same road timeline.</div>
+                  <p class="stage-copy">
+                    On real roads, links have variable length and probes rarely share the exact same 1 km start/end cut.
+                    The deployed system therefore first builds a density estimate for each traversal, then aligns those
+                    unequal windows at the <strong>road-link level</strong> inside a rolling window before fusing them.
+                  </p>
+                  <div class="stage-chip">Deployment-safe link fusion</div>
+                </div>
+              </div>
+
+              <div class="fusion-demo" aria-hidden="true">
+                <div class="fusion-panel ideal-panel">
+                  <h4>Ideal experiment: probes share the same 1 km slice</h4>
+                  <p>Both probes cover the same 1 km region, so fusion happens on aligned information.</p>
+                  <div class="fusion-ruler">
+                    <span>L1</span><span>L2</span><span>L3</span><span>L4</span><span>L5</span>
+                  </div>
+                  <div class="fusion-row">
+                    <div class="fusion-label">Probe A</div>
+                    <div class="fusion-bar">
+                      <i class="fusion-car" aria-hidden="true"></i>
+                      <div class="fusion-window segment-1">
+                        <i class="fusion-edge start"></i>
+                        <i class="fusion-edge end"></i>
+                      </div>
+                      <div class="fusion-window segment-2">
+                        <i class="fusion-edge start"></i>
+                        <i class="fusion-edge end"></i>
+                      </div>
+                      <div class="fusion-window segment-3">
+                        <i class="fusion-edge start"></i>
+                        <i class="fusion-edge end"></i>
+                      </div>
+                    </div>
+                    <div class="fusion-chip">k_A</div>
+                  </div>
+                  <div class="fusion-row">
+                    <div class="fusion-label">Probe B</div>
+                    <div class="fusion-bar">
+                      <i class="fusion-car secondary" aria-hidden="true"></i>
+                      <div class="fusion-window secondary segment-1">
+                        <i class="fusion-edge start"></i>
+                        <i class="fusion-edge end"></i>
+                      </div>
+                      <div class="fusion-window secondary segment-2">
+                        <i class="fusion-edge start"></i>
+                        <i class="fusion-edge end"></i>
+                      </div>
+                      <div class="fusion-window secondary segment-3">
+                        <i class="fusion-edge start"></i>
+                        <i class="fusion-edge end"></i>
+                      </div>
+                    </div>
+                    <div class="fusion-chip">k_B</div>
+                  </div>
+                  <div class="fusion-flow">
+                    <div class="fusion-chip">Aligned feature / prediction fusion</div>
+                    <div class="fusion-arrow"></div>
+                    <div class="fusion-result">R² 0.67 upper bound</div>
+                  </div>
+                  <div class="fusion-footnote">
+                    This is the clean research setting: every probe describes the same road slice, so the CF-weighted
+                    softmax rule sees a perfectly aligned fusion problem.
+                  </div>
+                </div>
+
+                <div class="fusion-panel deployed-panel">
+                  <h4>Deployment reality: same road, different 1 km cut points</h4>
+                  <p>Even on the same road, each probe reaches its 1 km observation boundary at a different place.</p>
+                  <div class="fusion-ruler">
+                    <span>L1</span><span>L2</span><span>L3</span><span>L4</span><span>L5</span>
+                  </div>
+                  <div class="fusion-row">
+                    <div class="fusion-label">Probe A</div>
+                    <div class="fusion-bar">
+                      <i class="fusion-car" aria-hidden="true"></i>
+                      <div class="fusion-window segment-1">
+                        <i class="fusion-edge start"></i>
+                        <i class="fusion-edge end"></i>
+                      </div>
+                      <div class="fusion-window segment-2">
+                        <i class="fusion-edge start"></i>
+                        <i class="fusion-edge end"></i>
+                      </div>
+                      <div class="fusion-window segment-3">
+                        <i class="fusion-edge start"></i>
+                        <i class="fusion-edge end"></i>
+                      </div>
+                    </div>
+                    <div class="fusion-chip">k_A</div>
+                  </div>
+                  <div class="fusion-row">
+                    <div class="fusion-label">Probe B</div>
+                    <div class="fusion-bar">
+                      <i class="fusion-car secondary" aria-hidden="true"></i>
+                      <div class="fusion-window secondary shift-1">
+                        <i class="fusion-edge start"></i>
+                        <i class="fusion-edge end"></i>
+                      </div>
+                      <div class="fusion-window secondary shift-2">
+                        <i class="fusion-edge start"></i>
+                        <i class="fusion-edge end"></i>
+                      </div>
+                      <div class="fusion-window secondary shift-3">
+                        <i class="fusion-edge start"></i>
+                        <i class="fusion-edge end"></i>
+                      </div>
+                    </div>
+                    <div class="fusion-chip">k_B</div>
+                  </div>
+                  <div class="fusion-flow">
+                    <div class="fusion-chip">Per-probe density first</div>
+                    <div class="fusion-arrow"></div>
+                    <div class="fusion-chip">Link-level weighted fusion</div>
+                    <div class="fusion-arrow"></div>
+                    <div class="fusion-result">R² 0.62 deployed</div>
+                  </div>
+                  <div class="fusion-footnote">
+                    The key engineering step is not just “use CF weights,” but <strong>handle the fact that
+                    different probes cut their 1 km measurement window at different points on the same link timeline.</strong>
+                  </div>
+                </div>
+              </div>
             </div>
           </details>
 
           <!-- CI/CD -->
           <details>
-            <summary>CI/CD & Cloud Deployment <span class="summary-sub">GitHub Actions → Cloud Run · 0–2 auto-scaling</span></summary>
+            <summary><span class="summary-title">CI/CD & Cloud Deployment</span><span class="summary-sub">GitHub Actions → Cloud Run · 0–2 auto-scaling</span></summary>
             <div class="accordion-body">
+              <p class="accordion-lead"><strong>Release path:</strong> every push is checked, every release is containerized, and production automatically scales down when idle.</p>
               <div class="cicd-grid">
                 <div class="cicd-item">
                   <strong>Lint</strong>
@@ -1502,21 +3573,22 @@ flowchart LR
         <div class="eyebrow">Lessons Learned</div>
         <h2 class="section-title">What Worked, What Didn't, and What Comes Next</h2>
         <p class="section-copy">
-          The strongest parts are the feature engineering pipeline, multi-probe ensemble design, and real-time serving
-          architecture.
-          The remaining gaps are around simulation fidelity and sensor assumptions rather than missing pipeline pieces.
+          The strongest parts are the two-stage multi-probe contribution, the feature engineering pipeline, and the
+          real-time serving architecture. The remaining gaps are around simulation fidelity and sensor assumptions rather
+          than missing system pieces.
         </p>
         <div class="panel panel-accent">
-          <strong class="panel-accent-title">Domain-engineered features outperform deep learning on tabular traffic data.</strong>
+          <strong class="panel-accent-title">The key contribution is two-stage: CF-weighted softmax theory first, deployment-safe link fusion second.</strong>
           <p class="accent-copy">
-            XGBoost with 31 hand-crafted features (R²=0.50) consistently beat LSTM and CNN-1D on raw 6-channel
-            timeseries (R²=0.45). The gap widened with multi-probe aggregation. Feature design grounded in car-following
-            theory mattered more than model complexity.
+            The important result is not just that multi-probe aggregation helped. The first contribution was showing
+            that aligned probes can reach an upper bound around <strong>R² = 0.67</strong> under CF-weighted softmax
+            fusion. The second was building a link-level fusion system that still delivers about
+            <strong>R² = 0.62</strong> when probes no longer share the same traversal boundaries.
           </p>
         </div>
         <div class="grid-two">
           <div class="panel lesson-panel">
-            <strong>Single-probe density estimation has a structural ceiling around R²≈0.50.</strong>
+            <strong>Single-probe density estimation has a structural ceiling around R²≈0.45.</strong>
             <p class="lesson-copy">
               Tested across XGBoost, LightGBM, LSTM, CNN-1D, GPR (4 kernels), window features, and density weighting —
               all converged to the same limit. The FD free-flow branch is degenerate: speed carries no density signal
@@ -1524,27 +3596,30 @@ flowchart LR
             </p>
           </div>
           <div class="panel lesson-panel">
-            <strong>Multi-probe feature-level ensemble breaks the ceiling, but route alignment is required.</strong>
+            <strong>R² = 0.67 and R² = 0.62 are different problems, not just different scores.</strong>
             <p class="lesson-copy">
-              N=5 probes on the same segment: R²=0.67 (feature ensemble) vs R²=0.62 (prediction ensemble). In
-              production, probes take different routes, making feature ensemble impractical. The Bayesian prediction
-              ensemble recovers 93% of the theoretical gain without route constraints.
+              The 0.67 result is the aligned same-segment upper bound. The 0.62 result is the deployed version after
+              forcing unequal traversals onto a shared road-link aggregation layer. That gap is the price of reality,
+              not a failure of the model idea.
             </p>
           </div>
           <div class="panel lesson-panel">
-            <strong>Observation distance matters more than observation time.</strong>
+            <strong>1 km accumulation was a deployment choice for link-level measurement, not just an accuracy trick.</strong>
             <p class="lesson-copy">
-              Switching from fixed 300-second windows to distance-based 1 km link traversals improved feature quality and
-              aligned the system with real road network geometry (MOCT standard node-link). Seoul arterial links average
-              189 m, requiring LinkBuffer accumulation across multiple links.
+              Links are short and variable, so a fixed time window does not map cleanly onto a stable road segment.
+              The system therefore chains consecutive links until a traversal reaches about 1 km, then predicts at that
+              road-linked unit. Unequal traversal boundaries are a consequence of deployable link measurement, not an
+              arbitrary preference for longer windows.
             </p>
           </div>
           <div class="panel lesson-panel">
-            <strong>Simulation produces almost no congestion without bottlenecks.</strong>
+            <strong>If inter-vehicle gap becomes observable, the model should get much stronger.</strong>
             <p class="lesson-copy">
-              Only 48 of 176K samples showed v_ratio &lt; 0.4. The single straight-link SUMO setup cannot generate
-              realistic stop-and-go waves. Future work requires multi-link networks with lane drops, signals, and merge
-              sections to validate high-density estimation.
+              In the aligned multi-probe study, <strong>XGBoost (31 features + CF)</strong> rises from
+              <strong>0.641 → 0.752 → 0.801 → 0.848</strong>. The point is not just that more probes were added, but
+              that better-aligned vehicles reveal spacing structure. If connected vehicles or direct communication make
+              headway or gap measurable as an input, the model would no longer have to infer that information only from
+              trajectory shape.
             </p>
           </div>
         </div>
@@ -1552,36 +3627,85 @@ flowchart LR
 
       <!-- ─── EXPLORE ─── -->
       <section id="explore">
-        <div class="eyebrow">System Interfaces</div>
-        <h2 class="section-title">Inspect the running pipeline</h2>
-        <div class="cards">
-          <a class="card" href="/dashboard">
-            <div class="metric-label">Live Entry Point</div>
-            <p class="card-title">Runtime Console</p>
-            <p class="card-desc">Start here for the live demo. It combines the current snapshot, service health,
-              map feed, and direct links to the rest of the runnable surfaces.</p>
-          </a>
-          <a class="card" href="/map">
-            <div class="metric-label">Inference Visualization</div>
-            <p class="card-title">Link Density Map</p>
-            <p class="card-desc">Renders per-link ensemble density from
-              TimescaleDB queries. Color-coded by traffic state, shows probe count and CF-weight per link.</p>
-          </a>
-          <a class="card" href="/mobile">
-            <div class="metric-label">Telemetry Ingestion Client</div>
-            <p class="card-title">Data Ingestion Test</p>
-            <p class="card-desc">Streams raw GPS+accelerometer payloads
-              via bulk <code>POST /ingest</code>. Tests the full pipeline: Kalman fusion → GIS match → LinkBuffer →
-              inference → ensemble.</p>
-          </a>
-          <a class="card" href="/docs">
-            <div class="metric-label">API Schema</div>
-            <p class="card-title">OpenAPI Reference</p>
-            <p class="card-desc">Interactive docs for
-              <code>/ingest</code>, <code>/predict</code>, <code>/map/links/*</code> endpoints. Includes
-              request/response schemas and live testing.
-            </p>
-          </a>
+        <div class="explore-shell">
+          <div class="explore-intro">
+            <div>
+              <div class="eyebrow">System Interfaces</div>
+              <h2 class="section-title">Inspect the running pipeline</h2>
+              <p class="section-copy explore-copy">This block is for moving, not reading. Start from the live console,
+                then jump into the surface that explains, tests, or inspects one part of the deployed system.</p>
+            </div>
+            <div class="explore-callout">Live Shortcut Surfaces</div>
+          </div>
+
+          <div class="explore-layout">
+            <a class="explore-hero" href="/dashboard">
+              <div class="explore-hero-head">
+                <div>
+                  <div class="metric-label">Live Entry Point</div>
+                  <p class="explore-hero-title">Runtime Console</p>
+                </div>
+                <span class="explore-badge">Start Here</span>
+              </div>
+              <p class="explore-hero-copy">Open the single best starting point for the live demo. It pulls the current
+                snapshot, service health, map feed, and the runnable paths into one operational surface.</p>
+              <div class="explore-lane">
+                <span>Snapshot</span>
+                <span>Health</span>
+                <span>Map Feed</span>
+                <span>Direct Links</span>
+              </div>
+              <div class="explore-hero-foot">
+                <p class="explore-hero-note">If you only click one thing on this page, this is the one that tells you
+                  whether the deployed system is actually alive.</p>
+                <span class="explore-hero-cta">Open live console</span>
+              </div>
+            </a>
+
+            <div class="explore-grid">
+              <a class="interface-card interface-map" href="/map">
+                <div class="interface-card-top">
+                  <div class="metric-label">Inference Visualization</div>
+                  <span class="interface-dot" aria-hidden="true"></span>
+                </div>
+                <p class="interface-title">Link Density Map</p>
+                <p class="interface-desc">See deployed link-level ensemble density on the road network, color coded by
+                  traffic state with probe count and CF weight visible per link.</p>
+                <div class="interface-meta">
+                  <span>Leaflet Map</span>
+                  <span>Link Density</span>
+                </div>
+              </a>
+
+              <a class="interface-card interface-mobile" href="/mobile">
+                <div class="interface-card-top">
+                  <div class="metric-label">Telemetry Ingestion Client</div>
+                  <span class="interface-dot" aria-hidden="true"></span>
+                </div>
+                <p class="interface-title">Data Ingestion Test</p>
+                <p class="interface-desc">Send raw GPS and accelerometer payloads into <code>POST /ingest</code> and
+                  watch the hosted pipeline go from Kalman fusion to GIS match, buffering, inference, and ensemble.</p>
+                <div class="interface-meta">
+                  <span>Live Payloads</span>
+                  <span>End-to-End Test</span>
+                </div>
+              </a>
+
+              <a class="interface-card interface-docs" href="/docs">
+                <div>
+                  <div class="interface-card-top">
+                    <div class="metric-label">API Schema</div>
+                    <span class="interface-dot" aria-hidden="true"></span>
+                  </div>
+                  <p class="interface-title">OpenAPI Reference</p>
+                  <p class="interface-desc">Inspect the real FastAPI schema for <code>/ingest</code>,
+                    <code>/predict</code>, and <code>/map/links/*</code> endpoints, with request and response shapes
+                    ready for live testing.</p>
+                </div>
+                <span class="interface-link">Inspect endpoint contract</span>
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1589,7 +3713,7 @@ flowchart LR
     </main>
 
     <footer>
-      <div>UrbanFlow — Traffic density estimation from probe vehicles</div>
+      <div>ProbeDensity — Traffic density estimation from probe vehicles</div>
       <div>
         <a href="/dashboard">Live Console</a> /
         <a href="/docs">API</a> /

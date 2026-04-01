@@ -107,7 +107,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="UrbanFlow API",
+    title="ProbeDensity API",
     description=(
         "Real-time traffic density estimation from probe vehicle trajectories.\n\n"
         "## Pipeline\n"

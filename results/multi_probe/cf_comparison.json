@@ -1,0 +1,114 @@
+{
+  "N=1": {
+    "feature_ensemble_r2": 0.4555,
+    "simple_mean": {
+      "r2": 0.4555,
+      "rmse": 0.0,
+      "mae": 0.0
+    },
+    "cf_add_softmax": {
+      "r2": 0.4555,
+      "rmse": 0.0,
+      "mae": 0.0
+    },
+    "cf_mul_softmax": {
+      "r2": 0.4555,
+      "rmse": 0.0,
+      "mae": 0.0
+    },
+    "bayesian_cf_add": {
+      "r2": 0.4555,
+      "rmse": 0.0,
+      "mae": 0.0
+    },
+    "bayesian_cf_mul": {
+      "r2": 0.4555,
+      "rmse": 0.0,
+      "mae": 0.0
+    }
+  },
+  "N=2": {
+    "feature_ensemble_r2": 0.555,
+    "simple_mean": {
+      "r2": 0.5219,
+      "rmse": 3.0078,
+      "mae": 2.3799
+    },
+    "cf_add_softmax": {
+      "r2": 0.5285,
+      "rmse": 2.9869,
+      "mae": 2.3586
+    },
+    "cf_mul_softmax": {
+      "r2": 0.5228,
+      "rmse": 3.005,
+      "mae": 2.3773
+    },
+    "bayesian_cf_add": {
+      "r2": 0.5368,
+      "rmse": 2.9604,
+      "mae": 2.3179
+    },
+    "bayesian_cf_mul": {
+      "r2": 0.526,
+      "rmse": 2.9949,
+      "mae": 2.3672
+    }
+  },
+  "N=3": {
+    "feature_ensemble_r2": 0.6081,
+    "simple_mean": {
+      "r2": 0.5431,
+      "rmse": 2.9402,
+      "mae": 2.3374
+    },
+    "cf_add_softmax": {
+      "r2": 0.552,
+      "rmse": 2.9115,
+      "mae": 2.309
+    },
+    "cf_mul_softmax": {
+      "r2": 0.5443,
+      "rmse": 2.9365,
+      "mae": 2.3341
+    },
+    "bayesian_cf_add": {
+      "r2": 0.5646,
+      "rmse": 2.8702,
+      "mae": 2.256
+    },
+    "bayesian_cf_mul": {
+      "r2": 0.5486,
+      "rmse": 2.9225,
+      "mae": 2.3208
+    }
+  },
+  "N=5": {
+    "feature_ensemble_r2": 0.6589,
+    "simple_mean": {
+      "r2": 0.5602,
+      "rmse": 2.8848,
+      "mae": 2.2978
+    },
+    "cf_add_softmax": {
+      "r2": 0.5705,
+      "rmse": 2.8506,
+      "mae": 2.2628
+    },
+    "cf_mul_softmax": {
+      "r2": 0.5615,
+      "rmse": 2.8805,
+      "mae": 2.2935
+    },
+    "bayesian_cf_add": {
+      "r2": 0.5852,
+      "rmse": 2.8014,
+      "mae": 2.2
+    },
+    "bayesian_cf_mul": {
+      "r2": 0.5666,
+      "rmse": 2.8637,
+      "mae": 2.2765
+    }
+  }
+}

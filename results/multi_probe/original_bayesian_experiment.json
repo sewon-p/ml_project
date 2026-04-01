@@ -1,0 +1,37 @@
+{
+  "params": {
+    "prior_mu": 9.4,
+    "prior_sigma": 4.0,
+    "obs_sigma_formula": "3.0*exp(-cf)",
+    "cf_formula": "ax_std+brake_time_ratio+speed_cv",
+    "n_features": 30,
+    "dataset": "dataset_1km.parquet",
+    "target": "density_per_lane"
+  },
+  "results": {
+    "N=1": {
+      "simple_mean": 0.5031,
+      "cf_weighted": 0.5031,
+      "uncertainty": 0.5031,
+      "bayesian_cf": 0.4762
+    },
+    "N=2": {
+      "simple_mean": 0.5613,
+      "cf_weighted": 0.5673,
+      "uncertainty": 0.5603,
+      "bayesian_cf": 0.5472
+    },
+    "N=3": {
+      "simple_mean": 0.5865,
+      "cf_weighted": 0.5948,
+      "uncertainty": 0.5854,
+      "bayesian_cf": 0.5815
+    },
+    "N=5": {
+      "simple_mean": 0.6014,
+      "cf_weighted": 0.6107,
+      "uncertainty": 0.6004,
+      "bayesian_cf": 0.6047
+    }
+  }
+}
