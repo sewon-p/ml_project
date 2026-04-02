@@ -1911,6 +1911,31 @@
       font-size: 0.94rem;
     }
 
+    .stage-formula {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(43, 45, 66, 0.08);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .stage-formula .katex-display {
+      margin: 0.2em 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    .stage-formula .katex {
+      font-size: 1rem;
+    }
+
+    .stage-formula-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.45;
+    }
+
     .stage-chip {
       display: inline-flex;
       align-items: center;
@@ -2120,14 +2145,16 @@
       align-items: center;
       justify-content: center;
       min-height: 34px;
-      padding: 0 12px;
+      padding: 8px 12px;
       border-radius: 999px;
       background: rgba(43, 45, 66, 0.06);
       border: 1px solid var(--surface-border);
       color: var(--dark);
-      font: 700 11px/1 var(--mono);
+      font: 700 11px/1.25 var(--mono);
       letter-spacing: 0.04em;
-      white-space: nowrap;
+      text-align: center;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
 
     .fusion-flow {
@@ -2135,17 +2162,18 @@
       align-items: center;
       gap: 8px;
       margin-top: 16px;
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
       min-width: 0;
     }
 
     .fusion-flow .fusion-chip {
       min-height: 30px;
-      padding: 0 10px;
+      padding: 8px 10px;
       font-size: 10px;
       letter-spacing: 0.03em;
-      flex: 1 1 auto;
+      flex: 0 1 auto;
       min-width: 0;
+      max-width: 100%;
     }
 
     .fusion-arrow {
@@ -2178,10 +2206,13 @@
       background: rgba(239, 35, 60, 0.08);
       border: 1px solid rgba(239, 35, 60, 0.18);
       color: var(--accent);
-      font: 800 11px/1.1 var(--mono);
+      font: 800 11px/1.25 var(--mono);
       letter-spacing: 0.03em;
       text-transform: uppercase;
-      white-space: nowrap;
+      white-space: normal;
+      text-align: center;
+      overflow-wrap: anywhere;
+      max-width: 100%;
       flex: 0 0 auto;
       will-change: transform, opacity;
     }
@@ -2856,7 +2887,7 @@
             </p>
             <p class="hero-sub hero-subtle">
               The project covers simulation-based data generation, feature engineering, model comparison,
-              real-time ingestion, spatial matching, multi-probe ensemble, storage, and live visualization.
+              real-time ingestion, spatial matching, multi-probe aggregation, storage, and live visualization.
             </p>
             <div class="hero-actions">
               <a class="btn btn-primary" href="/dashboard">Open Live Console</a>
@@ -2865,25 +2896,25 @@
             </div>
           </div>
           <div class="hero-panel">
-            <div class="panel-heading">What stands out in this project</div>
+            <div class="panel-heading">What this project actually includes</div>
             <div class="hero-metrics">
               <div class="metric">
-                <div class="metric-label">Data Pipeline</div>
-                <div class="metric-value">Simulation → Features → Serving</div>
-                <div class="metric-copy">176K trajectories from 35K SUMO scenarios, 31 domain-engineered features,
-                  config-driven versioned runs.</div>
+                <div class="metric-label">Pipeline Workbench</div>
+                <div class="metric-value">Run and inspect experiments from one GUI</div>
+                <div class="metric-copy">Generate scenarios, resume runs, switch feature and model settings, and
+                  inspect results without hand-editing configs or juggling shell commands.</div>
               </div>
               <div class="metric">
-                <div class="metric-label">Core Contribution</div>
-                <div class="metric-value">Two-Stage Multi-Probe Design</div>
-                <div class="metric-copy">CF-weighted softmax fusion defines the aligned upper bound, then a link-level
-                  fusion layer makes that idea deployable on real roads with mismatched traversals.</div>
+                <div class="metric-label">ML Prediction System</div>
+                <div class="metric-value">Turn probe trajectories into density estimates</div>
+                <div class="metric-copy">Built the full path from simulated data and feature engineering to XGBoost
+                  inference, multi-probe aggregation, and evaluation of deployed road-density predictions.</div>
               </div>
               <div class="metric">
-                <div class="metric-label">Deployment Architecture</div>
-                <div class="metric-value">Ingest → Match → Buffer → Predict → Store</div>
-                <div class="metric-copy">Async FastAPI, grid-indexed GIS (2.2K links), Kafka/Pub-Sub fan-out, graceful
-                  degradation.</div>
+                <div class="metric-label">End-to-End Backend</div>
+                <div class="metric-value">From sensing to database, API, and live map</div>
+                <div class="metric-copy">Implemented ingestion, Kalman fusion, GIS link matching, rolling link buffers,
+                  prediction storage, streaming, and the surfaces used to check the system live.</div>
               </div>
             </div>
           </div>
@@ -2910,7 +2941,7 @@
           <div class="story-panel">
             <div class="metric-label">Core Challenge</div>
             <p class="problem-copy-lead">
-              One vehicle only reveals a fragment of the surrounding traffic state.
+              Each probe vehicle captures only a partial view of the surrounding traffic state.
             </p>
             <p class="section-copy">
               Traffic density — vehicles per kilometer — is the fundamental measure of road congestion.
@@ -2936,8 +2967,8 @@
             </div>
             <div class="problem-insight">
               <div class="metric-label">Breakthrough</div>
-              <strong>Multi-probe → +47% improvement</strong>
-              <span>Combining 5 probes via CF-weighted ensemble breaks through the single-probe ceiling (R² 0.46 → 0.67).</span>
+              <strong>Aligned multi-probe study → +47% improvement</strong>
+              <span>In the 5-probe, 1 km aligned setting, multi-probe aggregation breaks through the single-probe baseline (R² 0.46 → 0.67).</span>
             </div>
             <div class="problem-insight">
               <div class="metric-label">Deployment</div>
@@ -2946,8 +2977,8 @@
             </div>
             <div class="problem-insight">
               <div class="metric-label">Constraint</div>
-              <strong>One road link is usually too short to predict from</strong>
-              <span>Because deployment uses secondary arterial links and above, average link length is roughly 650 m. That is still shorter than the 1 km observation unit, so the system usually chains about 2 consecutive links, then makes one density prediction for that accumulated traversal.</span>
+              <strong>Mismatched windows still share overlapping links</strong>
+              <span>The deployed system does not require perfectly matched 1 km cuts. It predicts each traversal first, then aggregates density through the road links those different windows overlap.</span>
             </div>
           </div>
         </div>
@@ -2971,10 +3002,10 @@
           <p class="section-copy">
             The system converts those signals into <strong>31 engineered features</strong> spanning speed statistics,
             acceleration patterns, braking, stops, lateral dynamics, FFT, and sample entropy, then trains
-            <strong>XGBoost</strong> to map them to density. On top of that, the multi-probe contribution works in
-            two stages: <strong>CF-weighted softmax weighting</strong> for aligned same-slice probes, and a
-            <strong>link-level fusion system</strong> that keeps the method usable when real probes arrive with
-            mismatched traversal boundaries.
+            <strong>XGBoost</strong> to map them to density. For the multi-probe case, the method then works in two
+            stages: a <strong>CF-aware weighting rule</strong> for aligned same-slice probes, and a
+            <strong>link-level fusion system</strong> that keeps the density-estimation pipeline usable when real probes
+            arrive with mismatched traversal boundaries.
           </p>
         </div>
         <div class="cards-four">
@@ -2985,8 +3016,8 @@
           </div>
           <div class="card">
             <div class="metric-label">Stage 1</div>
-            <p class="card-title">CF-Weighted Softmax</p>
-            <p class="card-desc">Theoretical upper bound when multiple probes observe the same 1 km slice.</p>
+            <p class="card-title">Aligned Multi-Probe Study</p>
+            <p class="card-desc">Research setting where multiple probes observe the same 1 km slice and can be fused directly.</p>
           </div>
           <div class="card">
             <div class="metric-label">Stage 2</div>
@@ -3040,7 +3071,8 @@ graph TB
         O --> R[Kafka / Pub-Sub]
     end
 
-    F -.->|trained model| N
+    E -.->|trained model| N
+    F -.->|fusion logic| O
     K -.->|auto lanes, speed_limit| L
     </pre>
         </div>
@@ -3077,7 +3109,7 @@ sequenceDiagram
         Server->>ML: 31 features → density
         ML-->>Server: density, cf_score
         Server->>Ens: Register per link
-        Ens-->>Server: CF-weighted ensemble
+        Ens-->>Server: weighted link aggregation
         Server->>Map: Store + push
         Server-->>Phone: Prediction
     else Accumulating
@@ -3190,19 +3222,19 @@ sequenceDiagram
         </div>
         <div class="cards-three">
           <div class="card">
-            <div class="metric-label">Single-probe ceiling</div>
-            <p class="card-title-sm">R²≈0.45 alone</p>
-            <p class="card-desc">Car-following theory explains why: low-density trajectories carry no signal.</p>
+            <div class="metric-label">Current single-probe range</div>
+            <p class="card-title-sm">R²≈0.45 in the current 1-probe, 1 km setup</p>
+            <p class="card-desc">With the present trajectory-only features and 1 km observation window, low-density runs still expose limited signal. This describes the current setup, not every longer or richer observation design.</p>
           </div>
           <div class="card">
-            <div class="metric-label">Observation length</div>
-            <p class="card-title-sm">1 km threshold</p>
-            <p class="card-desc">System usually chains about 2 road links because deployed links average roughly 650 m.</p>
+            <div class="metric-label">Deployment contribution</div>
+            <p class="card-title-sm">Fuse densities on overlapping links</p>
+            <p class="card-desc">Different vehicles cover different cut points, so the system aggregates per-traversal density on the links they share instead of requiring identical segments.</p>
           </div>
           <div class="card">
-            <div class="metric-label">CF-weighted ensemble</div>
+            <div class="metric-label">Post-hoc weighting</div>
             <p class="card-title-sm">+3.5% over naive avg</p>
-            <p class="card-desc">Car-following probes weighted higher than free-driving probes.</p>
+            <p class="card-desc">In the deployed 5-probe setting, CF-aware weighting still improves over a simple mean after per-traversal prediction and link-level aggregation.</p>
           </div>
         </div>
       </section>
@@ -3339,9 +3371,9 @@ sequenceDiagram
 
           <!-- Database Schema -->
           <details>
-            <summary><span class="summary-title">Database Schema & Ensemble Logic</span><span class="summary-sub">async SQLAlchemy · 5 ORM models · 15-min window</span></summary>
+            <summary><span class="summary-title">Database Schema & Rolling Link Aggregation</span><span class="summary-sub">async SQLAlchemy · 5 ORM models · 15-min link window</span></summary>
             <div class="accordion-body">
-              <p class="accordion-lead"><strong>Storage model:</strong> per-probe predictions stay preserved, while each road link keeps a rolling ensemble record that opens, updates, freezes, and expires.</p>
+              <p class="accordion-lead"><strong>Storage model:</strong> per-probe predictions stay preserved, while each road link keeps a rolling aggregation record that opens, updates, freezes, and expires.</p>
               <p class="section-copy">
                 Async SQLAlchemy + asyncpg with 5 ORM models. <strong>EnsembleResult</strong> tracks multi-probe aggregation
                 per link with a 15-minute rolling window (HCM analysis period).
@@ -3357,7 +3389,7 @@ flowchart LR
               </div>
               <p class="section-copy copy-spaced">
                 <strong>Ensemble lifecycle:</strong> New probe prediction → find active ensemble for that link (or create) →
-                compute CF-weighted density → update window_end. If no new probe within 15 min → freeze.
+                compute weighted link density → update window_end. If no new probe within 15 min → freeze.
                 Frozen ensembles are garbage-collected after 1 hour.
               </p>
             </div>
@@ -3365,7 +3397,7 @@ flowchart LR
 
           <!-- CF Ensemble -->
           <details data-math-root>
-            <summary><span class="summary-title">Stage 1 · CF-Weighted Softmax Ensemble</span><span class="summary-sub">same-slice theory · upper bound R² = 0.67</span></summary>
+            <summary><span class="summary-title">Stage 1 · Aligned Multi-Probe Aggregation</span><span class="summary-sub">same-slice research setting · R² = 0.67</span></summary>
             <div class="accordion-body">
               <p class="accordion-lead"><strong>Theory layer:</strong> when probes observe the same slice, stronger car-following behavior means lower uncertainty and more influence on the fused estimate.</p>
               <div class="formula-card">
@@ -3378,7 +3410,7 @@ flowchart LR
                 probes actively following a leader carry more density information than free-driving probes.
               </p>
               <p class="section-copy copy-spaced">
-                In the aligned experiment, this weighting defines the <strong>theoretical multi-probe upper bound</strong>:
+                In the aligned experiment, this weighting defines the <strong>same-slice multi-probe result</strong>:
                 if several probes cover the same 1 km slice, richer car-following probes should influence the combined
                 estimate more strongly than free-driving probes.
               </p>
@@ -3391,30 +3423,37 @@ flowchart LR
             </div>
           </details>
 
-          <details class="two-stage-explainer">
-            <summary><span class="summary-title">Stage 2 · Link-Level Fusion for Mismatched Traversals</span><span class="summary-sub">deployment system · R² = 0.62</span></summary>
+          <details class="two-stage-explainer" data-math-root>
+            <summary><span class="summary-title">Stage 2 · Overlap-Aware Link Fusion for Mismatched Traversals</span><span class="summary-sub">deployed 5-probe system · R² = 0.62</span></summary>
             <div class="accordion-body">
-              <p class="accordion-lead"><strong>Deployment layer:</strong> once probes stop sharing identical 1 km cuts, the system predicts each traversal first and fuses them later at the road-link level.</p>
+              <p class="accordion-lead"><strong>Deployment layer:</strong> once probes stop sharing identical 1 km observation windows, the system predicts each traversal first, then aggregates those densities through the road links their windows overlap.</p>
               <div class="stage-grid">
                 <div class="stage-card">
-                  <div class="stage-kicker">Step 1 · Theory</div>
-                  <div class="stage-title">Same 1 km slice + CF-weighted softmax fusion gives the ideal gain.</div>
+                  <div class="stage-kicker">Step 1 · Deployment Problem</div>
+                  <div class="stage-title">Different vehicles observe different 1 km windows, even on the same road.</div>
                   <p class="stage-copy">
-                    In the controlled experiment, multiple probes are aligned to the same observation segment.
-                    That makes feature-level or perfectly aligned prediction fusion possible, and the best case
-                    reaches <strong>R² = 0.67</strong>.
+                    In deployment, vehicles do not stop and start their traversal window at the same place. Their
+                    measurements are <strong>misaligned but still partially overlapping</strong>, so requiring identical
+                    segments would throw away most usable multi-probe evidence.
                   </p>
-                  <div class="stage-chip">Aligned segment upper bound</div>
+                  <div class="stage-chip">Unequal windows on shared links</div>
                 </div>
                 <div class="stage-card">
-                  <div class="stage-kicker">Step 2 · Deployment</div>
-                  <div class="stage-title">Real probes cut their 1 km measurement window at different points on the same road timeline.</div>
+                  <div class="stage-kicker">Step 2 · Post-hoc Fusion</div>
+                  <div class="stage-title">Predict each traversal first, then weight and aggregate on overlapping links.</div>
                   <p class="stage-copy">
-                    On real roads, links have variable length and probes rarely share the exact same 1 km start/end cut.
-                    The deployed system therefore first builds a density estimate for each traversal, then aligns those
-                    unequal windows at the <strong>road-link level</strong> inside a rolling window before fusing them.
+                    The system registers each traversal's density on the road links it covers, keeps a
+                    <strong>15-minute rolling ensemble per link</strong>, and recomputes the aggregate with a
+                    <strong>softmax over CF scores</strong>. In practice, probes that show stronger car-following
+                    behavior get higher post-hoc weight inside the shared link window.
                   </p>
-                  <div class="stage-chip">Deployment-safe link fusion</div>
+                  <div class="stage-formula" aria-label="Link-level fusion equations">
+                    $$\hat{k}_t = f_{\theta}(x_t)$$
+                    $$\hat{k}_{\mathrm{link}} = \sum_{t \in T(\mathrm{link})} \alpha_t \hat{k}_t,\quad
+                    \alpha_t = \frac{\exp(\mathrm{cf}_t)}{\sum_{j \in T(\mathrm{link})}\exp(\mathrm{cf}_j)}$$
+                    <div class="stage-formula-note">First predict each traversal <code>t</code>, then aggregate only the traversals whose windows overlap the same link.</div>
+                  </div>
+                  <div class="stage-chip">Link-level weighted fusion</div>
                 </div>
               </div>
 
@@ -3466,11 +3505,11 @@ flowchart LR
                   <div class="fusion-flow">
                     <div class="fusion-chip">Aligned feature / prediction fusion</div>
                     <div class="fusion-arrow"></div>
-                    <div class="fusion-result">R² 0.67 upper bound</div>
+                    <div class="fusion-result">R² 0.67 in the aligned 5-probe study</div>
                   </div>
                   <div class="fusion-footnote">
-                    This is the clean research setting: every probe describes the same road slice, so the CF-weighted
-                    softmax rule sees a perfectly aligned fusion problem.
+                    This is the clean research setting: every probe describes the same road slice, so the fusion problem
+                    is fully aligned before deployment constraints appear.
                   </div>
                 </div>
 
@@ -3521,13 +3560,13 @@ flowchart LR
                   <div class="fusion-flow">
                     <div class="fusion-chip">Per-probe density first</div>
                     <div class="fusion-arrow"></div>
-                    <div class="fusion-chip">Link-level weighted fusion</div>
+                    <div class="fusion-chip">Overlap-aware link fusion</div>
                     <div class="fusion-arrow"></div>
-                    <div class="fusion-result">R² 0.62 deployed</div>
+                    <div class="fusion-result">R² 0.62 in the deployed 5-probe system</div>
                   </div>
                   <div class="fusion-footnote">
-                    The key engineering step is not just “use CF weights,” but <strong>handle the fact that
-                    different probes cut their 1 km measurement window at different points on the same link timeline.</strong>
+                    The key engineering step is not just “average predictions,” but <strong>aggregate density from
+                    different traversal windows through the links they overlap instead of requiring perfectly matching cuts.</strong>
                   </div>
                 </div>
               </div>
@@ -3573,34 +3612,36 @@ flowchart LR
         <div class="eyebrow">Lessons Learned</div>
         <h2 class="section-title">What Worked, What Didn't, and What Comes Next</h2>
         <p class="section-copy">
-          The strongest parts are the two-stage multi-probe contribution, the feature engineering pipeline, and the
-          real-time serving architecture. The remaining gaps are around simulation fidelity and sensor assumptions rather
-          than missing system pieces.
+          The strongest parts are the experiment workbench, the deployable density-estimation system, and the
+          road-network aggregation logic that keeps the method usable outside the aligned research setting. The
+          remaining gaps are around simulation fidelity and sensor assumptions rather than missing system pieces.
         </p>
         <div class="panel panel-accent">
-          <strong class="panel-accent-title">The key contribution is two-stage: CF-weighted softmax theory first, deployment-safe link fusion second.</strong>
+          <strong class="panel-accent-title">The contribution is two-stage because the research setting and the deployment setting are different.</strong>
           <p class="accent-copy">
-            The important result is not just that multi-probe aggregation helped. The first contribution was showing
-            that aligned probes can reach an upper bound around <strong>R² = 0.67</strong> under CF-weighted softmax
-            fusion. The second was building a link-level fusion system that still delivers about
-            <strong>R² = 0.62</strong> when probes no longer share the same traversal boundaries.
+            The important result is not just that multi-probe aggregation helped. In the <strong>aligned 5-probe, 1 km experiment</strong>,
+            aligned multi-probe aggregation reaches about <strong>R² = 0.67</strong>. The second contribution is the deployable version:
+            an overlap-aware link-level fusion system that still delivers about <strong>R² = 0.62</strong> in the
+            <strong>deployed 5-probe setting</strong> once probes stop sharing the same traversal boundaries.
           </p>
         </div>
         <div class="grid-two">
           <div class="panel lesson-panel">
-            <strong>Single-probe density estimation has a structural ceiling around R²≈0.45.</strong>
+            <strong>In the current 1-probe, 1 km setup, performance repeatedly lands around R²≈0.45.</strong>
             <p class="lesson-copy">
-              Tested across XGBoost, LightGBM, LSTM, CNN-1D, GPR (4 kernels), window features, and density weighting —
-              all converged to the same limit. The FD free-flow branch is degenerate: speed carries no density signal
-              when all vehicles travel at free-flow speed.
+              Tested across XGBoost, LightGBM, LSTM, CNN-1D, GPR (4 kernels), window features, and density weighting,
+              the current single-probe design repeatedly converged near that range. That is a limitation of this
+              observation setup, not a universal ceiling for every longer window, richer sensor input, or different
+              observation design.
             </p>
           </div>
           <div class="panel lesson-panel">
-            <strong>R² = 0.67 and R² = 0.62 are different problems, not just different scores.</strong>
+            <strong>The current web demo leaves a lot of device-side compute unused.</strong>
             <p class="lesson-copy">
-              The 0.67 result is the aligned same-segment upper bound. The 0.62 result is the deployed version after
-              forcing unequal traversals onto a shared road-link aggregation layer. That gap is the price of reality,
-              not a failure of the model idea.
+              Right now the system is presented in a browser-first form, so the phone behaves mostly like a thin client.
+              If this moves into an installed mobile app or an in-vehicle system, more of the buffering, sensor fusion,
+              feature preparation, and filtering can run locally before upload. That would reduce server load, network
+              cost, and end-to-end latency without changing the core model idea.
             </p>
           </div>
           <div class="panel lesson-panel">
@@ -3904,13 +3945,17 @@ flowchart LR
       mermaidBlocks.forEach((block) => mermaidObserver.observe(block));
     }
 
-    const mathDetails = document.querySelector('[data-math-root]');
-    if (mathDetails) {
-      mathDetails.addEventListener('toggle', () => {
-        if (mathDetails.open) {
+    const mathDetails = document.querySelectorAll('[data-math-root]');
+    mathDetails.forEach((details) => {
+      details.addEventListener('toggle', () => {
+        if (details.open) {
           ensureKatex();
         }
       });
+    });
+
+    if ([...mathDetails].some((details) => details.open)) {
+      ensureKatex();
     }
   </script>
 </body>
