@@ -1,0 +1,4 @@
+_base_: run_config.yaml
+model:
+  config: configs/models/window_xgboost.yaml
+  type: window_xgboost

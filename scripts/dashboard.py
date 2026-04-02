@@ -43,6 +43,7 @@ static_dir.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 RUNS_DIR = PROJECT_ROOT / "data" / "runs"
+SAMPLE_RUNS_DIR = PROJECT_ROOT / "deploy" / "sample_runs"
 
 # Pipeline step definitions
 PIPELINE_STEPS = {
@@ -82,6 +83,29 @@ STAGE_ASSET_MAP = {
     "features": {"next_steps": ["residuals", "train", "evaluate"]},
     "model": {"next_steps": ["evaluate"]},
 }
+
+
+def hydrate_sample_runs(
+    sample_runs_dir: Path = SAMPLE_RUNS_DIR, runs_dir: Path = RUNS_DIR
+) -> None:
+    """Copy curated sample runs into data/runs when they are missing.
+
+    This keeps the hosted dashboard inspectable without committing the full
+    local training artifacts tree.
+    """
+
+    if not sample_runs_dir.exists():
+        return
+
+    runs_dir.mkdir(parents=True, exist_ok=True)
+    for sample_run in sorted(sample_runs_dir.iterdir()):
+        if not sample_run.is_dir():
+            continue
+        target_run = runs_dir / sample_run.name
+        if target_run.exists():
+            continue
+        shutil.copytree(sample_run, target_run)
+        logger.info("Hydrated sample dashboard run: %s", sample_run.name)
 
 
 # ---------------------------------------------------------------------------
@@ -699,6 +723,7 @@ class RunManager:
         return False
 
 
+hydrate_sample_runs()
 run_manager = RunManager()
 
 

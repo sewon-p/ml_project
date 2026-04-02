@@ -2312,7 +2312,7 @@ document.querySelectorAll('.feat-cb, .winfeat-cb, .resume-feat-cb, .resume-winfe
   try {
     const r = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     if (r.status === 403) {
-      setDashboardNotice('Hosted mode is read-only. Clone locally to run training jobs.', 'warn');
+      setDashboardNotice('Hosted mode is read-only. Preloaded sample runs are available for inspection.', 'warn');
       const overlayKey = 'ml_pipeline_hosted_overlay_dismissed';
       if (sessionStorage.getItem(overlayKey) === '1') return;
 
@@ -2324,7 +2324,7 @@ document.querySelectorAll('.feat-cb, .winfeat-cb, .resume-feat-cb, .resume-winfe
           <div style="font-size:2rem;margin-bottom:10px;">Server mode</div>
           <h2 id="hostedOverlayTitle" style="margin:0 0 10px;font-size:1.3rem;color:#2B2D42;">This dashboard is view-only on the hosted server.</h2>
           <p style="color:#5E677A;font-size:0.95rem;line-height:1.6;margin:0 0 20px;">
-            You can inspect configs and run history here, but training and execution controls do not run on the server.
+            You can inspect preloaded sample runs, configs, and evaluation outputs here, but training and execution controls do not run on the server.
             Clone the repo and open this dashboard locally if you want to launch jobs.
           </p>
           <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">

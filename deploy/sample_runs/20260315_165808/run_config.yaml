@@ -1,0 +1,15 @@
+_base_: ../../../configs/default.yaml
+data:
+  metadata_path: data/runs/20260312_002341/features/metadata.parquet
+  tabular_path: data/runs/20260312_002341/features/dataset.parquet
+  timeseries_path: data/runs/20260312_002341/features/timeseries.npz
+output:
+  fcd_dir: data/runs/20260315_165808/fcd
+  features_dir: data/runs/20260315_165808/features
+  scenarios_csv: data/runs/20260315_165808/scenarios.csv
+output_dir: data/runs/20260315_165808/outputs
+residual_correction:
+  enabled: true
+  fd_model: underwood
+simulation:
+  max_workers: auto

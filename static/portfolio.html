@@ -3654,13 +3654,13 @@ flowchart LR
             </p>
           </div>
           <div class="panel lesson-panel">
-            <strong>If inter-vehicle gap becomes observable, the model should get much stronger.</strong>
+            <strong>ADAS spacing data looks like the strongest next upgrade path.</strong>
             <p class="lesson-copy">
               In the aligned multi-probe study, <strong>XGBoost (31 features + CF)</strong> rises from
-              <strong>0.641 → 0.752 → 0.801 → 0.848</strong>. The point is not just that more probes were added, but
-              that better-aligned vehicles reveal spacing structure. If connected vehicles or direct communication make
-              headway or gap measurable as an input, the model would no longer have to infer that information only from
-              trajectory shape.
+              <strong>0.641 → 0.752 → 0.801 → 0.848</strong> as spacing structure becomes more visible. That suggests the
+              biggest next step is not just adding more phone trajectories, but combining the current motion features
+              with direct headway or forward-gap signals from ADAS or connected vehicles. If spacing becomes an actual
+              input instead of something the model must infer indirectly, the density estimate should improve much more sharply.
             </p>
           </div>
         </div>

@@ -1,0 +1,14 @@
+_base_: ../../../configs/default.yaml
+data:
+  metadata_path: data/runs/20260312_002341/features/metadata.parquet
+  tabular_path: data/runs/20260312_002341/features/dataset.parquet
+  timeseries_path: data/runs/20260312_002341/features/timeseries.npz
+output:
+  fcd_dir: data/runs/20260314_203452/fcd
+  features_dir: data/runs/20260314_203452/features
+  scenarios_csv: data/runs/20260314_203452/scenarios.csv
+output_dir: data/runs/20260314_203452/outputs
+residual_correction:
+  fd_model: drake
+simulation:
+  max_workers: auto
