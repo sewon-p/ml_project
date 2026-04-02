@@ -22,6 +22,12 @@ results/
 *.parquet
 *.pkl
 
+# Curated hosted sample runs
+!deploy/sample_runs/
+!deploy/sample_runs/**/
+!deploy/sample_runs/**/outputs/
+!deploy/sample_runs/**/outputs/eval_*.json
+
 # SUMO artifacts
 *.net.xml
 *.rou.xml
