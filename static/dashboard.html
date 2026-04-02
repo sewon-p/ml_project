@@ -518,7 +518,19 @@
   .eval-model {
     padding-top: 14px;
   }
+  .eval-model-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
   .eval-model h3 { color: var(--accent2); margin-bottom: 8px; }
+  .eval-model-head h3 { margin-bottom: 0; }
+  .eval-file-link {
+    text-decoration: none;
+  }
   .metrics-table {
     width: 100%; border-collapse: collapse; margin-bottom: 12px;
     font-size: 0.88rem;
@@ -1930,7 +1942,10 @@ async function loadEvalResults(runId, triggerEl = null) {
         </summary>
         <div class="eval-body">
           <div class="eval-model">
-            <h3>${r.model_type.toUpperCase()} — ${r.target} (n=${r.n_test})</h3>
+            <div class="eval-model-head">
+              <h3>${r.model_type.toUpperCase()} — ${r.target} (n=${r.n_test})</h3>
+              ${r.file_name && r.source_dir ? `<a class="btn btn-outline btn-sm eval-file-link" href="/api/eval-file/${encodeURIComponent(runId)}?file=${encodeURIComponent(r.file_name)}&source=${encodeURIComponent(r.source_dir)}" target="_blank" rel="noopener noreferrer">Open JSON</a>` : ''}
+            </div>
             <table class="metrics-table">
               <tr><th>Metric</th><th>Value</th></tr>
               <tr><td>RMSE</td><td class="val">${m.rmse ?? '-'}</td></tr>

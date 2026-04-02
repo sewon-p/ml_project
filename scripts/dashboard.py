@@ -22,8 +22,8 @@ from typing import Any
 
 import uvicorn
 import yaml
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -1154,10 +1154,52 @@ async def get_eval_results(run_id: str):
         for eval_json in odir.glob("eval_*.json"):
             try:
                 data = json.loads(eval_json.read_text(encoding="utf-8"))
+                data["file_name"] = eval_json.name
+                data["source_dir"] = str(odir.relative_to(PROJECT_ROOT))
                 results.append(data)
             except Exception:
                 pass
     return {"run_id": run_id, "results": results}
+
+
+@app.get("/api/eval-file/{run_id}")
+async def get_eval_file(
+    run_id: str,
+    file: str = Query(..., min_length=1),
+    source: str = Query(..., min_length=1),
+):
+    """Open one raw evaluation JSON file for a run."""
+    file_name = Path(file).name
+    source_path = (PROJECT_ROOT / source).resolve()
+
+    if run_id == "legacy":
+        output_dirs = [(PROJECT_ROOT / "outputs").resolve(), (PROJECT_ROOT / "outputs_xgboost").resolve()]
+    else:
+        run_dir = RUNS_DIR / run_id
+        if not run_dir.exists():
+            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+        output_dirs = [(run_dir / "outputs").resolve()]
+        cfg_path = run_dir / "run_config.yaml"
+        if cfg_path.exists():
+            try:
+                with open(cfg_path, encoding="utf-8") as f:
+                    cfg = yaml.safe_load(f) or {}
+                od = cfg.get("output_dir")
+                if od:
+                    resolved = (PROJECT_ROOT / od).resolve()
+                    if resolved not in output_dirs:
+                        output_dirs.append(resolved)
+            except Exception:
+                pass
+
+    if source_path not in output_dirs:
+        raise HTTPException(status_code=404, detail="Evaluation source not found")
+
+    target = source_path / file_name
+    if not target.exists() or target.suffix.lower() != ".json":
+        raise HTTPException(status_code=404, detail="Evaluation file not found")
+
+    return FileResponse(target, media_type="application/json", filename=file_name)
 
 
 @app.delete("/api/runs/{run_id}")
