@@ -177,6 +177,36 @@
   .inline-strong {
     color: var(--accent2);
   }
+  .version-meta {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .config-group-title {
+    color: var(--accent);
+    font-weight: 600;
+    margin: 6px 0 2px;
+  }
+  .checkbox-group.compact {
+    margin-bottom: 4px;
+  }
+  .control-label-tight {
+    margin-bottom: 4px;
+  }
+  .section-block {
+    margin-top: 12px;
+  }
+  .stack-gap-sm {
+    margin-bottom: 8px;
+  }
+  .inline-split.gap-md {
+    gap: 12px;
+  }
+  .meta-inline-note {
+    font-size: 0.82rem;
+    color: var(--accent2);
+    margin-top: 4px;
+  }
   .field-card {
     margin: 4px 0 4px 28px;
     padding: 8px 10px;
@@ -402,6 +432,8 @@
   .run-item .run-info { flex: 1; }
   .run-item .run-id { font-weight: 700; font-size: 0.9rem; }
   .run-item .run-meta { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .run-item .run-meta.strong { color: var(--accent2); }
+  .run-item .run-meta.warn { color: var(--warn); }
   .run-eval-panel {
     display: none;
     border-top: 1px solid var(--border);
@@ -531,6 +563,16 @@
   .eval-file-link {
     text-decoration: none;
   }
+  .empty-note {
+    color: var(--muted);
+    padding: 12px;
+  }
+  .empty-note.compact {
+    padding: 4px 0 0;
+  }
+  .loading-note {
+    color: var(--muted);
+  }
   .metrics-table {
     width: 100%; border-collapse: collapse; margin-bottom: 12px;
     font-size: 0.88rem;
@@ -553,6 +595,66 @@
     padding: 8px; display: inline-block;
   }
   .scatter-container canvas { display: block; }
+  .hosted-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(43, 45, 66, 0.36);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .hosted-dialog {
+    position: relative;
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid rgba(141, 153, 174, 0.22);
+    border-radius: 20px;
+    padding: 32px 32px 28px;
+    max-width: 480px;
+    width: min(100%, 480px);
+    text-align: center;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.14);
+  }
+  .hosted-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(43, 45, 66, 0.06);
+    color: var(--accent2);
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .hosted-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+  }
+  .hosted-title {
+    margin: 0 0 10px;
+    font-size: 1.3rem;
+    color: var(--accent2);
+  }
+  .hosted-copy {
+    color: #5E677A;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0 0 20px;
+  }
+  .hosted-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .hosted-actions .btn {
+    text-decoration: none;
+  }
 
   @media (max-width: 760px) {
     .eval-item summary {
@@ -728,7 +830,7 @@
 <h1>
   <div class="dot off" id="statusDot"></div>
   ML Pipeline Dashboard
-  <span style="font-size:0.7rem;color:var(--muted);font-weight:400;">v0.4.2</span>
+  <span class="version-meta">v0.4.2</span>
   <span class="status-badge badge-idle" id="statusBadge">Idle</span>
 </h1>
 
@@ -863,8 +965,8 @@
               </div>
               <div class="option-grid scrollable">
                 <div>
-              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Speed</div>
-              <div class="checkbox-group" style="margin-bottom:4px;">
+              <div class="config-group-title">Speed</div>
+              <div class="checkbox-group compact">
                 <label><input type="checkbox" class="feat-cb" value="speed_mean" checked> speed_mean</label>
                 <label><input type="checkbox" class="feat-cb" value="speed_std" checked> speed_std</label>
                 <label><input type="checkbox" class="feat-cb" value="speed_cv" checked> speed_cv</label>
@@ -875,15 +977,15 @@
                 <label><input type="checkbox" class="feat-cb" value="speed_p10" checked> speed_p10</label>
                 <label><input type="checkbox" class="feat-cb" value="speed_p90" checked> speed_p90</label>
               </div>
-              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">VY</div>
-              <div class="checkbox-group" style="margin-bottom:4px;">
+              <div class="config-group-title">VY</div>
+              <div class="checkbox-group compact">
                 <label><input type="checkbox" class="feat-cb" value="vy_mean" checked> vy_mean</label>
                 <label><input type="checkbox" class="feat-cb" value="vy_std" checked> vy_std</label>
                 <label><input type="checkbox" class="feat-cb" value="vy_min" checked> vy_min</label>
                 <label><input type="checkbox" class="feat-cb" value="vy_max" checked> vy_max</label>
               </div>
-              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Acceleration</div>
-              <div class="checkbox-group" style="margin-bottom:4px;">
+              <div class="config-group-title">Acceleration</div>
+              <div class="checkbox-group compact">
                 <label><input type="checkbox" class="feat-cb" value="ax_mean" checked> ax_mean</label>
                 <label><input type="checkbox" class="feat-cb" value="ax_std" checked> ax_std</label>
                 <label><input type="checkbox" class="feat-cb" value="ay_mean" checked> ay_mean</label>
@@ -893,32 +995,32 @@
               </div>
             </div>
             <div>
-              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Stop</div>
-              <div class="checkbox-group" style="margin-bottom:4px;">
+              <div class="config-group-title">Stop</div>
+              <div class="checkbox-group compact">
                 <label><input type="checkbox" class="feat-cb" value="stop_count" checked> stop_count</label>
                 <label><input type="checkbox" class="feat-cb" value="stop_time_ratio" checked> stop_time_ratio</label>
                 <label><input type="checkbox" class="feat-cb" value="mean_stop_duration" checked> mean_stop_duration</label>
                 <label><input type="checkbox" class="feat-cb" value="slow_duration_ratio" checked> slow_duration_ratio</label>
               </div>
-              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Time-Series</div>
-              <div class="checkbox-group" style="margin-bottom:4px;">
+              <div class="config-group-title">Time-Series</div>
+              <div class="checkbox-group compact">
                 <label><input type="checkbox" class="feat-cb" value="speed_autocorr_lag1" checked> speed_autocorr_lag1</label>
                 <label><input type="checkbox" class="feat-cb" value="speed_fft_dominant_freq" checked> speed_fft_dominant_freq</label>
                 <label><input type="checkbox" class="feat-cb" value="sample_entropy" checked> sample_entropy</label>
               </div>
-              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Brake</div>
-              <div class="checkbox-group" style="margin-bottom:4px;">
+              <div class="config-group-title">Brake</div>
+              <div class="checkbox-group compact">
                 <label><input type="checkbox" class="feat-cb" value="brake_count" checked> brake_count</label>
                 <label><input type="checkbox" class="feat-cb" value="brake_time_ratio" checked> brake_time_ratio</label>
                 <label><input type="checkbox" class="feat-cb" value="mean_brake_duration" checked> mean_brake_duration</label>
               </div>
-              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Lateral</div>
-              <div class="checkbox-group" style="margin-bottom:4px;">
+              <div class="config-group-title">Lateral</div>
+              <div class="checkbox-group compact">
                 <label><input type="checkbox" class="feat-cb" value="vy_variance" checked> vy_variance</label>
                 <label><input type="checkbox" class="feat-cb" value="vy_energy" checked> vy_energy</label>
               </div>
-              <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Conditions</div>
-              <div class="checkbox-group" style="margin-bottom:4px;">
+              <div class="config-group-title">Conditions</div>
+              <div class="checkbox-group compact">
                 <label><input type="checkbox" class="feat-cb" value="num_lanes" checked> num_lanes</label>
                 <label><input type="checkbox" class="feat-cb" value="speed_limit" checked> speed_limit</label>
               </div>
@@ -940,13 +1042,13 @@
                 <button class="btn btn-outline btn-sm" type="button" onclick="toggleAllFeatures('window')">Select All / Deselect All</button>
               </div>
               <div class="option-grid">
-                <div class="checkbox-group" style="margin-bottom:4px;">
+                <div class="checkbox-group compact">
               <label><input type="checkbox" class="winfeat-cb" value="speed_mean" checked> speed_mean</label>
               <label><input type="checkbox" class="winfeat-cb" value="speed_std" checked> speed_std</label>
               <label><input type="checkbox" class="winfeat-cb" value="speed_min" checked> speed_min</label>
               <label><input type="checkbox" class="winfeat-cb" value="ax_std" checked> ax_std</label>
                 </div>
-                <div class="checkbox-group" style="margin-bottom:4px;">
+                <div class="checkbox-group compact">
               <label><input type="checkbox" class="winfeat-cb" value="brake_time_ratio" checked> brake_time_ratio</label>
               <label><input type="checkbox" class="winfeat-cb" value="stop_time_ratio" checked> stop_time_ratio</label>
               <label><input type="checkbox" class="winfeat-cb" value="slow_duration_ratio" checked> slow_duration_ratio</label>
@@ -980,22 +1082,22 @@
           <div class="asset-list" id="assetList"></div>
         </div>
 
-        <div id="dataFilterSection" style="display:none; margin-top:12px;">
+        <div id="dataFilterSection" class="section-block" style="display:none;">
           <h3>Data Filters</h3>
-          <div class="inline-split" style="gap:12px;">
+          <div class="inline-split gap-md">
             <div>
-              <label style="margin-bottom:4px;">Lanes</label>
+              <label class="control-label-tight">Lanes</label>
               <div class="checkbox-group" id="filterLanes"></div>
             </div>
             <div>
-              <label style="margin-bottom:4px;">Speed Limit (km/h)</label>
+              <label class="control-label-tight">Speed Limit (km/h)</label>
               <div class="checkbox-group" id="filterSpeedLimits"></div>
             </div>
           </div>
-          <div id="filterSummary" style="font-size:0.82rem; color:var(--accent2); margin-top:4px;"></div>
+          <div id="filterSummary" class="meta-inline-note"></div>
         </div>
 
-        <div id="resumeStepsSection" style="display:none; margin-top:12px;">
+        <div id="resumeStepsSection" class="section-block" style="display:none;">
           <h3>Steps to Run</h3>
           <div class="checkbox-group" id="resumeSteps"></div>
           <div id="resumeModelTypeSection" style="display:none;">
@@ -1023,8 +1125,8 @@
                 </div>
                 <div class="option-grid scrollable">
                   <div>
-                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Speed</div>
-                <div class="checkbox-group" style="margin-bottom:4px;">
+                <div class="config-group-title">Speed</div>
+                <div class="checkbox-group compact">
                   <label><input type="checkbox" class="resume-feat-cb" value="speed_mean" checked> speed_mean</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="speed_std" checked> speed_std</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="speed_cv" checked> speed_cv</label>
@@ -1035,15 +1137,15 @@
                   <label><input type="checkbox" class="resume-feat-cb" value="speed_p10" checked> speed_p10</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="speed_p90" checked> speed_p90</label>
                 </div>
-                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">VY</div>
-                <div class="checkbox-group" style="margin-bottom:4px;">
+                <div class="config-group-title">VY</div>
+                <div class="checkbox-group compact">
                   <label><input type="checkbox" class="resume-feat-cb" value="vy_mean" checked> vy_mean</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="vy_std" checked> vy_std</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="vy_min" checked> vy_min</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="vy_max" checked> vy_max</label>
                 </div>
-                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Acceleration</div>
-                <div class="checkbox-group" style="margin-bottom:4px;">
+                <div class="config-group-title">Acceleration</div>
+                <div class="checkbox-group compact">
                   <label><input type="checkbox" class="resume-feat-cb" value="ax_mean" checked> ax_mean</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="ax_std" checked> ax_std</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="ay_mean" checked> ay_mean</label>
@@ -1053,32 +1155,32 @@
                 </div>
               </div>
               <div>
-                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Stop</div>
-                <div class="checkbox-group" style="margin-bottom:4px;">
+                <div class="config-group-title">Stop</div>
+                <div class="checkbox-group compact">
                   <label><input type="checkbox" class="resume-feat-cb" value="stop_count" checked> stop_count</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="stop_time_ratio" checked> stop_time_ratio</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="mean_stop_duration" checked> mean_stop_duration</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="slow_duration_ratio" checked> slow_duration_ratio</label>
                 </div>
-                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Time-Series</div>
-                <div class="checkbox-group" style="margin-bottom:4px;">
+                <div class="config-group-title">Time-Series</div>
+                <div class="checkbox-group compact">
                   <label><input type="checkbox" class="resume-feat-cb" value="speed_autocorr_lag1" checked> speed_autocorr_lag1</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="speed_fft_dominant_freq" checked> speed_fft_dominant_freq</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="sample_entropy" checked> sample_entropy</label>
                 </div>
-                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Brake</div>
-                <div class="checkbox-group" style="margin-bottom:4px;">
+                <div class="config-group-title">Brake</div>
+                <div class="checkbox-group compact">
                   <label><input type="checkbox" class="resume-feat-cb" value="brake_count" checked> brake_count</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="brake_time_ratio" checked> brake_time_ratio</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="mean_brake_duration" checked> mean_brake_duration</label>
                 </div>
-                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Lateral</div>
-                <div class="checkbox-group" style="margin-bottom:4px;">
+                <div class="config-group-title">Lateral</div>
+                <div class="checkbox-group compact">
                   <label><input type="checkbox" class="resume-feat-cb" value="vy_variance" checked> vy_variance</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="vy_energy" checked> vy_energy</label>
                 </div>
-                <div style="color:var(--accent); font-weight:600; margin:6px 0 2px;">Conditions</div>
-                <div class="checkbox-group" style="margin-bottom:4px;">
+                <div class="config-group-title">Conditions</div>
+                <div class="checkbox-group compact">
                   <label><input type="checkbox" class="resume-feat-cb" value="num_lanes" checked> num_lanes</label>
                   <label><input type="checkbox" class="resume-feat-cb" value="speed_limit" checked> speed_limit</label>
                 </div>
@@ -1099,13 +1201,13 @@
                   <button class="btn btn-outline btn-sm" type="button" onclick="toggleAllFeatures('resume-window')">Select All / Deselect All</button>
                 </div>
                 <div class="option-grid">
-                  <div class="checkbox-group" style="margin-bottom:4px;">
+                  <div class="checkbox-group compact">
                 <label><input type="checkbox" class="resume-winfeat-cb" value="speed_mean" checked> speed_mean</label>
                 <label><input type="checkbox" class="resume-winfeat-cb" value="speed_std" checked> speed_std</label>
                 <label><input type="checkbox" class="resume-winfeat-cb" value="speed_min" checked> speed_min</label>
                 <label><input type="checkbox" class="resume-winfeat-cb" value="ax_std" checked> ax_std</label>
                   </div>
-                  <div class="checkbox-group" style="margin-bottom:4px;">
+                  <div class="checkbox-group compact">
                 <label><input type="checkbox" class="resume-winfeat-cb" value="brake_time_ratio" checked> brake_time_ratio</label>
                 <label><input type="checkbox" class="resume-winfeat-cb" value="stop_time_ratio" checked> stop_time_ratio</label>
                 <label><input type="checkbox" class="resume-winfeat-cb" value="slow_duration_ratio" checked> slow_duration_ratio</label>
@@ -1133,8 +1235,8 @@
         <!-- Network Settings -->
         <div class="sc-section">
           <h3>Network Settings</h3>
-          <div style="margin-bottom:8px;">
-            <label style="margin-bottom:4px;">Speed Limit (km/h)</label>
+          <div class="stack-gap-sm">
+            <label class="control-label-tight">Speed Limit (km/h)</label>
             <div class="sc-check-group" id="speedLimitChecks">
               <label><input type="checkbox" value="50" checked> 50</label>
               <label><input type="checkbox" value="60" checked> 60</label>
@@ -1199,7 +1301,7 @@
     <div class="card">
       <h2>Run History</h2>
       <div class="run-list" id="runList">
-        <div style="color:var(--muted)">Loading...</div>
+        <div class="loading-note">Loading...</div>
       </div>
     </div>
   </div>
@@ -1337,7 +1439,7 @@ async function loadAssetsForStage() {
 
     const list = $('#assetList');
     if (!data.assets || data.assets.length === 0) {
-      list.innerHTML = '<div style="color:var(--muted);padding:12px;">No assets available.</div>';
+      list.innerHTML = '<div class="empty-note">No assets available.</div>';
       $('#assetBrowser').style.display = 'block';
       return;
     }
@@ -1401,9 +1503,9 @@ function selectAsset(idx, runId) {
     };
     let extra = '';
     if (s === 'residuals') {
-      extra = `<div id="resumeFdModelSection" style="margin: 4px 0 4px 28px; padding: 6px 10px; background: var(--bg-card); border-radius: 6px; border: 1px solid var(--border);">
-        <div style="font-size: 0.85em; color: var(--text-secondary); margin-bottom: 4px;">FD Model</div>
-        <div style="display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.9em;">
+      extra = `<div id="resumeFdModelSection" class="field-card">
+        <div class="field-card-title">FD Model</div>
+        <div class="field-card-row">
           <label><input type="radio" name="resumeFdModel" value="greenshields"> Greenshields</label>
           <label><input type="radio" name="resumeFdModel" value="greenberg"> Greenberg</label>
           <label><input type="radio" name="resumeFdModel" value="underwood" checked> Underwood</label>
@@ -1791,7 +1893,7 @@ async function refreshRuns() {
     const list = $('#runList');
 
     if (!runs || runs.length === 0) {
-      list.innerHTML = '<div style="color:var(--muted);padding:8px;">No run history.</div>';
+      list.innerHTML = '<div class="empty-note compact">No run history.</div>';
       return;
     }
 
@@ -1844,8 +1946,8 @@ async function refreshRuns() {
           <div class="run-info">
             <div class="run-id">${esc(label)} <span class="run-status ${statusCls}">${statusCls}</span></div>
             <div class="run-meta">${esc(modeLabel)} | ${esc(r.created || '')}${r.num_scenarios ? ' | ' + r.num_scenarios + ' scenarios' : ''}</div>
-            ${scLine ? `<div class="run-meta" style="color:var(--accent2)">${esc(scLine)}</div>` : ''}
-            ${filterLine ? `<div class="run-meta" style="color:var(--warn)">${esc(filterLine)}</div>` : ''}
+            ${scLine ? `<div class="run-meta strong">${esc(scLine)}</div>` : ''}
+            ${filterLine ? `<div class="run-meta warn">${esc(filterLine)}</div>` : ''}
             <div class="run-meta">${esc(assetStr)}</div>
             ${r.completed_steps && r.completed_steps.length > 0 ?
               `<div class="run-meta">Done: ${r.completed_steps.join(' → ')}</div>` : ''}
@@ -1909,7 +2011,7 @@ async function loadEvalResults(runId, triggerEl = null) {
     if (!data.results || data.results.length === 0) {
       panel.classList.add('open');
       panel.dataset.runId = runId;
-      panel.innerHTML = '<div class="run-meta" style="padding-top:4px;">No evaluation results available for this run yet.</div>';
+      panel.innerHTML = '<div class="empty-note compact">No evaluation results available for this run yet.</div>';
       if (button) {
         button.textContent = 'Hide';
         button.setAttribute('aria-expanded', 'true');
@@ -2317,19 +2419,19 @@ document.querySelectorAll('.feat-cb, .winfeat-cb, .resume-feat-cb, .resume-winfe
       if (sessionStorage.getItem(overlayKey) === '1') return;
 
       const overlay = document.createElement('div');
-      overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(43,45,66,0.36);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;';
+      overlay.className = 'hosted-overlay';
       overlay.innerHTML = `
-        <div role="dialog" aria-modal="true" aria-labelledby="hostedOverlayTitle" style="position:relative;background:rgba(255,255,255,0.97);border:1px solid rgba(141,153,174,0.22);border-radius:20px;padding:32px 32px 28px;max-width:480px;width:min(100%,480px);text-align:center;box-shadow:0 24px 48px rgba(0,0,0,0.14);">
-          <button type="button" id="dismissHostedOverlay" aria-label="Close notice" style="position:absolute;top:14px;right:14px;width:36px;height:36px;border:none;border-radius:999px;background:rgba(43,45,66,0.06);color:#2B2D42;font-size:1rem;font-weight:700;cursor:pointer;">×</button>
-          <div style="font-size:2rem;margin-bottom:10px;">Server mode</div>
-          <h2 id="hostedOverlayTitle" style="margin:0 0 10px;font-size:1.3rem;color:#2B2D42;">This dashboard is view-only on the hosted server.</h2>
-          <p style="color:#5E677A;font-size:0.95rem;line-height:1.6;margin:0 0 20px;">
+        <div role="dialog" aria-modal="true" aria-labelledby="hostedOverlayTitle" class="hosted-dialog">
+          <button type="button" id="dismissHostedOverlay" aria-label="Close notice" class="hosted-close">×</button>
+          <div class="hosted-icon">Server mode</div>
+          <h2 id="hostedOverlayTitle" class="hosted-title">This dashboard is view-only on the hosted server.</h2>
+          <p class="hosted-copy">
             You can inspect preloaded sample runs, configs, and evaluation outputs here, but training and execution controls do not run on the server.
             Clone the repo and open this dashboard locally if you want to launch jobs.
           </p>
-          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-            <a href="/about" style="display:inline-flex;align-items:center;justify-content:center;padding:12px 20px;background:#EF233C;color:#fff;border-radius:14px;font-weight:700;text-decoration:none;">Back to About</a>
-            <button type="button" id="continueHostedOverlay" style="display:inline-flex;align-items:center;justify-content:center;padding:12px 20px;background:transparent;color:#2B2D42;border:1px solid rgba(141,153,174,0.28);border-radius:14px;font-weight:700;cursor:pointer;">Continue browsing</button>
+          <div class="hosted-actions">
+            <a href="/about" class="btn btn-primary">Back to About</a>
+            <button type="button" id="continueHostedOverlay" class="btn btn-outline">Continue browsing</button>
           </div>
         </div>`;
       document.body.appendChild(overlay);
