@@ -422,4 +422,4 @@ data/gis/           MOCT standard link GeoJSON (2.2K Seoul arterial links)
 
 ## License
 
-MIT
+All rights reserved. This repository is shared for portfolio and evaluation purposes only. Not licensed for redistribution or reuse.
