@@ -249,6 +249,19 @@ The remaining gap between **0.742** and **0.658** is the gap between two differe
 - **0.742**: ideal same-slice fusion, where probes can be aligned to the same 1 km segment
 - **0.658**: deployable fusion, where probes arrive on different link chains and must be combined after per-probe prediction
 
+**Notes on what these numbers mean:**
+
+- Here, **1 km** means the accumulated traversal length across chained road links in the link buffer. It is **not** a fixed SUMO link length.
+- **0.742** is the latest aligned same-slice rerun saved in `results/multi_probe/results_all_config.json`.
+- **0.658** is the deployable unequal-traversal Bayesian fusion result saved in `results/multi_probe/cf_comparison_runtime32_full.json`.
+
+**Reproduce the latest aligned result line:**
+
+```bash
+python scripts/train_multi_probe.py --skip-dl --probes 1 2 3 5 --target density_per_lane --feature-set all_config
+python scripts/plot_release_results.py
+```
+
 **Model comparison** (single probe): FD baseline <0, GPR 0.41, LSTM/CNN-1D/XGBoost clustered around **0.44-0.46** → production.
 
 ---
