@@ -2896,23 +2896,23 @@
             </div>
           </div>
           <div class="hero-panel">
-            <div class="panel-heading">What this project actually includes</div>
+            <div class="panel-heading">Headline results and scope</div>
             <div class="hero-metrics">
               <div class="metric">
-                <div class="metric-label">Pipeline Workbench</div>
-                <div class="metric-value">Run and inspect experiments from one GUI</div>
-                <div class="metric-copy">Generate scenarios, resume runs, switch feature and model settings, and
-                  inspect results without hand-editing configs or juggling shell commands.</div>
+                <div class="metric-label">Aligned Research Setting</div>
+                <div class="metric-value">Aligned 5-probe rerun reaches R² 0.742</div>
+                <div class="metric-copy">In the latest full-feature 1 km rerun, the aligned multi-probe path improves
+                  from R² 0.494 at N=1 to R² 0.742 at N=5.</div>
               </div>
               <div class="metric">
-                <div class="metric-label">ML Prediction System</div>
-                <div class="metric-value">Turn probe trajectories into density estimates</div>
-                <div class="metric-copy">Built the full path from simulated data and feature engineering to XGBoost
-                  inference, multi-probe aggregation, and evaluation of deployed road-density predictions.</div>
+                <div class="metric-label">Deployable Road-Network Setting</div>
+                <div class="metric-value">Bayesian link fusion reaches R² 0.658</div>
+                <div class="metric-copy">With unequal traversal boundaries, Bayesian+CF beats simple mean (0.636) and
+                  CF-softmax (0.646) in the 5-probe deployment evaluation.</div>
               </div>
               <div class="metric">
-                <div class="metric-label">End-to-End Backend</div>
-                <div class="metric-value">From sensing to database, API, and live map</div>
+                <div class="metric-label">End-to-End System</div>
+                <div class="metric-value">From phone sensing to a 2.2K-link live map</div>
                 <div class="metric-copy">Implemented ingestion, Kalman fusion, GIS link matching, rolling link buffers,
                   prediction storage, streaming, and the surfaces used to check the system live.</div>
               </div>
@@ -2967,18 +2967,18 @@
             </div>
             <div class="problem-insight">
               <div class="metric-label">Breakthrough</div>
-              <strong>Aligned multi-probe study → +47% improvement</strong>
-              <span>In the 5-probe, 1 km aligned setting, multi-probe aggregation breaks through the single-probe baseline (R² 0.46 → 0.67).</span>
+              <strong>Aligned 5-probe rerun → +50% over N=1</strong>
+              <span>In the latest 1 km full-feature rerun, aligned multi-probe aggregation rises from R² 0.494 to 0.742.</span>
             </div>
             <div class="problem-insight">
               <div class="metric-label">Deployment</div>
               <strong>Route mismatch in real deployment</strong>
-              <span>Probes do not share identical 1 km start/end boundaries in deployment. That forced a second contribution: a link-level fusion system that aggregates mismatched traversals after per-probe prediction.</span>
+              <span>Probes do not share identical 1 km start/end boundaries in deployment, so the aligned same-slice fusion rule cannot be applied directly once vehicles travel through the real road network.</span>
             </div>
             <div class="problem-insight">
               <div class="metric-label">Constraint</div>
               <strong>Mismatched windows still share overlapping links</strong>
-              <span>The deployed system does not require perfectly matched 1 km cuts. It predicts each traversal first, then aggregates density through the road links those different windows overlap.</span>
+              <span>The deployed system does not require perfectly matched 1 km cuts. It predicts each traversal first, then aggregates density through the shared links; at N=5 the method comparison is 0.636 (simple mean), 0.646 (CF-softmax), and 0.658 (Bayesian+CF).</span>
             </div>
           </div>
         </div>
@@ -3026,8 +3026,8 @@
           </div>
           <div class="card">
             <div class="metric-label">Gap</div>
-            <p class="card-title">0.67 Ideal vs 0.62 Deployed</p>
-            <p class="card-desc">Most of the theoretical gain survives after introducing route-aware fusion logic.</p>
+            <p class="card-title">0.742 aligned vs 0.658 deployed</p>
+            <p class="card-desc">Most of the research gain survives after switching to unequal-window Bayesian link fusion.</p>
           </div>
         </div>
       </section>
@@ -3062,7 +3062,7 @@ graph TB
         K --> L["LinkBuffer (1km)"]
         L --> M[Feature Extraction]
         M --> N[XGBoost]
-        N --> O[Ensemble Aggregator]
+        N --> O[Bayesian CF Ensemble]
     end
 
     subgraph Out["Output"]
@@ -3109,7 +3109,7 @@ sequenceDiagram
         Server->>ML: 31 features → density
         ML-->>Server: density, cf_score
         Server->>Ens: Register per link
-        Ens-->>Server: weighted link aggregation
+        Ens-->>Server: Bayesian link aggregation
         Server->>Map: Store + push
         Server-->>Phone: Prediction
     else Accumulating
@@ -3174,11 +3174,17 @@ sequenceDiagram
       <!-- ─── RESULTS ─── -->
       <section id="results">
         <div class="eyebrow">Results</div>
-        <h2 class="section-title">More probes, better estimates — with diminishing returns</h2>
+        <h2 class="section-title">Aligned fusion goes higher, deployable fusion stays usable</h2>
+        <p class="section-copy">
+          The project now reports two different result lines. The <strong>aligned research setting</strong> assumes
+          multiple probes describe the same 1 km slice, while the <strong>deployable road-network setting</strong>
+          must fuse unequal traversals only after per-probe prediction.
+        </p>
         <div class="panel panel-offset">
+          <div class="panel-heading">Aligned research setting · latest full-feature rerun</div>
           <div class="table-scroll">
             <table class="data-table">
-              <caption class="sr-only">Probe count performance comparison</caption>
+              <caption class="sr-only">Aligned probe count performance comparison</caption>
               <thead>
                 <tr>
                   <th scope="col">Probes</th>
@@ -3190,51 +3196,95 @@ sequenceDiagram
               <tbody>
                 <tr>
                   <th scope="row">1 probe</th>
-                  <td class="numeric">0.457</td>
-                  <td class="numeric">2.57</td>
+                  <td class="numeric">0.494</td>
+                  <td class="numeric">2.39</td>
                   <td class="numeric muted-cell">baseline</td>
                 </tr>
                 <tr>
                   <th scope="row">2 probes</th>
-                  <td class="numeric">0.531</td>
-                  <td class="numeric">2.20</td>
-                  <td class="numeric accent-cell">+16%</td>
+                  <td class="numeric">0.626</td>
+                  <td class="numeric">2.04</td>
+                  <td class="numeric accent-cell">+27%</td>
                 </tr>
                 <tr>
                   <th scope="row">3 probes</th>
-                  <td class="numeric">0.604</td>
-                  <td class="numeric">2.00</td>
-                  <td class="numeric accent-cell">+32%</td>
+                  <td class="numeric">0.679</td>
+                  <td class="numeric">1.88</td>
+                  <td class="numeric accent-cell">+37%</td>
                 </tr>
                 <tr>
                   <th scope="row" class="strong-cell">5 probes</th>
-                  <td class="numeric strong-cell">0.671</td>
-                  <td class="numeric strong-cell">1.80</td>
-                  <td class="numeric accent-cell strong-cell">+47%</td>
+                  <td class="numeric strong-cell">0.742</td>
+                  <td class="numeric strong-cell">1.68</td>
+                  <td class="numeric accent-cell strong-cell">+50%</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <p class="note-copy">
-            MAE = 1.80 veh/km/lane ≈ 1–2 vehicles per km per lane error.
-            Typical loop-detector noise is ±1–3. Probe-based estimates approach fixed-sensor accuracy at 5+ probes.
+            MAE = 1.68 veh/km/lane means about 1–2 vehicles per km per lane error.
+            This is the ideal same-slice setting where all probes describe the same 1 km target.
+          </p>
+        </div>
+        <div class="panel panel-offset">
+          <div class="panel-heading">Deployable road-network setting · unequal traversal boundaries</div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <caption class="sr-only">Deployable method comparison by probe count</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Method</th>
+                  <th scope="col" class="numeric">N=1</th>
+                  <th scope="col" class="numeric">N=2</th>
+                  <th scope="col" class="numeric">N=3</th>
+                  <th scope="col" class="numeric">N=5</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Simple mean</th>
+                  <td class="numeric">0.526</td>
+                  <td class="numeric">0.596</td>
+                  <td class="numeric">0.616</td>
+                  <td class="numeric">0.636</td>
+                </tr>
+                <tr>
+                  <th scope="row">CF-softmax</th>
+                  <td class="numeric">0.526</td>
+                  <td class="numeric">0.603</td>
+                  <td class="numeric">0.625</td>
+                  <td class="numeric">0.646</td>
+                </tr>
+                <tr>
+                  <th scope="row" class="strong-cell">Bayesian+CF</th>
+                  <td class="numeric strong-cell">0.526</td>
+                  <td class="numeric strong-cell">0.612</td>
+                  <td class="numeric strong-cell">0.638</td>
+                  <td class="numeric strong-cell">0.658</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note-copy">
+            With only one traversal, all three fusion rules are effectively the same.
+            At 5 probes, Bayesian+CF beats simple mean by +0.022 R² and CF-softmax by +0.012 R².
           </p>
         </div>
         <div class="cards-three">
           <div class="card">
-            <div class="metric-label">Current single-probe range</div>
-            <p class="card-title-sm">R²≈0.45 in the current 1-probe, 1 km setup</p>
-            <p class="card-desc">With the present trajectory-only features and 1 km observation window, low-density runs still expose limited signal. This describes the current setup, not every longer or richer observation design.</p>
+            <div class="metric-label">Aligned gain</div>
+            <p class="card-title-sm">0.494 → 0.742 from 1 to 5 probes</p>
+            <p class="card-desc">The latest same-slice rerun shows that richer multi-probe evidence still carries the largest accuracy gain when the observation target is perfectly aligned.</p>
           </div>
           <div class="card">
-            <div class="metric-label">Deployment contribution</div>
-            <p class="card-title-sm">Fuse densities on overlapping links</p>
-            <p class="card-desc">Different vehicles cover different cut points, so the system aggregates per-traversal density on the links they share instead of requiring identical segments.</p>
+            <div class="metric-label">Deployable result</div>
+            <p class="card-title-sm">Bayesian+CF reaches R² 0.658 at 5 probes</p>
+            <p class="card-desc">Different vehicles cover different cut points, so the system predicts each traversal first and then fuses them on the overlapping links they share.</p>
           </div>
           <div class="card">
-            <div class="metric-label">Post-hoc weighting</div>
-            <p class="card-title-sm">+3.5% over naive avg</p>
-            <p class="card-desc">In the deployed 5-probe setting, CF-aware weighting still improves over a simple mean after per-traversal prediction and link-level aggregation.</p>
+            <div class="metric-label">Fusion method effect</div>
+            <p class="card-title-sm">0.636 → 0.646 → 0.658 at N=5</p>
+            <p class="card-desc">In the deployable setting, the ordering is simple mean &lt; CF-softmax &lt; Bayesian+CF once multiple unequal traversals are available.</p>
           </div>
         </div>
       </section>
@@ -3389,7 +3439,7 @@ flowchart LR
               </div>
               <p class="section-copy copy-spaced">
                 <strong>Ensemble lifecycle:</strong> New probe prediction → find active ensemble for that link (or create) →
-                compute weighted link density → update window_end. If no new probe within 15 min → freeze.
+                compute Bayesian link density → update window_end. If no new probe within 15 min → freeze.
                 Frozen ensembles are garbage-collected after 1 hour.
               </p>
             </div>
@@ -3397,7 +3447,7 @@ flowchart LR
 
           <!-- CF Ensemble -->
           <details data-math-root>
-            <summary><span class="summary-title">Stage 1 · Aligned Multi-Probe Aggregation</span><span class="summary-sub">same-slice research setting · R² = 0.67</span></summary>
+            <summary><span class="summary-title">Stage 1 · Aligned Multi-Probe Aggregation</span><span class="summary-sub">same-slice research setting · R² = 0.742</span></summary>
             <div class="accordion-body">
               <p class="accordion-lead"><strong>Theory layer:</strong> when probes observe the same slice, stronger car-following behavior means lower uncertainty and more influence on the fused estimate.</p>
               <div class="formula-card">
@@ -3417,14 +3467,14 @@ flowchart LR
               <p class="section-copy copy-spaced">
                 <strong>Softmax weighting:</strong> each probe's CF score passes through a softmax
                 $w_i = \exp(\text{cf}_i) / \sum_j \exp(\text{cf}_j)$ — higher CF intensity → higher weight → more trusted.
-                The weighting rule is the theoretical ingredient; the next problem is making it work once probes no
-                longer share the same start/end boundaries.
+                In the latest full-feature rerun, this aligned formulation reaches <strong>R² = 0.742</strong> at 5 probes.
+                The weighting rule is the theoretical ingredient; the next problem is making it work once probes no longer share the same start/end boundaries.
               </p>
             </div>
           </details>
 
           <details class="two-stage-explainer" data-math-root>
-            <summary><span class="summary-title">Stage 2 · Overlap-Aware Link Fusion for Mismatched Traversals</span><span class="summary-sub">deployed 5-probe system · R² = 0.62</span></summary>
+            <summary><span class="summary-title">Stage 2 · Overlap-Aware Link Fusion for Mismatched Traversals</span><span class="summary-sub">deployed 5-probe system · R² = 0.658</span></summary>
             <div class="accordion-body">
               <p class="accordion-lead"><strong>Deployment layer:</strong> once probes stop sharing identical 1 km observation windows, the system predicts each traversal first, then aggregates those densities through the road links their windows overlap.</p>
               <div class="stage-grid">
@@ -3440,20 +3490,27 @@ flowchart LR
                 </div>
                 <div class="stage-card">
                   <div class="stage-kicker">Step 2 · Post-hoc Fusion</div>
-                  <div class="stage-title">Predict each traversal first, then weight and aggregate on overlapping links.</div>
+                  <div class="stage-title">Predict each traversal first, then fuse overlapping links with a Bayesian update.</div>
                   <p class="stage-copy">
                     The system registers each traversal's density on the road links it covers, keeps a
                     <strong>15-minute rolling ensemble per link</strong>, and recomputes the aggregate with a
-                    <strong>softmax over CF scores</strong>. In practice, probes that show stronger car-following
-                    behavior get higher post-hoc weight inside the shared link window.
+                    <strong>Bayesian posterior whose observation noise shrinks as CF intensity rises</strong>.
+                    In practice, traversals that show stronger car-following behavior are treated as lower-noise observations inside the shared link window.
                   </p>
                   <div class="stage-formula" aria-label="Link-level fusion equations">
                     $$\hat{k}_t = f_{\theta}(x_t)$$
-                    $$\hat{k}_{\mathrm{link}} = \sum_{t \in T(\mathrm{link})} \alpha_t \hat{k}_t,\quad
-                    \alpha_t = \frac{\exp(\mathrm{cf}_t)}{\sum_{j \in T(\mathrm{link})}\exp(\mathrm{cf}_j)}$$
+                    $$\sigma_{\mathrm{obs},t} = \sigma_{\mathrm{base}} \exp(-\lambda \,\mathrm{cf}_t)$$
+                    $$\hat{k}_{\mathrm{link}} =
+                    \frac{
+                    \mu_{\mathrm{prior}}/\sigma_{\mathrm{prior}}^2 +
+                    \sum_{t \in T(\mathrm{link})}\hat{k}_t/\sigma_{\mathrm{obs},t}^2
+                    }{
+                    1/\sigma_{\mathrm{prior}}^2 +
+                    \sum_{t \in T(\mathrm{link})}1/\sigma_{\mathrm{obs},t}^2
+                    }$$
                     <div class="stage-formula-note">First predict each traversal <code>t</code>, then aggregate only the traversals whose windows overlap the same link.</div>
                   </div>
-                  <div class="stage-chip">Link-level weighted fusion</div>
+                  <div class="stage-chip">Bayesian link fusion</div>
                 </div>
               </div>
 
@@ -3505,7 +3562,7 @@ flowchart LR
                   <div class="fusion-flow">
                     <div class="fusion-chip">Aligned feature / prediction fusion</div>
                     <div class="fusion-arrow"></div>
-                    <div class="fusion-result">R² 0.67 in the aligned 5-probe study</div>
+                    <div class="fusion-result">R² 0.742 in the aligned 5-probe rerun</div>
                   </div>
                   <div class="fusion-footnote">
                     This is the clean research setting: every probe describes the same road slice, so the fusion problem
@@ -3560,12 +3617,12 @@ flowchart LR
                   <div class="fusion-flow">
                     <div class="fusion-chip">Per-probe density first</div>
                     <div class="fusion-arrow"></div>
-                    <div class="fusion-chip">Overlap-aware link fusion</div>
+                    <div class="fusion-chip">Bayesian link fusion</div>
                     <div class="fusion-arrow"></div>
-                    <div class="fusion-result">R² 0.62 in the deployed 5-probe system</div>
+                    <div class="fusion-result">R² 0.658 in the deployed 5-probe system</div>
                   </div>
                   <div class="fusion-footnote">
-                    The key engineering step is not just “average predictions,” but <strong>aggregate density from
+                    The key engineering step is not just “average predictions,” but <strong>apply Bayesian link fusion to
                     different traversal windows through the links they overlap instead of requiring perfectly matching cuts.</strong>
                   </div>
                 </div>
@@ -3620,19 +3677,18 @@ flowchart LR
           <strong class="panel-accent-title">The contribution is two-stage because the research setting and the deployment setting are different.</strong>
           <p class="accent-copy">
             The important result is not just that multi-probe aggregation helped. In the <strong>aligned 5-probe, 1 km experiment</strong>,
-            aligned multi-probe aggregation reaches about <strong>R² = 0.67</strong>. The second contribution is the deployable version:
-            an overlap-aware link-level fusion system that still delivers about <strong>R² = 0.62</strong> in the
+            aligned multi-probe aggregation reaches about <strong>R² = 0.742</strong>. The second contribution is the deployable version:
+            an overlap-aware Bayesian link-fusion system that still delivers about <strong>R² = 0.658</strong> in the
             <strong>deployed 5-probe setting</strong> once probes stop sharing the same traversal boundaries.
           </p>
         </div>
         <div class="grid-two">
           <div class="panel lesson-panel">
-            <strong>In the current 1-probe, 1 km setup, performance repeatedly lands around R²≈0.45.</strong>
+            <strong>Single-probe prediction is still the bottleneck before fusion.</strong>
             <p class="lesson-copy">
-              Tested across XGBoost, LightGBM, LSTM, CNN-1D, GPR (4 kernels), window features, and density weighting,
-              the current single-probe design repeatedly converged near that range. That is a limitation of this
-              observation setup, not a universal ceiling for every longer window, richer sensor input, or different
-              observation design.
+              Even before multi-probe aggregation, the single-probe path starts only around <strong>R²≈0.5</strong>.
+              That is why the biggest gains in this project come from combining multiple traversals rather than just
+              swapping regressors inside the same observation setup.
             </p>
           </div>
           <div class="panel lesson-panel">

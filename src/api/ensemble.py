@@ -1,8 +1,9 @@
-"""In-memory ensemble aggregator with CF-weighted rolling window.
+"""In-memory ensemble aggregator with Bayesian CF-aware rolling fusion.
 
 Manages per-link prediction aggregation: when multiple probes traverse
 the same link within a configurable time window (default 15 min, per HCM),
-their predictions are combined using car-following intensity weights.
+their predictions are combined with a Bayesian update whose observation
+noise shrinks as car-following intensity rises.
 """
 
 from __future__ import annotations
@@ -40,25 +41,42 @@ class EnsembleState:
 
 
 class EnsembleAggregator:
-    """Per-link rolling ensemble with CF-weighted aggregation.
+    """Per-link rolling ensemble with Bayesian CF-aware aggregation.
 
     Parameters
     ----------
     window_seconds:
         Maximum gap between consecutive probes before freezing.
         Default 900s = 15 minutes (HCM LOS analysis period).
-    temperature:
-        Softmax temperature for CF-score weighting.
-        Higher = more uniform weights, lower = sharper weighting.
+    base_obs_std:
+        Base observation standard deviation before CF adjustment.
+    cf_sensitivity:
+        Controls how strongly higher CF scores reduce observation noise.
+    min_obs_std:
+        Lower bound on the observation standard deviation.
+    prior_density:
+        Weak prior mean used for the Bayesian density update.
+    prior_density_std:
+        Weak prior standard deviation used for the Bayesian density update.
     """
 
     def __init__(
         self,
         window_seconds: float = 900.0,
-        temperature: float = 1.0,
+        base_obs_std: float = 1.0,
+        cf_sensitivity: float = 1.0,
+        min_obs_std: float = 0.1,
+        prior_density: float = 0.0,
+        prior_density_std: float = 100.0,
     ) -> None:
         self.window_seconds = window_seconds
-        self.temperature = temperature
+        self.base_obs_std = base_obs_std
+        self.cf_sensitivity = cf_sensitivity
+        self.min_obs_std = min_obs_std
+        self.prior_density = prior_density
+        self.prior_density_precision = (
+            0.0 if prior_density_std <= 0 else 1.0 / (prior_density_std**2)
+        )
         self._active: dict[str, EnsembleState] = {}
 
     def add_prediction(
@@ -138,7 +156,7 @@ class EnsembleAggregator:
         return len(stale)
 
     def _recompute(self, state: EnsembleState) -> None:
-        """Recompute CF-weighted ensemble density and flow."""
+        """Recompute Bayesian CF-aware ensemble density and flow."""
         preds = state.predictions
         if not preds:
             return
@@ -149,15 +167,27 @@ class EnsembleAggregator:
             state.probe_count = 1
             return
 
-        # Softmax over CF scores
-        scores = [p.cf_raw_score / self.temperature for p in preds]
-        max_s = max(scores)
-        exps = [math.exp(s - max_s) for s in scores]
-        total = sum(exps)
-        weights = [e / total for e in exps]
+        obs_stds = [
+            compute_observation_std(
+                cf_score=p.cf_raw_score,
+                base_obs_std=self.base_obs_std,
+                cf_sensitivity=self.cf_sensitivity,
+                min_obs_std=self.min_obs_std,
+            )
+            for p in preds
+        ]
+        precisions = [1.0 / (std**2) for std in obs_stds]
 
-        state.ensemble_density = sum(w * p.density for w, p in zip(weights, preds))
-        state.ensemble_flow = sum(w * p.flow for w, p in zip(weights, preds))
+        state.ensemble_density = bayesian_posterior_mean(
+            values=[p.density for p in preds],
+            precisions=precisions,
+            prior_mean=self.prior_density,
+            prior_precision=self.prior_density_precision,
+        )
+        state.ensemble_flow = precision_weighted_mean(
+            values=[p.flow for p in preds],
+            precisions=precisions,
+        )
         state.probe_count = len(preds)
 
     @property
@@ -185,3 +215,41 @@ def compute_cf_score(features: dict[str, float]) -> float:
     brake_ratio = features.get("brake_time_ratio", 0.0)
     speed_cv = features.get("speed_cv", 0.0)
     return ax_std + brake_ratio + speed_cv
+
+
+def compute_observation_std(
+    *,
+    cf_score: float,
+    base_obs_std: float,
+    cf_sensitivity: float,
+    min_obs_std: float,
+) -> float:
+    """Convert CF intensity to observation noise for Bayesian fusion."""
+    std = base_obs_std * math.exp(-cf_sensitivity * cf_score)
+    return max(min_obs_std, std)
+
+
+def precision_weighted_mean(values: list[float], precisions: list[float]) -> float:
+    """Compute a precision-weighted average."""
+    total_precision = sum(precisions)
+    if total_precision <= 0:
+        return sum(values) / len(values)
+    return sum(value * precision for value, precision in zip(values, precisions)) / total_precision
+
+
+def bayesian_posterior_mean(
+    *,
+    values: list[float],
+    precisions: list[float],
+    prior_mean: float,
+    prior_precision: float,
+) -> float:
+    """Compute posterior mean from a Gaussian prior and Gaussian observations."""
+    obs_precision = sum(precisions)
+    if obs_precision <= 0:
+        return prior_mean
+    numerator = prior_mean * prior_precision + sum(
+        value * precision for value, precision in zip(values, precisions)
+    )
+    denominator = prior_precision + obs_precision
+    return numerator / denominator

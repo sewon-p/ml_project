@@ -1,13 +1,14 @@
 """Multi-probe penetration rate experiment.
 
 Compares DeepSets (LSTM, CNN1D) and XGBoost across N=1,2,3,5 probes.
-Outputs R² / MAE / RMSE tables by probe count and density range.
+Outputs R² / MAE / RMSE / MAPE tables by probe count and density range.
 
 Usage:
     python scripts/train_multi_probe.py
     python scripts/train_multi_probe.py --probes 1 2 3 5
     python scripts/train_multi_probe.py --skip-dl          # XGBoost only
     python scripts/train_multi_probe.py --skip-xgb         # DL only
+    python scripts/train_multi_probe.py --skip-dl --feature-set all_config
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.evaluation.metrics import compute_all_metrics
 from src.models.multi_probe import MultiProbeModel
 from src.training.trainer_dl import DLTrainer
+from src.utils.config import load_config
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,6 +70,31 @@ def resolve_device(device: str = "auto") -> str:
             return "mps"
         return "cpu"
     return device
+
+
+def resolve_xgb_feature_columns(
+    df: pd.DataFrame,
+    feature_set: str,
+) -> list[str]:
+    """Resolve XGBoost feature columns for the aggregation baseline."""
+    if feature_set == "top8":
+        return TOP_FEATURES
+
+    if feature_set == "all_config":
+        configured = load_config("configs/features/all_features.yaml").get("features", [])
+        selected = [name for name in configured if name in df.columns]
+        missing = [name for name in configured if name not in df.columns]
+        if not selected:
+            raise ValueError("No configured features found in dataset for feature_set=all_config")
+        if missing:
+            logger.warning(
+                "Skipping %d configured features absent from dataset: %s",
+                len(missing),
+                missing,
+            )
+        return selected
+
+    raise ValueError(f"Unknown feature_set '{feature_set}'")
 
 
 # ---- Multi-Probe Dataset ----
@@ -432,7 +459,7 @@ def print_results(all_results: dict, probes_list: list[int], models: list[str]) 
     print("=" * 70)
 
     # Overall metrics
-    for metric_name in ["r2", "mae", "rmse"]:
+    for metric_name in ["r2", "mae", "rmse", "mape"]:
         print(f"\n{metric_name.upper()}")
         header = f"{'Model':<20}"
         for n in probes_list:
@@ -451,25 +478,26 @@ def print_results(all_results: dict, probes_list: list[int], models: list[str]) 
                     row += f"  {'N/A':<10}"
             print(row)
 
-    # Density range breakdown (R² only)
-    for label, lo, hi in DENSITY_BINS:
-        print(f"\nR² by density range: {label}")
-        header = f"{'Model':<20}"
-        for n in probes_list:
-            header += f"  N={n:<8}"
-        print(header)
-        print("-" * (20 + 10 * len(probes_list)))
-
-        for model_name in models:
-            row = f"{model_name:<20}"
+    # Density range breakdown
+    for metric_name in ["r2", "mape"]:
+        for label, lo, hi in DENSITY_BINS:
+            print(f"\n{metric_name.upper()} by density range: {label}")
+            header = f"{'Model':<20}"
             for n in probes_list:
-                key = f"{model_name}_n{n}"
-                ranges = all_results.get(key, {}).get("ranges", {})
-                if label in ranges:
-                    row += f"  {ranges[label]['r2']:<10.4f}"
-                else:
-                    row += f"  {'N/A':<10}"
-            print(row)
+                header += f"  N={n:<8}"
+            print(header)
+            print("-" * (20 + 10 * len(probes_list)))
+
+            for model_name in models:
+                row = f"{model_name:<20}"
+                for n in probes_list:
+                    key = f"{model_name}_n{n}"
+                    ranges = all_results.get(key, {}).get("ranges", {})
+                    if label in ranges:
+                        row += f"  {ranges[label][metric_name]:<10.4f}"
+                    else:
+                        row += f"  {'N/A':<10}"
+                print(row)
 
 
 # ---- Main ----
@@ -490,6 +518,12 @@ def main() -> None:
         default="density_per_lane",
         help="Target variable (density, density_per_lane, flow, flow_per_lane)",
     )
+    parser.add_argument(
+        "--feature-set",
+        choices=["top8", "all_config"],
+        default="top8",
+        help="XGBoost aggregation feature set: 8-feature baseline or all configured features.",
+    )
     args = parser.parse_args()
 
     device = resolve_device(args.device)
@@ -497,6 +531,12 @@ def main() -> None:
 
     sequences, density, scenario_ids, conditions, df, valid_sids = load_data(target=args.target)
     train_sids, val_sids, test_sids = split_scenarios(valid_sids)
+    xgb_feature_cols = resolve_xgb_feature_columns(df, args.feature_set)
+    logger.info(
+        "XGBoost feature set '%s': %d probe-level features",
+        args.feature_set,
+        len(xgb_feature_cols),
+    )
 
     all_results: dict = {}
     active_models: list[str] = []
@@ -538,7 +578,7 @@ def main() -> None:
             metrics, y_true, y_pred = train_xgboost_multi(
                 n_probes,
                 df,
-                TOP_FEATURES,
+                xgb_feature_cols,
                 train_sids,
                 val_sids,
                 test_sids,
@@ -555,7 +595,8 @@ def main() -> None:
 
     # Save results
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = RESULTS_DIR / "results.json"
+    out_name = "results.json" if args.feature_set == "top8" else f"results_{args.feature_set}.json"
+    out_path = RESULTS_DIR / out_name
     with open(out_path, "w") as f:
         json.dump(all_results, f, indent=2, default=str)
     logger.info("Results saved to %s", out_path)

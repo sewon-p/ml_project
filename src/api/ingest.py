@@ -5,7 +5,7 @@ Link-based mode (GIS available):
   2. SensorFusion (Kalman Filter) converts to FCD format
   3. LinkBuffer accumulates FCD across consecutive road links (1km target)
   4. On traversal completion → feature extraction → XGBoost inference
-  5. Result registered with CF-weighted ensemble aggregator (15-min window)
+  5. Result registered with Bayesian CF-aware ensemble aggregator (15-min window)
   6. Prediction stored to all traversed links + WebSocket push
 
 Legacy mode (no GIS):
@@ -570,8 +570,15 @@ def _get_ensemble_aggregator():
     if _ensemble_aggregator is None:
         from src.api.ensemble import EnsembleAggregator
 
-        _ensemble_aggregator = EnsembleAggregator(window_seconds=900.0, temperature=1.0)
-        logger.info("Ensemble aggregator initialized (15-min window)")
+        _ensemble_aggregator = EnsembleAggregator(
+            window_seconds=900.0,
+            base_obs_std=1.0,
+            cf_sensitivity=1.0,
+            min_obs_std=0.1,
+            prior_density=0.0,
+            prior_density_std=100.0,
+        )
+        logger.info("Ensemble aggregator initialized (15-min window, Bayesian CF fusion)")
     return _ensemble_aggregator
 
 
