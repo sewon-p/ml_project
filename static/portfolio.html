@@ -2973,7 +2973,7 @@
             <div class="problem-insight">
               <div class="metric-label">Deployment</div>
               <strong>Route mismatch in real deployment</strong>
-              <span>Probes do not share identical 1 km start/end boundaries in deployment, so the aligned same-slice fusion rule cannot be applied directly once vehicles travel through the real road network.</span>
+              <span>In deployment, probes arrive with different 1 km start/end boundaries, so the system predicts each traversal first and then fuses them through the shared links they cover.</span>
             </div>
             <div class="problem-insight">
               <div class="metric-label">Constraint</div>
@@ -3000,12 +3000,13 @@
             stronger speed oscillations, and longer stop behavior.
           </p>
           <p class="section-copy">
-            The system converts those signals into <strong>31 engineered features</strong> spanning speed statistics,
+            The system converts those signals into <strong>31 handcrafted trajectory features</strong> spanning speed statistics,
             acceleration patterns, braking, stops, lateral dynamics, FFT, and sample entropy, then trains
-            <strong>XGBoost</strong> to map them to density. For the multi-probe case, the method then works in two
-            stages: a <strong>CF-aware weighting rule</strong> for aligned same-slice probes, and a
-            <strong>link-level fusion system</strong> that keeps the density-estimation pipeline usable when real probes
-            arrive with mismatched traversal boundaries.
+            <strong>XGBoost</strong> to map them to density. In the deployed single-probe runtime path, the model also
+            receives <strong>num_lanes</strong> and <strong>speed_limit</strong>, giving a 32-input inference vector. For the
+            multi-probe case, the method then works in two stages: an <strong>aligned aggregated-feature XGBoost</strong> for
+            the research setting, and a <strong>link-level Bayesian fusion system</strong> that keeps the pipeline usable when
+            real probes arrive with mismatched traversal boundaries.
           </p>
         </div>
         <div class="cards-four">
@@ -3060,7 +3061,7 @@ graph TB
         I --> J[Kalman Fusion]
         J --> K[GIS Link Match]
         K --> L["LinkBuffer (1km)"]
-        L --> M[Feature Extraction]
+        L --> M[Trajectory Features + Road Conditions]
         M --> N[XGBoost]
         N --> O[Bayesian CF Ensemble]
     end
@@ -3106,7 +3107,7 @@ sequenceDiagram
 
     alt Distance >= 1km
         LB-->>Server: LinkTraversal
-        Server->>ML: 31 features → density
+        Server->>ML: trajectory features + road conditions → density
         ML-->>Server: density, cf_score
         Server->>Ens: Register per link
         Ens-->>Server: Bayesian link aggregation
@@ -3124,7 +3125,7 @@ sequenceDiagram
         <div class="eyebrow">ML Pipeline Workbench</div>
         <h2 class="section-title">A GUI to run experiments, compare models, and inspect failures</h2>
         <p class="section-copy">
-          The offline pipeline is not just a pile of scripts. I built a dashboard so experiment work becomes practical:
+          The offline pipeline is organized around a dashboard so experiment work becomes practical:
           generate scenarios, tune feature groups, choose model families, resume from saved assets, and inspect
           evaluation output without manually rewriting configs for every run.
         </p>
@@ -3133,16 +3134,16 @@ sequenceDiagram
             <div class="narrative-body story-panel">
               <div class="panel-heading">Why The GUI Matters</div>
               <p class="panel-copy-lead">
-                The research needed an operating surface, not a pile of scripts.
+                The research needed an operating surface built for repeated experiments.
               </p>
               <p class="section-copy">
                 The project has many interacting knobs: scenario count, probes per scenario, feature subsets, FD
                 residual options, model families, and evaluation targets. The dashboard turns those into a repeatable
-                experiment surface instead of a fragile command sequence.
+                experiment surface with a repeatable workflow.
               </p>
               <p class="section-copy">
                 It also makes analysis faster after training. Each run keeps its own history, evaluation card, scatter
-                plot, and feature-importance view, so model behavior is inspectable instead of buried in output files.
+                plot, and feature-importance view, so model behavior stays visible throughout the workflow.
               </p>
             </div>
             <a class="pipeline-preview narrative-aside" href="/ml-pipeline/">
@@ -3223,7 +3224,7 @@ sequenceDiagram
           </div>
           <p class="note-copy">
             MAE = 1.68 veh/km/lane means about 1–2 vehicles per km per lane error.
-            This is the ideal same-slice setting where all probes describe the same 1 km target.
+            This is the ideal same-slice setting where all probes describe the same 1 km target through an aggregated-feature XGBoost formulation.
           </p>
         </div>
         <div class="panel panel-offset">
@@ -3266,7 +3267,8 @@ sequenceDiagram
             </table>
           </div>
           <p class="note-copy">
-            With only one traversal, all three fusion rules are effectively the same.
+            With only one traversal, all three fusion rules are effectively the same. The aligned table starts from an aggregated-feature XGBoost baseline at 0.494,
+            while the deployable table starts from the runtime single-traversal model at 0.526.
             At 5 probes, Bayesian+CF beats simple mean by +0.022 R² and CF-softmax by +0.012 R².
           </p>
         </div>
@@ -3298,7 +3300,7 @@ sequenceDiagram
 
           <!-- Data Pipeline & Dataset -->
           <details>
-            <summary><span class="summary-title">Data Pipeline & ML Dataset</span><span class="summary-sub">176K samples · 31 features · GroupKFold</span></summary>
+            <summary><span class="summary-title">Data Pipeline & ML Dataset</span><span class="summary-sub">176K samples · 31 handcrafted features · GroupKFold</span></summary>
             <div class="accordion-body">
               <p class="accordion-lead"><strong>From simulation to training set:</strong> 35K SUMO scenarios become 176K probe trajectories, then flow through feature extraction and leakage-safe validation.</p>
               <div class="overview-grid">
@@ -3310,9 +3312,10 @@ sequenceDiagram
                     time-space region.
                   </p>
                   <p class="section-copy">
-                    Feature extraction runs through a <strong>registry pattern</strong> — each of 31 features is a decorated
-                    function selected by YAML config. This lets experiments toggle features without code changes. Training
-                    uses <strong>GroupKFold by scenario_id</strong> to prevent data leakage between probes from the same road.
+                    Feature extraction runs through a <strong>registry pattern</strong> — each of 31 handcrafted trajectory features is a decorated
+                    function selected by YAML config. This lets experiments toggle features without code changes. In the
+                    deployed runtime path, <strong>num_lanes</strong> and <strong>speed_limit</strong> are added on top of those
+                    trajectory features. Training uses <strong>GroupKFold by scenario_id</strong> to prevent data leakage between probes from the same road.
                   </p>
                   <p class="section-copy">
                     All stages write to <strong>versioned run directories</strong> with manifest tracking. The ML pipeline
@@ -3338,7 +3341,7 @@ sequenceDiagram
                       </tr>
                       <tr>
                         <th scope="row">Features</th>
-                        <td class="numeric">31 (car-following theory)</td>
+                        <td class="numeric">31 handcrafted (+2 road inputs at runtime)</td>
                       </tr>
                       <tr>
                         <th scope="row">Validation</th>
@@ -3449,26 +3452,27 @@ flowchart LR
           <details data-math-root>
             <summary><span class="summary-title">Stage 1 · Aligned Multi-Probe Aggregation</span><span class="summary-sub">same-slice research setting · R² = 0.742</span></summary>
             <div class="accordion-body">
-              <p class="accordion-lead"><strong>Theory layer:</strong> when probes observe the same slice, stronger car-following behavior means lower uncertainty and more influence on the fused estimate.</p>
+              <p class="accordion-lead"><strong>Research layer:</strong> when probes observe the same slice, their handcrafted features are aggregated into one fixed-length vector before XGBoost prediction.</p>
               <div class="formula-card">
-                $$\text{cf}_i = \sigma_{a_x} + r_{\text{brake}} + \text{CV}_{\text{speed}}$$
-                $$w_i = \frac{\exp(\text{cf}_i)}{\sum_j \exp(\text{cf}_j)} \quad \text{(softmax)}$$
-                $$\hat{k}_{\text{ensemble}} = \sum_i w_i \cdot \hat{k}_i$$
+                $$\bar{f}_k = \frac{1}{N}\sum_{i=1}^{N} f_{k,i}, \qquad
+                s_k = \sqrt{\frac{1}{N}\sum_{i=1}^{N}(f_{k,i}-\bar{f}_k)^2}$$
+                $$\hat{k}_{\text{aligned}} = g_{\theta}\left(\bar{f}_1, s_1, \ldots, \bar{f}_K, s_K, \text{road conditions}\right)$$
               </div>
               <p class="section-copy">
-                Each probe's prediction is weighted by its <strong>car-following intensity</strong> —
-                probes actively following a leader carry more density information than free-driving probes.
+                The aligned rerun aggregates each selected probe's handcrafted feature values into a single tabular input. The model receives
+                the <strong>mean</strong> and <strong>standard deviation</strong> of each feature across probes.
               </p>
               <p class="section-copy copy-spaced">
-                In the aligned experiment, this weighting defines the <strong>same-slice multi-probe result</strong>:
-                if several probes cover the same 1 km slice, richer car-following probes should influence the combined
-                estimate more strongly than free-driving probes.
+                Example: if three probes have <strong>speed_mean = 42, 48, 45</strong>, the aligned input stores
+                <strong>speed_mean_mean = 45</strong> and <strong>speed_mean_std ≈ 2.45</strong>. If their traversal times are
+                <strong>62, 71, 68</strong> seconds, the aligned input stores <strong>traversal_time_mean = 67</strong> and
+                <strong>traversal_time_std ≈ 3.74</strong>.
               </p>
               <p class="section-copy copy-spaced">
-                <strong>Softmax weighting:</strong> each probe's CF score passes through a softmax
-                $w_i = \exp(\text{cf}_i) / \sum_j \exp(\text{cf}_j)$ — higher CF intensity → higher weight → more trusted.
-                In the latest full-feature rerun, this aligned formulation reaches <strong>R² = 0.742</strong> at 5 probes.
-                The weighting rule is the theoretical ingredient; the next problem is making it work once probes no longer share the same start/end boundaries.
+                This makes the aligned model a <strong>tabular aggregated-feature XGBoost</strong>. Its strength appears once
+                multiple probes are present, because the standard-deviation terms begin to describe how differently the
+                probes experience the same 1 km slice. In the latest full-feature rerun, this formulation reaches
+                <strong>R² = 0.742</strong> at 5 probes.
               </p>
             </div>
           </details>
@@ -3622,8 +3626,8 @@ flowchart LR
                     <div class="fusion-result">R² 0.658 in the deployed 5-probe system</div>
                   </div>
                   <div class="fusion-footnote">
-                    The key engineering step is not just “average predictions,” but <strong>apply Bayesian link fusion to
-                    different traversal windows through the links they overlap instead of requiring perfectly matching cuts.</strong>
+                    The key engineering step is to <strong>apply Bayesian link fusion to
+                    different traversal windows through the links they overlap.</strong>
                   </div>
                 </div>
               </div>
@@ -3671,12 +3675,12 @@ flowchart LR
         <p class="section-copy">
           The strongest parts are the experiment workbench, the deployable density-estimation system, and the
           road-network aggregation logic that keeps the method usable outside the aligned research setting. The
-          remaining gaps are around simulation fidelity and sensor assumptions rather than missing system pieces.
+          remaining gaps are concentrated in simulation fidelity and sensor assumptions.
         </p>
         <div class="panel panel-accent">
           <strong class="panel-accent-title">The contribution is two-stage because the research setting and the deployment setting are different.</strong>
           <p class="accent-copy">
-            The important result is not just that multi-probe aggregation helped. In the <strong>aligned 5-probe, 1 km experiment</strong>,
+            In the <strong>aligned 5-probe, 1 km experiment</strong>,
             aligned multi-probe aggregation reaches about <strong>R² = 0.742</strong>. The second contribution is the deployable version:
             an overlap-aware Bayesian link-fusion system that still delivers about <strong>R² = 0.658</strong> in the
             <strong>deployed 5-probe setting</strong> once probes stop sharing the same traversal boundaries.
@@ -3687,8 +3691,8 @@ flowchart LR
             <strong>Single-probe prediction is still the bottleneck before fusion.</strong>
             <p class="lesson-copy">
               Even before multi-probe aggregation, the single-probe path starts only around <strong>R²≈0.5</strong>.
-              That is why the biggest gains in this project come from combining multiple traversals rather than just
-              swapping regressors inside the same observation setup.
+              That is why the biggest gains in this project come from combining multiple traversals and strengthening the
+              observation setup.
             </p>
           </div>
           <div class="panel lesson-panel">
@@ -3701,22 +3705,20 @@ flowchart LR
             </p>
           </div>
           <div class="panel lesson-panel">
-            <strong>1 km accumulation was a deployment choice for link-level measurement, not just an accuracy trick.</strong>
+            <strong>1 km accumulation was a deployment choice for link-level measurement.</strong>
             <p class="lesson-copy">
               Links are short and variable, so a fixed time window does not map cleanly onto a stable road segment.
               The system therefore chains consecutive links until a traversal reaches about 1 km, then predicts at that
-              road-linked unit. Unequal traversal boundaries are a consequence of deployable link measurement, not an
-              arbitrary preference for longer windows.
+              road-linked unit. Unequal traversal boundaries are a direct consequence of deployable link measurement.
             </p>
           </div>
           <div class="panel lesson-panel">
             <strong>ADAS spacing data looks like the strongest next upgrade path.</strong>
             <p class="lesson-copy">
-              In the aligned multi-probe study, <strong>XGBoost (31 features + CF)</strong> rises from
+              In the aligned multi-probe study, <strong>XGBoost (31 handcrafted features + spacing-aware signal)</strong> rises from
               <strong>0.641 → 0.752 → 0.801 → 0.848</strong> as spacing structure becomes more visible. That suggests the
-              biggest next step is not just adding more phone trajectories, but combining the current motion features
-              with direct headway or forward-gap signals from ADAS or connected vehicles. If spacing becomes an actual
-              input instead of something the model must infer indirectly, the density estimate should improve much more sharply.
+              biggest next step is combining the current motion features with direct headway or forward-gap signals
+              from ADAS or connected vehicles. If spacing becomes an actual input, the density estimate should improve much more sharply.
             </p>
           </div>
         </div>
